@@ -1,0 +1,275 @@
+.app-shell {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f7fafc 0%, #eef3f8 100%);
+  color: #1f2937;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #dbe3ed;
+  background: rgba(255, 255, 255, 0.9);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(6px);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.app-header p {
+  margin: 0.25rem 0 0;
+  color: #6b7280;
+}
+
+.app-nav {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.nav-btn {
+  border: 1px solid #cfd8e4;
+  background: #ffffff;
+  color: #334155;
+  padding: 0.5rem 0.85rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.nav-btn.active {
+  border-color: #0f766e;
+  color: #0f766e;
+  background: #ecfdf5;
+}
+
+.page-content {
+  padding: 1.5rem;
+}
+
+.fade-in {
+  animation: fadeIn 350ms ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.home-page {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.hero {
+  background: #ffffff;
+  border: 1px solid #dde5ef;
+  border-radius: 14px;
+  padding: 1.25rem;
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.info-card {
+  background: #ffffff;
+  border: 1px solid #dde5ef;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.info-card h3 {
+  margin-top: 0;
+}
+
+.planner-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) 1fr;
+  gap: 1rem;
+}
+
+.planner-panel {
+  background: #ffffff;
+  border: 1px solid #dde5ef;
+  border-radius: 12px;
+  padding: 1rem;
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+}
+
+.planner-panel label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+
+.planner-panel select {
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #c9d5e2;
+}
+
+.field-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.mode-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid #cfdae6;
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+  background: #ffffff;
+}
+
+.mode-chip.active {
+  border-color: #0f766e;
+  background: #ecfdf5;
+}
+
+.planner-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.primary-btn,
+.secondary-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 0.6rem 0.9rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.primary-btn {
+  background: #0f766e;
+  color: #ffffff;
+}
+
+.secondary-btn {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.primary-btn:disabled,
+.secondary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error-text {
+  margin: 0;
+  color: #b91c1c;
+}
+
+.planner-visual {
+  display: grid;
+  gap: 1rem;
+}
+
+.map-card {
+  border: 1px solid #dde5ef;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.map-canvas {
+  width: 100%;
+  height: 360px;
+}
+
+.route-display {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0.75rem;
+}
+
+.route-card {
+  background: #ffffff;
+  border: 1px solid #dde5ef;
+  border-radius: 12px;
+  padding: 0.8rem;
+}
+
+.route-card.muted {
+  color: #6b7280;
+}
+
+.route-card h3 {
+  margin-top: 0;
+}
+
+.route-card ol {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.loader-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #1f2937;
+}
+
+.loader-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #0f766e;
+  animation: pulse 900ms infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.6;
+  }
+
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(0.85);
+    opacity: 0.6;
+  }
+}
+
+@media (max-width: 960px) {
+  .planner-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
