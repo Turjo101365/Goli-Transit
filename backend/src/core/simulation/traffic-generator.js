@@ -1,0 +1,3 @@
+export function trafficGenerator() {
+  return [];
+}

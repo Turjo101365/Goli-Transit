@@ -1,0 +1,1 @@
+export const modes = ['walk', 'bike', 'bus', 'metro'];
