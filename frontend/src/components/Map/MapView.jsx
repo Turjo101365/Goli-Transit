@@ -12,7 +12,7 @@ export function MapView({ center, route, nodeCoordinates }) {
 
   return (
     <div className="map-card">
-      <MapContainer center={center} zoom={15} scrollWheelZoom className="map-canvas">
+      <MapContainer center={center} zoom={13} scrollWheelZoom minZoom={10} maxZoom={18} maxBounds={[[23.65,90.30],[23.90,90.50]]} maxBoundsViscosity={1.0} className="map-canvas">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
