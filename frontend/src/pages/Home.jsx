@@ -1,10 +1,15 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
-
-
-
-export function Home({ onStart, activeSection, setActiveSection }) {
+export function Home({
+  authUser,
+  onStart,
+  onLogin,
+  onRegister,
+  onProfile,
+  activeSection,
+  setActiveSection
+}) {
   const [isVisible, setIsVisible] = useState({});
   const statRefs = useRef([]);
   const [counterValues, setCounterValues] = useState({ faster: 0, goli: 0, reroute: 0, modes: 0 });
@@ -15,6 +20,7 @@ export function Home({ onStart, activeSection, setActiveSection }) {
   const challengeSceneRef = useRef(null);
 
   const animateCounter = useRef();
+  const heroPrimaryLabel = authUser ? `Continue as ${authUser.name}` : 'Login to Open Planner';
 
   const formatCounter = (index, value) => {
     const targets = [30, 100, 1, 6];
@@ -467,11 +473,12 @@ export function Home({ onStart, activeSection, setActiveSection }) {
         </p>
 
         <div className="cta-buttons">
-          <button className="primary-btn" onClick={onStart}>
-            Launch 3D Planner
+          <button type="button" className="primary-btn" onClick={onStart}>
+            {heroPrimaryLabel}
           </button>
 
           <button
+            type="button"
             className="primary-btn secondary"
             onClick={() =>
               document.getElementById('challenge')?.scrollIntoView({ behavior: 'smooth' })
@@ -479,6 +486,23 @@ export function Home({ onStart, activeSection, setActiveSection }) {
           >
             Explore Chaos
           </button>
+        </div>
+
+        <div className="auth-promo-actions">
+          {!authUser ? (
+            <>
+              <button type="button" className="secondary-btn" onClick={onLogin}>
+                Login
+              </button>
+              <button type="button" className="secondary-btn" onClick={onRegister}>
+                Register
+              </button>
+            </>
+          ) : (
+            <button type="button" className="secondary-btn" onClick={onProfile}>
+              View Profile
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -730,4 +754,3 @@ export function Home({ onStart, activeSection, setActiveSection }) {
     </section>
   );
 }
-
