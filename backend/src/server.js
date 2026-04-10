@@ -3,16 +3,18 @@ import { createApp } from './app.js';
 import { initDb } from './config/db.js';
 import { initRedis } from './config/redis.js';
 import { ensureGraphCache } from './cache/graph.cache.js';
+import { env } from './config/env.js';
 
 await initDb();
 await initRedis();
 await ensureGraphCache();
 
 const app = createApp();
-const port = Number(process.env.PORT || 3001);
+const host = env.HOST;
+const port = env.PORT;
 
-const server = app.listen(port, () => {
-  console.log(`Backend listening on http://localhost:${port}`);
+const server = app.listen(port, host, () => {
+  console.log(`Backend listening on http://${host}:${port}`);
 });
 
 server.on('error', (error) => {
