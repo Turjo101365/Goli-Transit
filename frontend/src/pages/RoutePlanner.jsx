@@ -10,13 +10,13 @@ const modeOptions = ['walk', 'bike', 'bus', 'metro'];
 const nodeOptions = ['A', 'B', 'C', 'D'];
 
 export const nodeCoordinates = {
-  A: [28.6129, 77.2295],
-  B: [28.6164, 77.2369],
-  C: [28.6229, 77.2401],
-  D: [28.6188, 77.2317]
+A: [23.80, 90.41], // Gulshan
+  B: [23.74, 90.38], // Dhanmondi
+  C: [23.81, 90.37], // Mirpur
+  D: [23.73, 90.41] // Motijheel
 };
 
-export function RoutePlanner() {
+export function RoutePlanner({ activeSection, setActiveSection, scrollToSection, navigateTo, page }) {
   const [source, setSource] = useState('A');
   const [destination, setDestination] = useState('C');
   const [selectedModes, setSelectedModes] = useState(['walk', 'bike', 'bus', 'metro']);
@@ -28,17 +28,13 @@ export function RoutePlanner() {
 
   const visualRoute = reroutedResult || routeResult;
 
-  const mapCenter = useMemo(() => {
-    const src = nodeCoordinates[source];
-    const dest = nodeCoordinates[destination];
-    return [(src[0] + dest[0]) / 2, (src[1] + dest[1]) / 2];
-  }, [source, destination]);
+const mapCenter = [23.8103, 90.4125]; // Fixed Dhaka center
 
   async function handlePlanRoute(event) {
     event.preventDefault();
     setError('');
     setReroutedResult(null);
-    setIsLoadingRoute(true);
+setIsLoadingRoute(true); // Step 1: Dhaka coordinates updated ✓
 
     try {
       const result = await createRoute({
@@ -98,8 +94,9 @@ export function RoutePlanner() {
     }
   }
 
-  return (
-    <section className="planner-layout fade-in">
+return (
+<section className="planner-layout fade-in">
+
       <form className="planner-panel" onSubmit={handlePlanRoute}>
         <h2>Route Planner</h2>
         <p>Choose source, destination, and transport modes. Then simulate traffic anomalies.</p>

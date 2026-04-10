@@ -9,6 +9,7 @@ export function Login({ onLogin, onSwitchToRegister, onSwitchToForgotPassword })
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   function handleChange(event) {
     const { name, value } = event.target;
@@ -33,86 +34,113 @@ export function Login({ onLogin, onSwitchToRegister, onSwitchToForgotPassword })
   }
 
   return (
-    <section className="auth-page fade-in">
-      <article className="auth-panel auth-panel-feature">
-        <span className="auth-kicker">Return to your commute</span>
-        <h2>Login and jump back into route planning.</h2>
-        <p>
-          Sign in with your saved account from GoliTransitDB and move straight to the planner.
-        </p>
-        <div className="auth-feature-list">
-          <div className="auth-feature-item">
-            <strong>Persistent account</strong>
-            <span>Your profile is checked against the backend users table every time you sign in.</span>
-          </div>
-          <div className="auth-feature-item">
-            <strong>Protected APIs</strong>
-            <span>Planner requests now use your bearer token for authenticated access.</span>
-          </div>
-          <div className="auth-feature-item">
-            <strong>Session restore</strong>
-            <span>Your browser restores the saved session automatically when the token is still valid.</span>
-          </div>
-        </div>
-      </article>
+    <section className="login-container about-section fade-in">
+      <div className="login-card about-card feature-card card-3d hover-glow">
 
-      <form className="auth-panel auth-form" onSubmit={handleSubmit}>
-        <div className="auth-form-copy">
-          <span className="auth-kicker">Welcome back</span>
-          <h2>Login</h2>
-          <p>Enter your email and password to continue.</p>
-        </div>
+        <h2 className="section-title neon-glow" style={{fontSize: '1.8rem', marginBottom: '0.5rem', textAlign: 'center'}}>
+          Welcome Back
+        </h2>
 
-        <label>
-          Email
-          <input
-            type="email"
-            name="email"
-            value={form.email}
-            onChange={handleChange}
-            placeholder="you@example.com"
-            autoComplete="email"
-            required
-          />
-        </label>
-
-        <label>
-          Password
-          <input
-            type="password"
-            name="password"
-            value={form.password}
-            onChange={handleChange}
-            placeholder="Enter your password"
-            autoComplete="current-password"
-            required
-          />
-        </label>
-
-        {error ? <p className="error-text">{error}</p> : null}
-
-        <button type="submit" className="primary-btn auth-submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Logging in...' : 'Login'}
-        </button>
-
-        <p className="auth-switch">
-          Need an account?
-          <button type="button" className="text-btn" onClick={onSwitchToRegister}>
-            Register here
-          </button>
+        <p style={{color: 'var(--text-secondary)', marginBottom: '2rem', textAlign: 'center'}}>
+          Sign in to access your personalized route planner and real-time traffic updates.
         </p>
 
-        <p className="auth-switch">
-          Forgot your password?
+        <form className="auth-form" onSubmit={handleSubmit}>
+
+          {/* EMAIL */}
+          <div className="floating-group">
+            <input
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              placeholder=" "
+              required
+            />
+            <label>Email</label>
+          </div>
+
+          {/* PASSWORD */}
+          <div className="floating-group" style={{position: 'relative'}}>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              name="password"
+              value={form.password}
+              onChange={handleChange}
+              placeholder=" "
+              required
+            />
+            <label>Password</label>
+
+            {/* SHOW/HIDE */}
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              style={{
+                position: 'absolute',
+                right: '10px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: '#00d4aa',
+                cursor: 'pointer',
+                fontSize: '0.8rem'
+              }}
+            >
+              {showPassword ? 'Hide' : 'Show'}
+            </button>
+          </div>
+
+          {/* ERROR */}
+          {error && (
+            <p className="error-box">
+              {error}
+            </p>
+          )}
+
+          {/* BUTTON */}
           <button
-            type="button"
-            className="text-btn"
-            onClick={() => onSwitchToForgotPassword(form.email)}
+            type="submit"
+            className="primary-btn auth-submit"
+            disabled={isSubmitting}
           >
-            Reset it
+            {isSubmitting ? (
+              <span className="loader-wrap">
+                <span className="loader"></span>
+                Logging in...
+              </span>
+            ) : (
+              'Sign In'
+            )}
           </button>
-        </p>
-      </form>
+
+          {/* LINKS */}
+          <div className="auth-links">
+            <p>
+              Don’t have an account?{' '}
+              <button
+                type="button"
+                className="text-btn"
+                onClick={onSwitchToRegister}
+              >
+                Create one
+              </button>
+            </p>
+
+            <p>
+              <button
+                type="button"
+                className="text-btn"
+                onClick={() => onSwitchToForgotPassword(form.email)}
+              >
+                Forgot Password?
+              </button>
+            </p>
+          </div>
+
+        </form>
+      </div>
     </section>
   );
 }

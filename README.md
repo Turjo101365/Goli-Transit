@@ -239,9 +239,14 @@ Recommended live demo flow for judges:
 
 - Multi-modal routing across walk, bike, bus, and metro.
 - Real-time anomaly handling with affected-edge updates.
-- Graph-based optimization using shortest-path strategies.
-- Cache-aware performance path for repeated route queries.
+- Graph-based optimization using shortest-path strategies (A*, Dijkstra).
+- Cache-aware performance path for repeated route queries (Redis + in-memory fallback).
 - Clean layered backend architecture suitable for scale.
+- **3D Traffic Visualization** with Three.js-powered live graph simulation and neon glowing paths.
+- **Dhaka Hyper-Local Optimization** including goli alley networks and rickshaw economics.
+- **Resilient Caching System** with graceful degradation for offline/development modes.
+- **Live Anomaly Simulation** - inject traffic jams and watch instant re-routing in 3D.
+- **Production-Ready APIs** with validation, logging, tests, and Docker scaffolding.
 
 ## ⚠️ Challenges and Solutions
 
