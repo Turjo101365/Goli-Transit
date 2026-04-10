@@ -1,6 +1,7 @@
 import { createPool } from 'mysql2/promise';
 import { env } from './env.js';
 import { logger } from '../utils/logger.js';
+import { createHttpError } from '../utils/http-error.js';
 
 export const dbConfig = {
 	enabled: env.DB_ENABLED,
@@ -35,8 +36,10 @@ export async function initDb() {
 		return pool;
 	}
 
+	let candidatePool = null;
+
 	try {
-		pool = createPool({
+		candidatePool = createPool({
 			host: dbConfig.host,
 			port: dbConfig.port,
 			user: dbConfig.user,
@@ -48,7 +51,21 @@ export async function initDb() {
 			namedPlaceholders: true
 		});
 
-		await pool.query('SELECT 1');
+		const [schemaRows] = await candidatePool.query(
+			[
+				'SELECT SCHEMA_NAME',
+				'FROM INFORMATION_SCHEMA.SCHEMATA',
+				'WHERE SCHEMA_NAME = :databaseName',
+				'LIMIT 1'
+			].join(' '),
+			{ databaseName: dbConfig.database }
+		);
+
+		if (!schemaRows.length) {
+			throw new Error(`Unknown database '${dbConfig.database}'`);
+		}
+
+		pool = candidatePool;
 		status = {
 			initialized: true,
 			connected: true,
@@ -58,6 +75,10 @@ export async function initDb() {
 		logger.info('MySQL connected');
 		return pool;
 	} catch (error) {
+		if (candidatePool) {
+			await candidatePool.end().catch(() => {});
+		}
+
 		status = {
 			initialized: true,
 			connected: false,
@@ -80,6 +101,20 @@ export async function dbQuery(sql, params = {}) {
 
 	const [rows] = await activePool.query(sql, params);
 	return rows;
+}
+
+export async function ensureDbAvailable() {
+	const activePool = pool || (await initDb());
+
+	if (!activePool) {
+		throw createHttpError(
+			503,
+			'DB_UNAVAILABLE',
+			'Authentication requires a live database connection. Check your MySQL settings and try again.'
+		);
+	}
+
+	return activePool;
 }
 
 export function getDbStatus() {

@@ -1,4 +1,4 @@
-export function Home({ onStart }) {
+export function Home({ authUser, onStart, onLogin, onRegister, onProfile }) {
   return (
     <section className="home-page fade-in">
       <div className="hero">
@@ -7,9 +7,25 @@ export function Home({ onStart }) {
           Compare multi-modal routes, simulate congestion anomalies, and show instant rerouting in a
           clean hackathon demo.
         </p>
-        <button type="button" className="primary-btn" onClick={onStart}>
-          Open Route Planner
-        </button>
+        <div className="hero-actions">
+          <button type="button" className="primary-btn" onClick={onStart}>
+            {authUser ? 'Continue as ' + authUser.name : 'Login to Open Planner'}
+          </button>
+          {!authUser ? (
+            <>
+              <button type="button" className="secondary-btn" onClick={onLogin}>
+                Login
+              </button>
+              <button type="button" className="secondary-btn" onClick={onRegister}>
+                Register
+              </button>
+            </>
+          ) : (
+            <button type="button" className="secondary-btn" onClick={onProfile}>
+              View Profile
+            </button>
+          )}
+        </div>
       </div>
       <div className="home-grid">
         <article className="info-card">
@@ -23,6 +39,14 @@ export function Home({ onStart }) {
         <article className="info-card">
           <h3>Map-first Story</h3>
           <p>Render route legs and stop nodes visually so judges can follow the decision path.</p>
+        </article>
+        <article className="info-card">
+          <h3>Secure Access</h3>
+          <p>Register and login with a database-backed account before opening the planner tools.</p>
+        </article>
+        <article className="info-card">
+          <h3>Password Recovery</h3>
+          <p>Use forgot-password and reset-password screens to demonstrate a complete auth journey.</p>
         </article>
       </div>
     </section>
