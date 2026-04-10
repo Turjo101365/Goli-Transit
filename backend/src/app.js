@@ -3,10 +3,12 @@ import { createRouter } from './routes/index.js';
 import { requestIdMiddleware } from './middlewares/request-id.middleware.js';
 import { loggerMiddleware } from './middlewares/logger.middleware.js';
 import { errorMiddleware } from './middlewares/error.middleware.js';
+import { corsMiddleware } from './middlewares/cors.middleware.js';
 
 export function createApp() {
   const app = express();
 
+  app.use(corsMiddleware);
   app.use(express.json({ limit: '1mb' }));
   app.use(requestIdMiddleware);
   app.use(loggerMiddleware);
