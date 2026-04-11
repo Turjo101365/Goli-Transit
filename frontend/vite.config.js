@@ -8,11 +8,12 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
-      '/health': 'http://127.0.0.1:3001',
-      '/auth': 'http://127.0.0.1:3001',
-      '/route': 'http://127.0.0.1:3001',
-      '/anomaly': 'http://127.0.0.1:3001',
-      '/graph': 'http://127.0.0.1:3001'
+      '/health': 'http://127.0.0.1:8080',
+      '/auth': 'http://127.0.0.1:8080',
+      '/profile': 'http://127.0.0.1:8080',
+      '/route': 'http://127.0.0.1:8080',
+      '/anomaly': 'http://127.0.0.1:8080',
+      '/graph': 'http://127.0.0.1:8080'
     }
   },
   preview: {
