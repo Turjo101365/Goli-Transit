@@ -9,8 +9,11 @@ import { createAuthToken, verifyAuthToken } from '../utils/token.js';
 import { sendVerificationCodeEmail } from './mail.service.js';
 
 const resetCodeSessions = new Map();
+const memoryUsersByEmail = new Map();
+const memoryUsersById = new Map();
 const RESET_CODE_LENGTH = 6;
 const RESET_CODE_MAX_ATTEMPTS = 5;
+let memoryUserSequence = 1;
 
 function normalizeEmail(email) {
 	return String(email || '').trim().toLowerCase();
@@ -31,6 +34,39 @@ function sanitizeUser(user) {
 		email: user.email,
 		createdAt: serializeDate(user.createdAt)
 	};
+}
+
+function createMemoryUser({ name, email, passwordHash }) {
+	const id = `mem-${memoryUserSequence++}`;
+	const user = {
+		id,
+		name,
+		email,
+		passwordHash,
+		createdAt: new Date(),
+		updatedAt: new Date()
+	};
+
+	memoryUsersByEmail.set(email, user);
+	memoryUsersById.set(id, user);
+	return user;
+}
+
+function findMemoryUserByEmail(email) {
+	return memoryUsersByEmail.get(normalizeEmail(email)) || null;
+}
+
+function findMemoryUserById(id) {
+	return memoryUsersById.get(String(id)) || null;
+}
+
+async function hasLiveDatabase() {
+	try {
+		await ensureDbAvailable();
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 function createSessionResponse(user) {
@@ -103,53 +139,87 @@ function assertResetSessionActive(session, email) {
 
 export const authService = {
 	async register(payload) {
-		await ensureDbAvailable();
-
 		const email = normalizeEmail(payload.email);
-		const existingUser = await userRepository.findByEmail(email);
-		if (existingUser) {
+		const dbAvailable = await hasLiveDatabase();
+
+		if (dbAvailable) {
+			const existingUser = await userRepository.findByEmail(email);
+			if (existingUser) {
+				throw createHttpError(409, 'AUTH_EMAIL_EXISTS', 'An account with this email already exists.');
+			}
+
+			const user = await userRepository.createUser({
+				name: payload.name.trim(),
+				email,
+				passwordHash: hashPassword(payload.password)
+			});
+
+			if (!user) {
+				throw createHttpError(500, 'AUTH_REGISTER_FAILED', 'Unable to create account right now.');
+			}
+
+			return createSessionResponse(user);
+		}
+
+		const existingMemoryUser = findMemoryUserByEmail(email);
+		if (existingMemoryUser) {
 			throw createHttpError(409, 'AUTH_EMAIL_EXISTS', 'An account with this email already exists.');
 		}
 
-		const user = await userRepository.createUser({
+		const user = createMemoryUser({
 			name: payload.name.trim(),
 			email,
 			passwordHash: hashPassword(payload.password)
 		});
 
-		if (!user) {
-			throw createHttpError(500, 'AUTH_REGISTER_FAILED', 'Unable to create account right now.');
-		}
-
 		return createSessionResponse(user);
 	},
 
 	async login(payload) {
-		await ensureDbAvailable();
+		const email = normalizeEmail(payload.email);
+		const dbAvailable = await hasLiveDatabase();
 
-		const user = await userRepository.findByEmail(normalizeEmail(payload.email));
-		if (!user || !verifyPassword(payload.password, user.passwordHash)) {
+		if (dbAvailable) {
+			const user = await userRepository.findByEmail(email);
+			if (!user || !verifyPassword(payload.password, user.passwordHash)) {
+				throw createHttpError(401, 'AUTH_INVALID_CREDENTIALS', 'Incorrect email or password.');
+			}
+
+			return createSessionResponse(user);
+		}
+
+		const memoryUser = findMemoryUserByEmail(email);
+		if (!memoryUser || !verifyPassword(payload.password, memoryUser.passwordHash)) {
 			throw createHttpError(401, 'AUTH_INVALID_CREDENTIALS', 'Incorrect email or password.');
 		}
 
-		return createSessionResponse(user);
+		return createSessionResponse(memoryUser);
 	},
 
 	async getCurrentUser(token) {
-		await ensureDbAvailable();
-
 		const payload = verifyAuthToken(token);
 		if (!payload || !payload.sub) {
 			throw createHttpError(401, 'AUTH_INVALID_TOKEN', 'Invalid authentication token.');
 		}
 
-		const user = await userRepository.findById(payload.sub);
+		const dbAvailable = await hasLiveDatabase();
 
-		if (!user) {
+		if (dbAvailable) {
+			const user = await userRepository.findById(payload.sub);
+
+			if (!user) {
+				throw createHttpError(401, 'AUTH_USER_NOT_FOUND', 'User session is no longer valid. Please log in again.');
+			}
+
+			return sanitizeUser(user);
+		}
+
+		const memoryUser = findMemoryUserById(payload.sub);
+		if (!memoryUser) {
 			throw createHttpError(401, 'AUTH_USER_NOT_FOUND', 'User session is no longer valid. Please log in again.');
 		}
 
-		return sanitizeUser(user);
+		return sanitizeUser(memoryUser);
 	},
 
 	async sendResetCode(payload) {
