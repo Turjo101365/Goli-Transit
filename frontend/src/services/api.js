@@ -6,6 +6,7 @@ import {
 
 const LOCAL_BACKEND_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i;
 const LOCAL_HOST_PATTERN = /^(localhost|127\.0\.0\.1)$/i;
+const DEFAULT_API_TIMEOUT_MS = 20000;
 
 function isLocalBrowserHost() {
 	if (typeof window === 'undefined') {
@@ -98,20 +99,34 @@ export async function apiRequest(path, options = {}) {
 	const { auth = true, headers = {}, ...requestOptions } = options;
 	const authToken = auth ? getStoredAuthToken() : null;
 	const requestUrl = buildRequestUrl(path);
+	const timeoutMs = Number(import.meta.env.VITE_API_TIMEOUT_MS) || DEFAULT_API_TIMEOUT_MS;
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 	let response;
 
 	try {
 		response = await fetch(requestUrl, {
 			...requestOptions,
+			signal: controller.signal,
 			headers: {
 				'Content-Type': 'application/json',
 				...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
 				...headers
 			}
 		});
-	} catch (_error) {
+	} catch (error) {
+		if (error?.name === 'AbortError') {
+			const timeoutError = new Error(
+				`Request timed out after ${Math.round(timeoutMs / 1000)} seconds. Please try again.`
+			);
+			timeoutError.code = 'REQUEST_TIMEOUT';
+			throw timeoutError;
+		}
+
 		const backendTarget = API_BASE_URL || requestUrl;
 		throw new Error(`Unable to reach the backend server at ${backendTarget}. Start the backend and try again.`);
+	} finally {
+		clearTimeout(timeoutId);
 	}
 
 	return parseResponse(response);
