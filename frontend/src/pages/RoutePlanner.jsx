@@ -70,8 +70,10 @@ function buildNodeCoordinates(route) {
 }
 
 export function RoutePlanner({ authUser, activeSection, setActiveSection, scrollToSection, navigateTo, page }) {
-  const [sourceInput, setSourceInput] = useState('A');
-  const [destinationInput, setDestinationInput] = useState('C');
+  const [source, setSource] = useState('A');
+  const [destination, setDestination] = useState('C');
+  const [sourceInput, setSourceInput] = useState('');
+  const [destinationInput, setDestinationInput] = useState('');
   const [selectedModes, setSelectedModes] = useState(['walk', 'bike', 'bus', 'metro']);
   const [routeResult, setRouteResult] = useState(null);
   const [reroutedResult, setReroutedResult] = useState(null);
