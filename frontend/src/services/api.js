@@ -4,22 +4,54 @@ import {
 	AUTH_UNAUTHORIZED_EVENT
 } from './auth.storage.js';
 
-function resolveApiBaseUrl() {
+const LOCAL_BACKEND_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i;
+const LOCAL_HOST_PATTERN = /^(localhost|127\.0\.0\.1)$/i;
+
+function isLocalBrowserHost() {
+	if (typeof window === 'undefined') {
+		return false;
+	}
+
+	return LOCAL_HOST_PATTERN.test(window.location.hostname);
+}
+
+function resolveApiBaseConfig() {
 	const configuredBaseUrl = (import.meta.env.VITE_BACKEND_ENDPOINT || '').trim();
+	const localBrowserHost = isLocalBrowserHost();
 
 	if (configuredBaseUrl) {
-		return configuredBaseUrl.replace(/\/$/, '');
+		const baseUrl = configuredBaseUrl.replace(/\/$/, '');
+
+		if (LOCAL_BACKEND_PATTERN.test(baseUrl) && !localBrowserHost) {
+			return {
+				baseUrl: '',
+				error:
+					'Invalid VITE_BACKEND_ENDPOINT for deployed frontend. Use your public backend URL (for example https://your-service.onrender.com), not localhost.'
+			};
+		}
+
+		return { baseUrl, error: null };
 	}
 
 	if (typeof window === 'undefined') {
-		return '';
+		return { baseUrl: '', error: null };
 	}
 
-	const isLocalHostname = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
-	return isLocalHostname ? 'http://127.0.0.1:8080' : '';
+	if (!import.meta.env.DEV && !localBrowserHost) {
+		return {
+			baseUrl: '',
+			error:
+				'Missing VITE_BACKEND_ENDPOINT for deployed frontend. Set it to your public backend URL (for example https://your-service.onrender.com).'
+		};
+	}
+
+	return {
+		baseUrl: localBrowserHost ? 'http://127.0.0.1:8080' : '',
+		error: null
+	};
 }
 
-const API_BASE_URL = resolveApiBaseUrl();
+const { baseUrl: API_BASE_URL, error: API_BASE_URL_ERROR } = resolveApiBaseConfig();
 
 function buildRequestUrl(path) {
 	if (/^https?:\/\//.test(path)) {
@@ -59,6 +91,10 @@ async function parseResponse(response) {
 }
 
 export async function apiRequest(path, options = {}) {
+	if (API_BASE_URL_ERROR) {
+		throw new Error(API_BASE_URL_ERROR);
+	}
+
 	const { auth = true, headers = {}, ...requestOptions } = options;
 	const authToken = auth ? getStoredAuthToken() : null;
 	const requestUrl = buildRequestUrl(path);
