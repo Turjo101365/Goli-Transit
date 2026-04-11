@@ -1134,6 +1134,149 @@ body {
   min-height: 120px;
 }
 
+/* Login Page */
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: linear-gradient(135deg, #0f172a, #020617);
+}
+
+/* Card */
+.login-card {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 420px;
+  width: 100%;
+  padding: 2rem;
+  border-radius: 20px;
+
+  /* Glassmorphism */
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+
+  transition: transform 0.4s ease;
+}
+
+.login-card:hover {
+  transform: translateY(-6px) scale(1.01);
+}
+
+.login-card .auth-form {
+  display: grid;
+  gap: 1.25rem;
+}
+
+/* Floating Input */
+.floating-group {
+  position: relative;
+}
+
+.floating-group input {
+  width: 100%;
+  padding: 1.1rem 1rem 0.6rem;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  color: #fff;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+/* Focus Effect */
+.floating-group input:focus {
+  outline: none;
+  border-color: #00d4aa;
+  box-shadow: 0 0 0 3px rgba(0,212,170,0.25);
+  background: rgba(255,255,255,0.08);
+}
+
+/* Label */
+.floating-group label {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.95rem;
+  color: #94a3b8;
+  pointer-events: none;
+  transition: 0.3s ease;
+}
+
+/* FIX: Floating label works properly */
+.floating-group input:focus + label,
+.floating-group input:not(:placeholder-shown) + label {
+  top: 0.3rem;
+  font-size: 0.7rem;
+  color: #00d4aa;
+}
+
+/* Button */
+.auth-submit {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1.05rem;
+  border-radius: 12px;
+  border: none;
+
+  background: linear-gradient(135deg, #00d4aa, #00f5d4);
+  color: black;
+  font-weight: 600;
+
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.auth-submit:hover {
+  transform: scale(1.03);
+  box-shadow: 0 10px 30px rgba(0,212,170,0.4);
+}
+
+.auth-submit:active {
+  transform: scale(0.97);
+}
+
+/* Switch Links */
+.auth-switch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+/* Text Button */
+.text-btn {
+  background: none;
+  border: none;
+  color: #00d4aa;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.text-btn:hover {
+  color: #00f5d4;
+  text-shadow: 0 0 10px rgba(0,212,170,0.6);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .login-card {
+    padding: 1.5rem;
+  }
+
+  .login-container {
+    padding: 1rem;
+  }
+}
+
 .contact-form button {
   justify-self: start;
 }
@@ -1149,10 +1292,11 @@ body {
 .footer-content {
   max-width: 1200px;
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: 1fr auto auto auto;
+  display: flex;
+  justify-content: space-between;
   gap: 2rem;
   align-items: start;
+  flex-wrap: wrap;
 }
 
 .footer-logo {
@@ -1229,7 +1373,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  grid-column: 3;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .footer-contact .label {
@@ -1258,8 +1403,13 @@ body {
 }
 
 @media (max-width: 960px) {
+  .footer-content {
+    flex-direction: column !important;
+    gap: 1.5rem;
+  }
   .footer-contact {
-    grid-column: 1 / -1;
+    margin-left: 0;
+    order: 3;
     text-align: center;
   }
   
@@ -1547,10 +1697,11 @@ body {
 
 /* MAIN GRID */
 .footer-content {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1.5fr;
+  display: flex;
+  justify-content: space-between;
   gap: 3rem;
   align-items: start;
+  flex-wrap: wrap;
 }
 
 /* LOGO */
@@ -1637,7 +1788,7 @@ body {
 /* RESPONSIVE */
 @media (max-width: 900px) {
   .footer-content {
-    grid-template-columns: 1fr;
+    flex-direction: column;
     gap: 2rem;
   }
 }
@@ -1977,4 +2128,153 @@ body {
   .auth-submit {
     width: 100%;
   }
+}
+.special-footer {
+  padding: 60px 40px 30px;
+}
+
+.footer-content {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 40px; /* 🔥 main column gap */
+}
+
+/* Make columns breathe nicely */
+.footer-logo,
+.footer-links,
+.footer-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* spacing inside each column */
+}
+
+/* Headings spacing */
+.footer-links h4 {
+  margin-bottom: 10px;
+}
+
+/* Links spacing */
+.footer-links a {
+  margin-bottom: 6px;
+  display: inline-block;
+}
+
+/* Contact block spacing */
+.footer-contact {
+  gap: 16px;
+}
+
+.contact-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Footer bottom spacing */
+.footer-copy {
+  margin-top: 40px;
+  text-align: center;
+}
+
+/* 🔥 Responsive Fix */
+@media (max-width: 992px) {
+  .footer-content {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 30px;
+  }
+}
+
+@media (max-width: 600px) {
+  .footer-content {
+    grid-template-columns: 1fr;
+    gap: 25px;
+  }
+
+  .special-footer {
+    padding: 40px 20px;
+  }
+}/* Login Section (Same as About Theme) */
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+
+  /* SAME gradient style */
+  background: linear-gradient(135deg, rgba(0,212,170,0.05), transparent);
+}
+
+/* Login Card = About Card Style */
+.login-card {
+  max-width: 420px;
+  width: 100%;
+  padding: 2.5rem 2rem;
+  border-radius: 24px;
+
+  /* Same glass + shadow */
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(0,212,170,0.2);
+
+  box-shadow: 0 20px 60px rgba(0,212,170,0.15);
+  transition: all 0.4s ease;
+}
+
+/* Hover effect same as cards */
+.login-card:hover {
+  transform: translateY(-8px) scale(1.01);
+  box-shadow: 0 25px 70px rgba(0,212,170,0.25);
+}
+
+/* Title uses same style */
+.login-card .section-title {
+  margin-bottom: 0.5rem;
+}
+
+/* Subtitle */
+.login-card p {
+  text-align: center;
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+}
+
+/* Input style (match theme color) */
+.floating-group input {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(0,212,170,0.2);
+}
+
+.floating-group input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0,212,170,0.25);
+}
+
+/* Button same accent glow */
+.auth-submit {
+  background: linear-gradient(135deg, var(--accent), #00f5d4);
+  color: #000;
+  font-weight: 600;
+  border: none;
+}
+
+.auth-submit:hover {
+  box-shadow: 0 10px 30px rgba(0,212,170,0.4);
+}
+
+/* Links */
+.text-btn {
+  color: var(--accent);
+}
+
+.text-btn:hover {
+  color: #00f5d4;
+  text-shadow: 0 0 10px rgba(0,212,170,0.6);
+}
+
+/* Error matches theme */
+.error-box {
+  border-left: 4px solid var(--accent);
+  background: rgba(0,212,170,0.08);
+  color: #00f5d4;
 }

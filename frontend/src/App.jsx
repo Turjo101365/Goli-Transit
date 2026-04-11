@@ -365,12 +365,9 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div className="logo-container">
-          <div className="logo-3d" onClick={() => navigateTo('home')} role="button" tabIndex={0}>
-            GoliTransit
-          </div>
-          <span className="logo-tagline">Smart Navigation For Dhaka</span>
-        </div>
+        <div className="logo-container">         
+           <div className="logo-3d" onClick={() => navigateTo('home')} role="button" tabIndex={0}>Goli🚀Transit</div>
+            </div>
 
         <nav className="app-nav">
           <div className="nav-links">
@@ -460,7 +457,7 @@ export default function App() {
         <div className="footer-content">
           <div className="footer-logo">
             <div className="logo-3d" onClick={() => navigateTo('home')} role="button" tabIndex={0}>
-              GoliTransit
+             Goli🚀Transit
             </div>
             <span>Smart Navigation for Dhaka</span>
           </div>

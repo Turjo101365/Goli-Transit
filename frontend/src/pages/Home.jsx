@@ -487,23 +487,6 @@ export function Home({
             Explore Chaos
           </button>
         </div>
-
-        <div className="auth-promo-actions">
-          {!authUser ? (
-            <>
-              <button type="button" className="secondary-btn" onClick={onLogin}>
-                Login
-              </button>
-              <button type="button" className="secondary-btn" onClick={onRegister}>
-                Register
-              </button>
-            </>
-          ) : (
-            <button type="button" className="secondary-btn" onClick={onProfile}>
-              View Profile
-            </button>
-          )}
-        </div>
       </div>
     </div>
     </section>
@@ -713,30 +696,33 @@ export function Home({
 
 </div>
 
-    {/* Contact Form */}
     <form className="contact-form glass-card" onSubmit={(e) => e.preventDefault()}>
-      
-      <div className="floating-group">
-        <input type="text" required />
-        <label>Your Name</label>
-      </div>
+  
+  <h2 className="section-title neon-glow" style={{marginBottom: '1.5rem'}}>
+    Contact Us
+  </h2>
 
-      <div className="floating-group">
-        <input type="email" required />
-        <label>Your Email</label>
-      </div>
+  <div className="floating-group">
+    <input type="text" placeholder=" " required />
+    <label>Your Name</label>
+  </div>
 
-      <div className="floating-group">
-        <textarea rows="4" required></textarea>
-        <label>Your Message</label>
-      </div>
+  <div className="floating-group">
+    <input type="email" placeholder=" " required />
+    <label>Your Email</label>
+  </div>
 
-      <button type="submit" className="submit-btn">
-        <span className="btn-text">Send Message</span>
-        <span className="btn-success">Sent ✓</span>
-      </button>
+  <div className="floating-group">
+    <textarea placeholder=" " rows="4" required></textarea>
+    <label>Your Message</label>
+  </div>
 
-    </form>
+  <button type="submit" className="submit-btn">
+    <span className="btn-text">Send Message</span>
+    <span className="btn-success">Sent ✓</span>
+  </button>
+
+</form>
 
   </div>
 </section>
