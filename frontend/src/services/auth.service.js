@@ -38,7 +38,7 @@ export async function loginUser(payload) {
 }
 
 export async function requestPasswordReset(payload) {
-  return apiRequest('/auth/send-reset-code', {
+  return apiRequest('/auth/forgot-password', {
     method: 'POST',
     auth: false,
     body: JSON.stringify(payload)
@@ -46,7 +46,7 @@ export async function requestPasswordReset(payload) {
 }
 
 export async function sendResetCode(payload) {
-  return apiRequest('/auth/send-reset-code', {
+  return apiRequest('/auth/forgot-password', {
     method: 'POST',
     auth: false,
     body: JSON.stringify(payload)
