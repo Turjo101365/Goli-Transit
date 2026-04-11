@@ -8,7 +8,7 @@ import { env } from '../src/config/env.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-async function runMigration() {
+export async function runMigration() {
   const schemaPath = path.resolve(__dirname, '../mysql-schema.sql');
   const sql = await fs.readFile(schemaPath, 'utf8');
 
@@ -30,7 +30,11 @@ async function runMigration() {
   }
 }
 
-runMigration().catch((error) => {
-  console.error('Migration failed:', error.message);
-  process.exit(1);
-});
+const isDirectExecution = process.argv[1] && path.resolve(process.argv[1]) === __filename;
+
+if (isDirectExecution) {
+  runMigration().catch((error) => {
+    console.error('Migration failed:', error.message);
+    process.exit(1);
+  });
+}
