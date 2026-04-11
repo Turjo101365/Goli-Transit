@@ -9,10 +9,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function runMigration() {
-  const schemaPath = path.resolve(__dirname, '../schema.sql');
-  const rawSql = await fs.readFile(schemaPath, 'utf8');
-  const databaseName = `\`${env.DB_NAME.replaceAll('`', '``')}\``;
-  const sql = rawSql.replaceAll('__DB_NAME__', databaseName);
+  const schemaPath = path.resolve(__dirname, '../mysql-schema.sql');
+  const sql = await fs.readFile(schemaPath, 'utf8');
 
   const connection = await mysql.createConnection({
     host: env.DB_HOST,

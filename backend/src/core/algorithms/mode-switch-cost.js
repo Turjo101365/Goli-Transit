@@ -6,7 +6,20 @@ const switchPenalty = {
   null: { walk: 0, bike: 0, bus: 0, metro: 0 }
 };
 
+function normalizeMode(mode) {
+  if (mode === 'rickshaw' || mode === 'three-wheeler') {
+    return 'bike';
+  }
+
+  if (mode === 'motorized') {
+    return 'bus';
+  }
+
+  return mode || 'null';
+}
+
 export function modeSwitchCost(previousMode, nextMode) {
-  const prev = previousMode || 'null';
-  return switchPenalty[prev]?.[nextMode] ?? 0;
+  const prev = normalizeMode(previousMode);
+  const next = normalizeMode(nextMode);
+  return switchPenalty[prev]?.[next] ?? 0;
 }

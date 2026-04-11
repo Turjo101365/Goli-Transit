@@ -33,7 +33,11 @@ async function parseResponse(response) {
 		}
 
 		const message = payload?.error?.message || `Request failed with status ${response.status}`;
-		throw new Error(message);
+		const error = new Error(message);
+		error.status = response.status;
+		error.code = payload?.error?.code || null;
+		error.details = payload?.error?.details || null;
+		throw error;
 	}
 
 	return payload?.data ?? payload;

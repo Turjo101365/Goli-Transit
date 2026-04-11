@@ -1,4 +1,4 @@
-import { getGraphSnapshot, getHealthSnapshot } from '../services/graph.service.js';
+import { getGraphSnapshot, getHealthSnapshot, getRecentDynamicNodes } from '../services/graph.service.js';
 
 export async function graphController(req, res, next) {
 	try {
@@ -20,6 +20,21 @@ export async function healthController(req, res, next) {
 
 		return res.status(200).json({
 			...health,
+			requestId: req.id
+		});
+	} catch (error) {
+		return next(error);
+	}
+}
+
+export async function recentDynamicNodesController(req, res, next) {
+	try {
+		const limit = Number(req.query.limit || 10);
+		const nodes = await getRecentDynamicNodes(limit);
+
+		return res.status(200).json({
+			ok: true,
+			data: nodes,
 			requestId: req.id
 		});
 	} catch (error) {

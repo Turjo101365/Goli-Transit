@@ -51,7 +51,10 @@ export class Graph {
 		return {
 			nodeCount: this.nodes.size,
 			edgeCount: this.getAllEdges().length,
-			nodes: [...this.nodes.keys()],
+			nodes: [...this.nodes.entries()].map(([id, node]) => ({
+				id,
+				metadata: node.metadata || {}
+			})),
 			edges: this.getAllEdges().map((edge) => ({
 				from: edge.from,
 				to: edge.to,
