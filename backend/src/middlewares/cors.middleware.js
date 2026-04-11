@@ -11,15 +11,25 @@ const allowedOrigins = new Set(
   ].filter(Boolean)
 );
 
+function isLocalDevOrigin(origin) {
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+}
+
 export function corsMiddleware(req, res, next) {
   const origin = req.headers.origin;
+  const requestHeaders = req.headers['access-control-request-headers'];
+  const allowOrigin = origin && (allowedOrigins.has(origin) || isLocalDevOrigin(origin));
 
-  if (origin && allowedOrigins.has(origin)) {
+  if (allowOrigin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
 
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    requestHeaders || 'Content-Type, Authorization, X-Requested-With'
+  );
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
 
   if (req.method === 'OPTIONS') {

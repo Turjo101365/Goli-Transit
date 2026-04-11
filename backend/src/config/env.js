@@ -25,7 +25,7 @@ export const env = {
 	APP_NAME: appName,
 	NODE_ENV: process.env.NODE_ENV || 'development',
 	HOST: process.env.HOST || '127.0.0.1',
-	PORT: toInt(process.env.PORT, 3001),
+	PORT: toInt(process.env.PORT, 8080),
 	DB_ENABLED: toBoolean(process.env.DB_ENABLED, false),
 	DB_HOST: process.env.DB_HOST || '127.0.0.1',
 	DB_PORT: toInt(process.env.DB_PORT, 3306),
@@ -41,6 +41,8 @@ export const env = {
 	AUTH_TOKEN_TTL_HOURS: toInt(process.env.AUTH_TOKEN_TTL_HOURS, 168),
 	AUTH_JWT_ISSUER: process.env.AUTH_JWT_ISSUER || appName || 'goli-transit',
 	RESET_TOKEN_TTL_MINUTES: toInt(process.env.RESET_TOKEN_TTL_MINUTES, 30),
+	RESET_CODE_TTL_MINUTES: toInt(process.env.RESET_CODE_TTL_MINUTES, 10),
+	RESET_CODE_RESEND_COOLDOWN_SECONDS: toInt(process.env.RESET_CODE_RESEND_COOLDOWN_SECONDS, 45),
 	FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
 	APP_URL: process.env.APP_URL || 'http://127.0.0.1:8080',
 	MAIL_ENABLED: toBoolean(

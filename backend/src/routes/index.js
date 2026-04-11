@@ -3,6 +3,7 @@ import { routeRoutes } from './route.routes.js';
 import { anomalyRoutes } from './anomaly.routes.js';
 import { graphRoutes } from './graph.routes.js';
 import { authRoutes } from './auth.routes.js';
+import { profileRoutes } from './profile.routes.js';
 import { healthController } from '../controllers/graph.controller.js';
 
 export function createRouter() {
@@ -10,6 +11,7 @@ export function createRouter() {
 
   router.get('/health', healthController);
   router.use('/auth', authRoutes);
+  router.use('/profile', profileRoutes);
   router.use('/route', routeRoutes);
   router.use('/anomaly', anomalyRoutes);
   router.use('/graph', graphRoutes);

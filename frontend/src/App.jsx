@@ -4,6 +4,7 @@ import { RoutePlanner } from './pages/RoutePlanner.jsx';
 import { Login } from './pages/Login.jsx';
 import { Register } from './pages/Register.jsx';
 import { ForgotPassword } from './pages/ForgotPassword.jsx';
+import { VerifyCode } from './pages/VerifyCode.jsx';
 import { ResetPassword } from './pages/ResetPassword.jsx';
 import { Profile } from './pages/Profile.jsx';
 import { Loader } from './components/UI/Loader.jsx';
@@ -12,15 +13,17 @@ import {
   getCurrentUser,
   loginUser,
   logoutUser,
-  requestPasswordReset,
   registerUser,
   resetUserPassword,
+  sendResetCode,
+  verifyResetCode,
   restoreSession
 } from './services/auth.service.js';
 import { AUTH_UNAUTHORIZED_EVENT } from './services/auth.storage.js';
 
 const emptyResetPrefill = {
   email: '',
+  code: '',
   token: ''
 };
 
@@ -32,6 +35,7 @@ const pageQueryParamMap = {
   login: 'login',
   register: 'register',
   forgotPassword: 'forgot-password',
+  verifyCode: 'verify-code',
   resetPassword: 'reset-password',
   profile: 'profile'
 };
@@ -45,6 +49,7 @@ const pageByQueryParam = Object.fromEntries(
 function normalizeResetPrefill(prefill = emptyResetPrefill) {
   return {
     email: prefill.email || '',
+    code: prefill.code || '',
     token: prefill.token || ''
   };
 }
@@ -58,6 +63,7 @@ function getInitialResetPrefill() {
 
   return {
     email: params.get('email') || '',
+    code: params.get('code') || '',
     token: params.get('token') || ''
   };
 }
@@ -65,6 +71,22 @@ function getInitialResetPrefill() {
 function getInitialPage() {
   if (typeof window === 'undefined') {
     return 'home';
+  }
+
+  const pathname = window.location.pathname.replace(/\/$/, '') || '/';
+  const authPathMap = {
+    '/': 'home',
+    '/login': 'login',
+    '/register': 'register',
+    '/forgot-password': 'forgotPassword',
+    '/verify-code': 'verifyCode',
+    '/reset-password': 'resetPassword',
+    '/profile': 'profile',
+    '/planner': 'planner'
+  };
+
+  if (authPathMap[pathname]) {
+    return authPathMap[pathname];
   }
 
   const page = new URLSearchParams(window.location.search).get('page');
@@ -80,6 +102,21 @@ function getInitialSection() {
   return homeSections.has(nextSection) ? nextSection : 'hero';
 }
 
+function buildPathForPage(nextPage) {
+  const authPathMap = {
+    home: '/',
+    login: '/login',
+    register: '/register',
+    forgotPassword: '/forgot-password',
+    verifyCode: '/verify-code',
+    resetPassword: '/reset-password',
+    profile: '/profile',
+    planner: '/planner'
+  };
+
+  return authPathMap[nextPage] || '/';
+}
+
 export default function App() {
   const [page, setPage] = useState(() => getInitialPage());
   const [authUser, setAuthUser] = useState(() => getCurrentUser());
@@ -87,6 +124,8 @@ export default function App() {
   const [resetPrefill, setResetPrefill] = useState(() => getInitialResetPrefill());
   const [activeSection, setActiveSection] = useState(() => getInitialSection());
   const [targetSection, setTargetSection] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   function syncPageToUrl(
     nextPage,
@@ -101,6 +140,7 @@ export default function App() {
     const url = new URL(window.location.href);
     const pageQueryValue = pageQueryParamMap[nextPage] || '';
     const normalizedResetPrefill = normalizeResetPrefill(nextResetPrefill);
+    const nextPath = buildPathForPage(nextPage);
 
     if (pageQueryValue) {
       url.searchParams.set('page', pageQueryValue);
@@ -108,7 +148,7 @@ export default function App() {
       url.searchParams.delete('page');
     }
 
-    if (nextPage === 'forgotPassword' || nextPage === 'resetPassword') {
+    if (nextPage === 'forgotPassword' || nextPage === 'verifyCode' || nextPage === 'resetPassword') {
       if (normalizedResetPrefill.email) {
         url.searchParams.set('email', normalizedResetPrefill.email);
       } else {
@@ -116,6 +156,16 @@ export default function App() {
       }
     } else {
       url.searchParams.delete('email');
+    }
+
+    if (nextPage === 'verifyCode') {
+      if (normalizedResetPrefill.code) {
+        url.searchParams.set('code', normalizedResetPrefill.code);
+      } else {
+        url.searchParams.delete('code');
+      }
+    } else {
+      url.searchParams.delete('code');
     }
 
     if (nextPage === 'resetPassword') {
@@ -135,7 +185,7 @@ export default function App() {
     }
 
     const method = replace ? 'replaceState' : 'pushState';
-    window.history[method]({}, '', `${url.pathname}${url.search}${url.hash}`);
+    window.history[method]({}, '', `${nextPath}${url.search}${url.hash}`);
   }
 
   function navigateTo(nextPage, nextResetPrefill = emptyResetPrefill, options = {}) {
@@ -154,6 +204,23 @@ export default function App() {
 
     syncPageToUrl(nextPage, normalizedResetPrefill, nextSection, options.replace === true);
   }
+
+  function showToast(message, type = 'success') {
+    if (!message) {
+      return;
+    }
+
+    setToast({ message, type });
+  }
+
+  useEffect(() => {
+    if (!toast) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => setToast(null), 3500);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   function scrollToSection(sectionId) {
     setActiveSection(sectionId);
@@ -231,23 +298,47 @@ export default function App() {
   async function handleLogin(credentials) {
     const user = await loginUser(credentials);
     setAuthUser(user);
+    showToast('Welcome back. You are now signed in.');
     navigateTo('profile');
   }
 
   async function handleRegister(payload) {
     const user = await registerUser(payload);
     setAuthUser(user);
+    showToast('Account created successfully.');
     navigateTo('profile');
   }
 
   async function handleForgotPassword(payload) {
-    return requestPasswordReset(payload);
+    const result = await sendResetCode(payload);
+    showToast(result?.message || 'Verification code sent successfully to your email');
+    navigateTo('verifyCode', {
+      email: payload.email
+    });
+    return result;
+  }
+
+  async function handleResendCode(payload) {
+    const result = await sendResetCode(payload);
+    showToast(result?.message || 'New code sent successfully');
+    return result;
+  }
+
+  async function handleVerifyCode(payload) {
+    const result = await verifyResetCode(payload);
+    showToast(result?.message || 'Verification code confirmed successfully.');
+    navigateTo('resetPassword', {
+      email: result?.email || payload.email,
+      token: result?.resetToken || ''
+    });
+    return result;
   }
 
   async function handleResetPassword(payload) {
-    const user = await resetUserPassword(payload);
-    setAuthUser(user);
-    navigateTo('profile');
+    const result = await resetUserPassword(payload);
+    showToast(result?.message || 'Password updated successfully');
+    navigateTo('login', emptyResetPrefill, { replace: true });
+    return result;
   }
 
   function handleLogout() {
@@ -267,6 +358,7 @@ export default function App() {
   function openForgotPassword(email = '') {
     navigateTo('forgotPassword', {
       email,
+      code: '',
       token: ''
     });
   }
@@ -331,8 +423,22 @@ export default function App() {
         <ForgotPassword
           initialEmail={resetPrefill.email}
           onForgotPassword={handleForgotPassword}
-          onOpenReset={openResetPassword}
           onSwitchToLogin={() => navigateTo('login')}
+          onShowToast={showToast}
+        />
+      );
+    }
+
+    if (page === 'verifyCode') {
+      return (
+        <VerifyCode
+          initialEmail={resetPrefill.email}
+          initialCode={resetPrefill.code}
+          onVerifyCode={handleVerifyCode}
+          onResendCode={handleResendCode}
+          onSwitchToLogin={() => navigateTo('login')}
+          onSwitchToForgotPassword={() => openForgotPassword(resetPrefill.email)}
+          onShowToast={showToast}
         />
       );
     }
@@ -345,6 +451,7 @@ export default function App() {
           onResetPassword={handleResetPassword}
           onSwitchToLogin={() => navigateTo('login')}
           onSwitchToForgotPassword={() => navigateTo('forgotPassword', resetPrefill)}
+          onShowToast={showToast}
         />
       );
     }
@@ -364,38 +471,53 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <header className="app-header">
-        <div className="logo-container">         
-           <div className="logo-3d" onClick={() => navigateTo('home')} role="button" tabIndex={0}>Goli🚀Transit</div>
-            </div>
+<header className="app-header">
+        <button 
+          type="button" 
+          className={`hamburger-menu ${mobileMenuOpen ? 'open' : ''}`} 
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label="Toggle menu"
+          aria-expanded={mobileMenuOpen}
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
 
-        <nav className="app-nav">
+        <div className="logo-container">
+          <div className="logo-3d" onClick={() => navigateTo('home')} role="button" tabIndex={0}>
+            <span className="brand-name">Goli</span>
+            <span className="brand-name">Transit</span>
+          </div>
+        </div>
+
+<nav className={`app-nav ${mobileMenuOpen ? 'mobile-open' : ''}`}>
           <div className="nav-links">
             <button
               type="button"
               className={page === 'home' && activeSection !== 'about' && activeSection !== 'contact' ? 'nav-btn active' : 'nav-btn'}
-              onClick={() => navigateTo('home')}
+              onClick={() => { navigateTo('home'); setMobileMenuOpen(false); }}
             >
               Home
             </button>
             <button
               type="button"
               className={page === 'planner' ? 'nav-btn active' : 'nav-btn'}
-              onClick={openPlanner}
+              onClick={() => { openPlanner(); setMobileMenuOpen(false); }}
             >
               Route Planner
             </button>
             <button
               type="button"
               className={page === 'home' && activeSection === 'about' ? 'nav-btn active' : 'nav-btn'}
-              onClick={() => openHomeSection('about')}
+              onClick={() => { openHomeSection('about'); setMobileMenuOpen(false); }}
             >
               About
             </button>
             <button
               type="button"
               className={page === 'home' && activeSection === 'contact' ? 'nav-btn active' : 'nav-btn'}
-              onClick={() => openHomeSection('contact')}
+              onClick={() => { openHomeSection('contact'); setMobileMenuOpen(false); }}
             >
               Contact
             </button>
@@ -403,7 +525,7 @@ export default function App() {
               <button
                 type="button"
                 className={page === 'profile' ? 'nav-btn active' : 'nav-btn'}
-                onClick={openProfile}
+                onClick={() => { openProfile(); setMobileMenuOpen(false); }}
               >
                 Profile
               </button>
@@ -417,23 +539,20 @@ export default function App() {
                   <span className="user-pill-label">Signed in as</span>
                   <strong>{authUser.name}</strong>
                 </div>
-                <button type="button" className="nav-btn" onClick={handleLogout}>
-                  Logout
-                </button>
               </>
             ) : (
               <>
                 <button
                   type="button"
                   className={page === 'login' ? 'nav-btn active' : 'nav-btn'}
-                  onClick={() => navigateTo('login')}
+                  onClick={() => { navigateTo('login'); setMobileMenuOpen(false); }}
                 >
                   Login
                 </button>
                 <button
                   type="button"
                   className={page === 'register' ? 'nav-btn nav-btn-cta active' : 'nav-btn nav-btn-cta'}
-                  onClick={() => navigateTo('register')}
+                  onClick={() => { navigateTo('register'); setMobileMenuOpen(false); }}
                 >
                   Register
                 </button>
@@ -449,7 +568,17 @@ export default function App() {
             <Loader label="Restoring your session..." />
           </section>
         ) : (
-          renderPage()
+          <>
+            {toast ? (
+              <div className={`app-toast app-toast-${toast.type || 'success'}`} role="status" aria-live="polite">
+                <span>{toast.message}</span>
+                <button type="button" className="app-toast-close" onClick={() => setToast(null)} aria-label="Dismiss notification">
+                  ×
+                </button>
+              </div>
+            ) : null}
+            {renderPage()}
+          </>
         )}
       </main>
 
@@ -457,7 +586,8 @@ export default function App() {
         <div className="footer-content">
           <div className="footer-logo">
             <div className="logo-3d" onClick={() => navigateTo('home')} role="button" tabIndex={0}>
-             Goli🚀Transit
+              <span className="brand-name">Goli</span>
+              <span className="brand-name">Transit</span>
             </div>
             <span>Smart Navigation for Dhaka</span>
           </div>
@@ -484,9 +614,6 @@ export default function App() {
               <>
                 <a href="#profile" onClick={(event) => { event.preventDefault(); openProfile(); }}>
                   Profile
-                </a>
-                <a href="#logout" onClick={(event) => { event.preventDefault(); handleLogout(); }}>
-                  Logout
                 </a>
               </>
             ) : (
