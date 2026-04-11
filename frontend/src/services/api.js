@@ -5,18 +5,28 @@ import {
 } from './auth.storage.js';
 
 const LOCAL_BACKEND_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i;
+const LOCAL_HOST_PATTERN = /^(localhost|127\.0\.0\.1)$/i;
+
+function isLocalBrowserHost() {
+	if (typeof window === 'undefined') {
+		return false;
+	}
+
+	return LOCAL_HOST_PATTERN.test(window.location.hostname);
+}
 
 function resolveApiBaseConfig() {
 	const configuredBaseUrl = (import.meta.env.VITE_BACKEND_ENDPOINT || '').trim();
+	const localBrowserHost = isLocalBrowserHost();
 
 	if (configuredBaseUrl) {
 		const baseUrl = configuredBaseUrl.replace(/\/$/, '');
 
-		if (!import.meta.env.DEV && LOCAL_BACKEND_PATTERN.test(baseUrl)) {
+		if (LOCAL_BACKEND_PATTERN.test(baseUrl) && !localBrowserHost) {
 			return {
 				baseUrl: '',
 				error:
-					'Invalid VITE_BACKEND_ENDPOINT for production. Set it to your public backend URL (for example https://your-service.onrender.com).'
+					'Invalid VITE_BACKEND_ENDPOINT for deployed frontend. Use your public backend URL (for example https://your-service.onrender.com), not localhost.'
 			};
 		}
 
@@ -27,9 +37,16 @@ function resolveApiBaseConfig() {
 		return { baseUrl: '', error: null };
 	}
 
-	const isLocalHostname = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+	if (!import.meta.env.DEV && !localBrowserHost) {
+		return {
+			baseUrl: '',
+			error:
+				'Missing VITE_BACKEND_ENDPOINT for deployed frontend. Set it to your public backend URL (for example https://your-service.onrender.com).'
+		};
+	}
+
 	return {
-		baseUrl: isLocalHostname ? 'http://127.0.0.1:8080' : '',
+		baseUrl: localBrowserHost ? 'http://127.0.0.1:8080' : '',
 		error: null
 	};
 }
