@@ -271,6 +271,20 @@ export const placeService = {
       }
 
       try {
+        const neighborNode = graph.nodes.get(neighbor.nodeId);
+        if (!neighborNode) {
+          logger.warn('Stable neighbor node not found in graph; skipping edge persistence', {
+            nodeId,
+            neighborNodeId: neighbor.nodeId
+          });
+          continue;
+        }
+
+        await graphRepository.upsertNode({
+          id: neighbor.nodeId,
+          metadata: neighborNode.metadata || {}
+        });
+
         await graphRepository.upsertEdge({
           from: nodeId,
           to: neighbor.nodeId,
