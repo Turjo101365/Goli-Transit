@@ -24,7 +24,7 @@ const appName = resolveEnvValue(process.env.APP_NAME, 'Goli-Transit');
 export const env = {
 	APP_NAME: appName,
 	NODE_ENV: process.env.NODE_ENV || 'development',
-	HOST: process.env.HOST || '127.0.0.1',
+	HOST: process.env.HOST || '0.0.0.0',
 	PORT: toInt(process.env.PORT, 8080),
 	DB_ENABLED: toBoolean(process.env.DB_ENABLED, false),
 	DB_HOST: process.env.DB_HOST || '127.0.0.1',
