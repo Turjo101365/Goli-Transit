@@ -8,11 +8,26 @@ export async function getProfileController(req, res, next) {
 		
 		const user = await userRepository.findById(userId);
 		if (!user) {
-			return res.status(404).json({
-				ok: false,
-				error: {
-					code: 'USER_NOT_FOUND',
-					message: 'User not found'
+			return res.status(200).json({
+				ok: true,
+				data: {
+					user: {
+						id: req.user.id,
+						name: req.user.name,
+						email: req.user.email,
+						createdAt: req.user.createdAt || null,
+						updatedAt: req.user.updatedAt || null
+					},
+					trips: [],
+					savedRoutes: [],
+					favoriteStops: [],
+					stats: {
+						totalTrips: 0,
+						totalDistance: 0,
+						totalMinutes: 0,
+						savedRoutesCount: 0,
+						favoriteStopsCount: 0
+					}
 				},
 				requestId: req.id
 			});
