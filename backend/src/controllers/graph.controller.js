@@ -29,7 +29,12 @@ export async function healthController(req, res, next) {
 
 export async function recentDynamicNodesController(req, res, next) {
 	try {
-		const limit = Number(req.query.limit || 10);
+		const DEFAULT_LIMIT = 10;
+		const MAX_LIMIT = 50;
+		const parsedLimit = Number(req.query.limit);
+		const limit = Number.isFinite(parsedLimit) && Number.isInteger(parsedLimit) && parsedLimit > 0
+			? Math.min(parsedLimit, MAX_LIMIT)
+			: DEFAULT_LIMIT;
 		const nodes = await getRecentDynamicNodes(limit);
 
 		return res.status(200).json({
