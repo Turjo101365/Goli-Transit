@@ -5,8 +5,6 @@ import { logger } from '../../utils/logger.js';
 
 const MIN_STABLE_HUBS = Number(process.env.MIN_STABLE_HUBS || 12);
 
-const MIN_STABLE_HUBS = Number(process.env.MIN_STABLE_HUBS || 12);
-
 function hydrateGraph(nodes, edges) {
   const graph = new Graph();
 
