@@ -5,5 +5,5 @@ export function RouteLayer({ points }) {
     return null;
   }
 
-  return <Polyline positions={points} pathOptions={{ color: '#ff7043', weight: 5 }} />;
+  return <Polyline positions={points} pathOptions={{ color: '#1976d2', weight: 5 }} />;
 }

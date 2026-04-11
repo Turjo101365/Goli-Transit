@@ -1,1 +1,9 @@
-export const modes = ['walk', 'bike', 'bus', 'metro'];
+export const modes = [
+	'walk',
+	'bike',
+	'rickshaw',
+	'three-wheeler',
+	'bus',
+	'metro',
+	'motorized'
+];

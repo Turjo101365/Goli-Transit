@@ -5,6 +5,8 @@ import { eventEmitter } from '../events/event-emitter.js';
 import { weightManager } from '../core/graph-engine/weight-manager.js';
 import { anomalyRepository } from '../repositories/anomaly.repository.js';
 import { graphRepository } from '../repositories/graph.repository.js';
+import { createHttpError } from '../utils/http-error.js';
+import { logger } from '../utils/logger.js';
 
 export async function anomalyService(payload) {
   const graph = await ensureGraphCache();
@@ -33,16 +35,41 @@ export async function anomalyService(payload) {
       updatedWeight
     });
 
-    await graphRepository.updateEdgeWeight({
-      from: edge.from,
-      to: edge.to,
-      mode: edge.mode,
-      updatedWeight
-    });
+    try {
+      await graphRepository.updateEdgeWeight({
+        from: edge.from,
+        to: edge.to,
+        mode: edge.mode,
+        updatedWeight
+      });
+    } catch (error) {
+      logger.warn('Failed to persist anomaly edge weight update', {
+        from: edge.from,
+        to: edge.to,
+        mode: edge.mode,
+        message: error?.message
+      });
+    }
   }
 
-  const anomalyId = await anomalyRepository.createAnomaly(payload);
-  await anomalyRepository.createAnomalyEdges(anomalyId, applied, payload);
+  if (applied.length === 0) {
+    throw createHttpError(
+      404,
+      'ANOMALY_EDGE_NOT_FOUND',
+      'No matching route edge found for anomaly simulation. Plan a route again and retry.'
+    );
+  }
+
+  let anomalyId = null;
+  try {
+    anomalyId = await anomalyRepository.createAnomaly(payload);
+    await anomalyRepository.createAnomalyEdges(anomalyId, applied, payload);
+  } catch (error) {
+    logger.warn('Failed to persist anomaly metadata', {
+      message: error?.message,
+      type: payload.type
+    });
+  }
 
   await routeCache.invalidateAll();
 

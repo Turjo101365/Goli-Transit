@@ -6,7 +6,7 @@ import { redisClient } from './redis.client.js';
 import { redisConfig } from '../config/redis.js';
 import { Graph } from '../core/graph-engine/graph.js';
 
-const GRAPH_CACHE_KEY = 'graph-cache:v1:snapshot';
+const GRAPH_CACHE_KEY = 'graph-cache:v2:snapshot';
 
 export const graphCache = {
 	graph: null,
@@ -27,8 +27,15 @@ function graphFromSnapshot(snapshot) {
 
 	const graph = new Graph();
 
-	for (const nodeId of snapshot.nodes || []) {
-		graph.addNode(nodeId, {});
+	for (const nodeEntry of snapshot.nodes || []) {
+		if (typeof nodeEntry === 'string') {
+			graph.addNode(nodeEntry, {});
+			continue;
+		}
+
+		if (nodeEntry && typeof nodeEntry === 'object' && nodeEntry.id) {
+			graph.addNode(nodeEntry.id, nodeEntry.metadata || {});
+		}
 	}
 
 	for (const edgeData of snapshot.edges || []) {
@@ -79,6 +86,14 @@ export async function refreshGraphSnapshot() {
 	graphCache.lastUpdatedAt = timestamp();
 	await persistSnapshot(graphCache.snapshot);
 	return graphCache.snapshot;
+}
+
+export async function invalidateGraphCache() {
+	graphCache.graph = null;
+	graphCache.snapshot = null;
+	graphCache.lastUpdatedAt = null;
+	graphCache.lastAnomaly = null;
+	await redisClient.delete(GRAPH_CACHE_KEY);
 }
 
 export function updateGraphCacheForAnomaly(appliedEdges, anomalyPayload) {

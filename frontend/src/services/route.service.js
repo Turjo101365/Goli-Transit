@@ -6,3 +6,7 @@ export async function createRoute(payload) {
     body: JSON.stringify(payload)
   });
 }
+
+export async function getRecentDynamicNodes(limit = 10) {
+  return apiRequest(`/graph/dynamic-nodes?limit=${encodeURIComponent(limit)}`);
+}

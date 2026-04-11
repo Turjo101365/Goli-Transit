@@ -1,4 +1,13 @@
 {
+  "name": "goli-transit",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Multimodal transit routing system for Dhaka",
+  "scripts": {
+    "start": "cd backend && yarn start",
+    "postinstall": "cd backend && yarn install --prefer-offline"
+  },
   "dependencies": {
     "three": "^0.183.2"
   }
