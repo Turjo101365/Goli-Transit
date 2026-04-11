@@ -1,6 +1,7 @@
 import { Graph } from '../../core/graph-engine/graph.js';
 import { graphRepository } from '../../repositories/graph.repository.js';
 import { graphBuilder } from '../../core/graph-engine/graph-builder.js';
+import { logger } from '../../utils/logger.js';
 
 function hydrateGraph(nodes, edges) {
   const graph = new Graph();
@@ -27,14 +28,25 @@ function hydrateGraph(nodes, edges) {
 }
 
 export async function graphLoader() {
-  const [nodes, edges] = await Promise.all([
-    graphRepository.getAllNodes(),
-    graphRepository.getAllEdges()
-  ]);
+  try {
+    const [nodes, edges] = await Promise.all([
+      graphRepository.getAllNodes(),
+      graphRepository.getAllEdges()
+    ]);
 
-  if (nodes.length === 0 || edges.length === 0) {
-    return graphBuilder();
+    if (nodes.length === 0 || edges.length === 0) {
+      return graphBuilder();
+    }
+
+    return hydrateGraph(nodes, edges);
+  } catch (error) {
+    if (error?.code === 'ER_NO_SUCH_TABLE' || error?.code === 'DB_SCHEMA_MISSING') {
+      logger.warn('Graph tables missing, using seed graph instead', {
+        message: error.message
+      });
+      return graphBuilder();
+    }
+
+    throw error;
   }
-
-  return hydrateGraph(nodes, edges);
 }

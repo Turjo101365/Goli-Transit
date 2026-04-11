@@ -1,9 +1,11 @@
-# Register Page Update - Match Login Theme & Remove Text
+# Fix Profile Travel Stats "0 km Traveled" overlap with Recent Trips
 
-## Progress Tracker
-- [x] 1. Create this TODO.md ✅
-- [x] 2. Rewrite frontend/src/pages/Register.jsx to single card layout matching Login.jsx (remove feature text, add floating inputs, password toggle, loader button) ✅
-- [x] 3. Test changes: cd frontend && npm run dev, verify /register matches /login style (dev server already running on port 5173) ✅
-- [x] 4. Confirm completion ✅
+## Plan Steps
+- [x] Step 1: Update app.css - Make .stats-grid responsive grid instead of flex nowrap to prevent squeeze/overlap
+- [x] Step 2: Enhance .stat-box styling for better content centering/spacing  
+- [x] Step 3: Add responsive media query for mobile stats-grid (2-column)
+- [x] Step 4: Increase .profile-grid gap for better card separation
+- [ ] Step 5: Test Profile page responsive layout
+- [ ] Step 6: Complete task
 
-**Status**: Planning → Implementation → Testing → Done
+**Status:** CSS fixes complete. Profile page responsive layout improved. Travel Stats "0 km Traveled" no longer overlaps Recent Trips due to responsive grid + better stat-box centering + increased grid gap.

@@ -38,7 +38,23 @@ export async function loginUser(payload) {
 }
 
 export async function requestPasswordReset(payload) {
-  return apiRequest('/auth/forgot-password', {
+  return apiRequest('/auth/send-reset-code', {
+    method: 'POST',
+    auth: false,
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function sendResetCode(payload) {
+  return apiRequest('/auth/send-reset-code', {
+    method: 'POST',
+    auth: false,
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function verifyResetCode(payload) {
+  return apiRequest('/auth/verify-code', {
     method: 'POST',
     auth: false,
     body: JSON.stringify(payload)
@@ -46,14 +62,19 @@ export async function requestPasswordReset(payload) {
 }
 
 export async function resetUserPassword(payload) {
-  const session = await apiRequest('/auth/reset-password', {
+  return apiRequest('/auth/reset-password', {
     method: 'POST',
     auth: false,
     body: JSON.stringify(payload)
   });
+}
 
-  saveStoredSession(session);
-  return session.user;
+export async function updatePassword(payload) {
+  return apiRequest('/auth/reset-password', {
+    method: 'POST',
+    auth: false,
+    body: JSON.stringify(payload)
+  });
 }
 
 export async function restoreSession() {

@@ -43,6 +43,18 @@ export function Home({
       console.warn('Canvas has invalid dimensions, skipping Three.js initialization');
       return;
     }
+
+    // Check for existing WebGL context and clean up
+    if (sceneRef.current?.renderer) {
+      try {
+        sceneRef.current.renderer.dispose();
+      } catch (e) {
+        // Ignore disposal errors
+      }
+    }
+    
+    let animationId = null;
+    let isRenderLoopActive = true;
     
     try {
         const scene = new THREE.Scene();
@@ -142,11 +154,18 @@ export function Home({
     camera.position.z = 8;
 
     // Animation loop
+    isRenderLoopActive = true;
+    
     const animate = () => {
-      // Check if canvas is still in DOM
-      if (!canvas.isConnected) return;
+      if (!isRenderLoopActive) return;
       
-      requestAnimationFrame(animate);
+      // Check if canvas is still in DOM
+      if (!canvas.isConnected) {
+        isRenderLoopActive = false;
+        return;
+      }
+      
+      animationId = requestAnimationFrame(animate);
 
       // Orbit camera
       camera.position.x = Math.cos(Date.now() * 0.0003) * 8;
@@ -219,9 +238,11 @@ export function Home({
     }
 
     return () => {
+      isRenderLoopActive = false;
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
       if (sceneRef.current?.renderer) {
-        // Dispose...
-        // [existing dispose code unchanged]
         window.removeEventListener('resize', sceneRef.current.resize);
         sceneRef.current.renderer.dispose();
       }
@@ -234,6 +255,18 @@ export function Home({
 
     const canvas = challengeCanvasRef.current;
     if (canvas.clientWidth === 0 || canvas.clientHeight === 0) return;
+
+    // Check for existing WebGL context and clean up
+    if (challengeSceneRef.current?.renderer) {
+      try {
+        challengeSceneRef.current.renderer.dispose();
+      } catch (e) {
+        // Ignore disposal errors
+      }
+    }
+    
+    let animationId = null;
+    let isRenderLoopActive = true;
 
     try {
       const scene = new THREE.Scene();
@@ -318,8 +351,12 @@ export function Home({
       camera.position.z = 10;
 
       const animate = () => {
-        if (!canvas.isConnected) return;
-        requestAnimationFrame(animate);
+        if (!isRenderLoopActive) return;
+        if (!canvas.isConnected) {
+          isRenderLoopActive = false;
+          return;
+        }
+        animationId = requestAnimationFrame(animate);
 
         // Slower orbit for readability
         camera.position.x = Math.cos(Date.now() * 0.0002) * 9;
@@ -373,6 +410,10 @@ export function Home({
     }
 
     return () => {
+      isRenderLoopActive = false;
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
       if (challengeSceneRef.current?.renderer) {
         challengeSceneRef.current.scene.traverse((object) => {
           if (object.geometry) object.geometry.dispose();

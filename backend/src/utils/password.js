@@ -1,14 +1,13 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import bcrypt from 'bcryptjs';
 
 const KEY_LENGTH = 64;
 const SALT_LENGTH = 16;
-const PASSWORD_HASH_PREFIX = 'scrypt';
+const SCRYPT_PREFIX = 'scrypt';
+const BCRYPT_PREFIX = 'bcrypt';
 
 export function hashPassword(password) {
-	const salt = randomBytes(SALT_LENGTH).toString('hex');
-	const hash = scryptSync(password, salt, KEY_LENGTH).toString('hex');
-
-	return `${PASSWORD_HASH_PREFIX}$${salt}$${hash}`;
+	return `${BCRYPT_PREFIX}$${bcrypt.hashSync(password, 10)}`;
 }
 
 export function verifyPassword(password, passwordHash) {
@@ -16,8 +15,19 @@ export function verifyPassword(password, passwordHash) {
 		return false;
 	}
 
-	const [prefix, salt, storedHash] = passwordHash.split('$');
-	if (prefix !== PASSWORD_HASH_PREFIX || !salt || !storedHash) {
+	const [prefix, ...parts] = passwordHash.split('$');
+
+	if (prefix === BCRYPT_PREFIX) {
+		const storedHash = parts.join('$');
+		return bcrypt.compareSync(password, storedHash);
+	}
+
+	if (prefix !== SCRYPT_PREFIX) {
+		return false;
+	}
+
+	const [salt, storedHash] = parts;
+	if (!salt || !storedHash) {
 		return false;
 	}
 
