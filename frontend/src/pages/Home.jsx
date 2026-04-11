@@ -18,6 +18,8 @@ export function Home({
   const sceneRef = useRef(null);
   const challengeCanvasRef = useRef(null);
   const challengeSceneRef = useRef(null);
+  const heroAnimationFrameRef = useRef(null);
+  const challengeAnimationFrameRef = useRef(null);
 
   const animateCounter = useRef();
   const heroPrimaryLabel = authUser ? `Continue as ${authUser.name}` : 'Login to Open Planner';
@@ -43,19 +45,9 @@ export function Home({
       console.warn('Canvas has invalid dimensions, skipping Three.js initialization');
       return;
     }
+    
+    let isDisposed = false;
 
-    // Check for existing WebGL context and clean up
-    if (sceneRef.current?.renderer) {
-      try {
-        sceneRef.current.renderer.dispose();
-      } catch (e) {
-        // Ignore disposal errors
-      }
-    }
-    
-    let animationId = null;
-    let isRenderLoopActive = true;
-    
     try {
         const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0a0a0a);
@@ -154,18 +146,13 @@ export function Home({
     camera.position.z = 8;
 
     // Animation loop
-    isRenderLoopActive = true;
-    
     const animate = () => {
-      if (!isRenderLoopActive) return;
-      
+      if (isDisposed) return;
+
       // Check if canvas is still in DOM
-      if (!canvas.isConnected) {
-        isRenderLoopActive = false;
-        return;
-      }
+      if (!canvas.isConnected) return;
       
-      animationId = requestAnimationFrame(animate);
+      heroAnimationFrameRef.current = requestAnimationFrame(animate);
 
       // Orbit camera
       camera.position.x = Math.cos(Date.now() * 0.0003) * 8;
@@ -238,13 +225,27 @@ export function Home({
     }
 
     return () => {
-      isRenderLoopActive = false;
-      if (animationId) {
-        cancelAnimationFrame(animationId);
+      isDisposed = true;
+      if (heroAnimationFrameRef.current) {
+        cancelAnimationFrame(heroAnimationFrameRef.current);
+        heroAnimationFrameRef.current = null;
       }
+
       if (sceneRef.current?.renderer) {
+        sceneRef.current.scene.traverse((object) => {
+          if (object.geometry) object.geometry.dispose();
+          if (object.material) {
+            if (Array.isArray(object.material)) {
+              object.material.forEach((m) => m.dispose());
+            } else {
+              object.material.dispose();
+            }
+          }
+        });
         window.removeEventListener('resize', sceneRef.current.resize);
+        sceneRef.current.renderer.forceContextLoss();
         sceneRef.current.renderer.dispose();
+        sceneRef.current = null;
       }
     };
   }, []);
@@ -256,17 +257,7 @@ export function Home({
     const canvas = challengeCanvasRef.current;
     if (canvas.clientWidth === 0 || canvas.clientHeight === 0) return;
 
-    // Check for existing WebGL context and clean up
-    if (challengeSceneRef.current?.renderer) {
-      try {
-        challengeSceneRef.current.renderer.dispose();
-      } catch (e) {
-        // Ignore disposal errors
-      }
-    }
-    
-    let animationId = null;
-    let isRenderLoopActive = true;
+    let isDisposed = false;
 
     try {
       const scene = new THREE.Scene();
@@ -351,12 +342,10 @@ export function Home({
       camera.position.z = 10;
 
       const animate = () => {
-        if (!isRenderLoopActive) return;
-        if (!canvas.isConnected) {
-          isRenderLoopActive = false;
-          return;
-        }
-        animationId = requestAnimationFrame(animate);
+        if (isDisposed) return;
+
+        if (!canvas.isConnected) return;
+        challengeAnimationFrameRef.current = requestAnimationFrame(animate);
 
         // Slower orbit for readability
         camera.position.x = Math.cos(Date.now() * 0.0002) * 9;
@@ -410,10 +399,12 @@ export function Home({
     }
 
     return () => {
-      isRenderLoopActive = false;
-      if (animationId) {
-        cancelAnimationFrame(animationId);
+      isDisposed = true;
+      if (challengeAnimationFrameRef.current) {
+        cancelAnimationFrame(challengeAnimationFrameRef.current);
+        challengeAnimationFrameRef.current = null;
       }
+
       if (challengeSceneRef.current?.renderer) {
         challengeSceneRef.current.scene.traverse((object) => {
           if (object.geometry) object.geometry.dispose();
@@ -426,7 +417,9 @@ export function Home({
           }
         });
         window.removeEventListener('resize', challengeSceneRef.current.resize);
+        challengeSceneRef.current.renderer.forceContextLoss();
         challengeSceneRef.current.renderer.dispose();
+        challengeSceneRef.current = null;
       }
     };
   }, []);
