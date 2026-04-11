@@ -42,7 +42,35 @@ export async function currentUserController(req, res, next) {
 
 export async function forgotPasswordController(req, res, next) {
 	try {
-		const result = await authService.forgotPassword(req.body);
+		const result = await authService.sendResetCode(req.body);
+
+		return res.status(200).json({
+			ok: true,
+			data: result,
+			requestId: req.id
+		});
+	} catch (error) {
+		return next(error);
+	}
+}
+
+export async function sendResetCodeController(req, res, next) {
+	try {
+		const result = await authService.sendResetCode(req.body);
+
+		return res.status(200).json({
+			ok: true,
+			data: result,
+			requestId: req.id
+		});
+	} catch (error) {
+		return next(error);
+	}
+}
+
+export async function verifyResetCodeController(req, res, next) {
+	try {
+		const result = await authService.verifyResetCode(req.body);
 
 		return res.status(200).json({
 			ok: true,

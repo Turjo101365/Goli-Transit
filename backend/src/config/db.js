@@ -4,15 +4,17 @@ import { logger } from '../utils/logger.js';
 import { createHttpError } from '../utils/http-error.js';
 
 export const dbConfig = {
-	enabled: env.DB_ENABLED,
-	host: env.DB_HOST,
-	port: env.DB_PORT,
-	user: env.DB_USER,
-	password: env.DB_PASSWORD,
-	database: env.DB_NAME,
-	connectionLimit: env.DB_POOL_SIZE
-};
+  enabled: env.DB_ENABLED === true || env.DB_ENABLED === 'true',
 
+  host: env.DB_HOST || '127.0.0.1',
+  port: Number(env.DB_PORT) || 3306,
+
+  user: env.DB_USER || 'root',
+  password: env.DB_PASSWORD || '',
+  database: env.DB_NAME || 'test',
+
+  connectionLimit: Number(env.DB_POOL_SIZE) || 10
+};
 let pool = null;
 let status = {
 	initialized: false,
@@ -34,6 +36,10 @@ export async function initDb() {
 
 	if (pool) {
 		return pool;
+	}
+
+	if (status.initialized && !status.connected) {
+		return null;
 	}
 
 	let candidatePool = null;
@@ -99,8 +105,41 @@ export async function dbQuery(sql, params = {}) {
 		return [];
 	}
 
-	const [rows] = await activePool.query(sql, params);
-	return rows;
+	try {
+		const [rows] = await activePool.query(sql, params);
+		return rows;
+	} catch (error) {
+		if (error?.code === 'ER_NO_SUCH_TABLE') {
+			throw createHttpError(
+				503,
+				'DB_SCHEMA_MISSING',
+				'Database schema is not initialized. Run `npm run migrate` and try again.',
+				{ sqlMessage: error.sqlMessage }
+			);
+		}
+
+		throw error;
+	}
+}
+
+export async function hasTables(tableNames = []) {
+	const activePool = pool || (await initDb());
+
+	if (!activePool || tableNames.length === 0) {
+		return false;
+	}
+
+	const [rows] = await activePool.query(
+		[
+			'SELECT TABLE_NAME',
+			'FROM INFORMATION_SCHEMA.TABLES',
+			'WHERE TABLE_SCHEMA = :databaseName'
+		].join(' '),
+		{ databaseName: dbConfig.database }
+	);
+
+	const presentTables = new Set(rows.map((row) => row.TABLE_NAME || row.table_name));
+	return tableNames.every((tableName) => presentTables.has(tableName));
 }
 
 export async function ensureDbAvailable() {
