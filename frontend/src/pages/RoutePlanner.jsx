@@ -16,7 +16,7 @@ A: [23.80, 90.41], // Gulshan
   D: [23.73, 90.41] // Motijheel
 };
 
-export function RoutePlanner({ activeSection, setActiveSection, scrollToSection, navigateTo, page }) {
+export function RoutePlanner({ authUser, activeSection, setActiveSection, scrollToSection, navigateTo, page }) {
   const [source, setSource] = useState('A');
   const [destination, setDestination] = useState('C');
   const [selectedModes, setSelectedModes] = useState(['walk', 'bike', 'bus', 'metro']);
@@ -151,6 +151,23 @@ return (
       <div className="planner-visual">
         <MapView center={mapCenter} route={visualRoute} nodeCoordinates={nodeCoordinates} />
         <RouteDisplay baseRoute={routeResult} rerouted={reroutedResult} />
+        {!authUser ? (
+          <article className="planner-recommendation">
+            <strong>Strongly recommended: create a profile to save your routes.</strong>
+            <p>
+              You can use the Route Planner without logging in, but creating a profile lets you keep
+              your favorite trips and come back to them anytime.
+            </p>
+            <div className="planner-recommendation-actions">
+              <button type="button" className="primary-btn" onClick={() => navigateTo('register')}>
+                Create Profile
+              </button>
+              <button type="button" className="secondary-btn" onClick={() => navigateTo('login')}>
+                Login
+              </button>
+            </div>
+          </article>
+        ) : null}
       </div>
     </section>
   );

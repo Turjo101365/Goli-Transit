@@ -954,6 +954,33 @@ body {
   gap: 1rem;
 }
 
+.planner-recommendation {
+  background: linear-gradient(135deg, rgba(15, 118, 110, 0.2), rgba(17, 24, 39, 0.92));
+  border: 1px solid rgba(45, 212, 191, 0.28);
+  border-radius: 16px;
+  padding: 1rem 1.1rem;
+  color: var(--text-primary);
+  box-shadow: var(--shadow-light);
+}
+
+.planner-recommendation strong {
+  display: block;
+  margin-bottom: 0.45rem;
+  color: #99f6e4;
+}
+
+.planner-recommendation p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.planner-recommendation-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
 .map-card {
   border: 1px solid var(--border-light);
   border-radius: 12px;
@@ -2442,6 +2469,7 @@ body {
   .nav-links,
   .nav-auth,
   .planner-actions,
+  .planner-recommendation-actions,
   .profile-hero-actions,
   .auth-promo-actions {
     width: 100%;
@@ -2451,6 +2479,8 @@ body {
   .nav-auth .nav-btn,
   .planner-actions .primary-btn,
   .planner-actions .secondary-btn,
+  .planner-recommendation-actions .primary-btn,
+  .planner-recommendation-actions .secondary-btn,
   .profile-hero-actions .primary-btn,
   .profile-hero-actions .secondary-btn,
   .profile-summary-grid,

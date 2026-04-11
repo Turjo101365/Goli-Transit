@@ -348,7 +348,7 @@ export default function App() {
   }
 
   function openPlanner() {
-    navigateTo(authUser ? 'planner' : 'login');
+    navigateTo('planner');
   }
 
   function openProfile() {
@@ -369,18 +369,9 @@ export default function App() {
 
   function renderPage() {
     if (page === 'planner') {
-      if (!authUser) {
-        return (
-          <Login
-            onLogin={handleLogin}
-            onSwitchToRegister={() => navigateTo('register')}
-            onSwitchToForgotPassword={openForgotPassword}
-          />
-        );
-      }
-
       return (
         <RoutePlanner
+          authUser={authUser}
           activeSection={activeSection}
           setActiveSection={setActiveSection}
           scrollToSection={scrollToSection}
