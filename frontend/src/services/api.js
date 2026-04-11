@@ -4,7 +4,22 @@ import {
 	AUTH_UNAUTHORIZED_EVENT
 } from './auth.storage.js';
 
-const API_BASE_URL = (import.meta.env.VITE_BACKEND_ENDPOINT || '').replace(/\/$/, '');
+function resolveApiBaseUrl() {
+	const configuredBaseUrl = (import.meta.env.VITE_BACKEND_ENDPOINT || '').trim();
+
+	if (configuredBaseUrl) {
+		return configuredBaseUrl.replace(/\/$/, '');
+	}
+
+	if (typeof window === 'undefined') {
+		return '';
+	}
+
+	const isLocalHostname = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+	return isLocalHostname ? 'http://127.0.0.1:8080' : '';
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 function buildRequestUrl(path) {
 	if (/^https?:\/\//.test(path)) {

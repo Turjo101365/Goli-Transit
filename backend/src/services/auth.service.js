@@ -1,14 +1,19 @@
-import { createHash, randomBytes } from 'node:crypto';
+import bcrypt from 'bcryptjs';
+import { randomBytes } from 'node:crypto';
 import { ensureDbAvailable } from '../config/db.js';
 import { env } from '../config/env.js';
 import { userRepository } from '../repositories/user.repository.js';
 import { createHttpError } from '../utils/http-error.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import { createAuthToken, verifyAuthToken } from '../utils/token.js';
-import { sendPasswordResetEmail } from './mail.service.js';
+import { sendVerificationCodeEmail } from './mail.service.js';
+
+const resetCodeSessions = new Map();
+const RESET_CODE_LENGTH = 6;
+const RESET_CODE_MAX_ATTEMPTS = 5;
 
 function normalizeEmail(email) {
-	return email.trim().toLowerCase();
+	return String(email || '').trim().toLowerCase();
 }
 
 function serializeDate(value) {
@@ -37,19 +42,63 @@ function createSessionResponse(user) {
 	};
 }
 
-function hashResetToken(token) {
-	return createHash('sha256').update(token).digest('hex');
+function now() {
+	return Date.now();
 }
 
-function createResetLink(user, token) {
-	return `${env.FRONTEND_URL}/?page=reset-password&email=${encodeURIComponent(user.email)}&token=${encodeURIComponent(token)}`;
+function minutesToMs(minutes) {
+	return minutes * 60 * 1000;
 }
 
-function createForgotPasswordResponse() {
+function secondsToMs(seconds) {
+	return seconds * 1000;
+}
+
+function generateOtp() {
+	const lower = 10 ** (RESET_CODE_LENGTH - 1);
+	const upper = 10 ** RESET_CODE_LENGTH - 1;
+	return String(Math.floor(lower + Math.random() * (upper - lower)));
+}
+
+function generateResetToken() {
+	return randomBytes(32).toString('hex');
+}
+
+function getResetSession(email) {
+	return resetCodeSessions.get(email) || null;
+}
+
+function upsertResetSession(email, partialSession) {
+	const current = getResetSession(email) || {};
+	const next = { ...current, email, ...partialSession };
+	resetCodeSessions.set(email, next);
+	return next;
+}
+
+function clearResetSession(email) {
+	resetCodeSessions.delete(email);
+}
+
+function createForgotPasswordResponse(message = 'Verification code sent successfully to your email') {
 	return {
-		message: 'If an account exists for this email, password reset instructions have been sent.',
-		expiresInMinutes: env.RESET_TOKEN_TTL_MINUTES
+		message,
+		expiresInMinutes: env.RESET_CODE_TTL_MINUTES
 	};
+}
+
+function assertResetSessionActive(session, email) {
+	if (!session) {
+		throw createHttpError(400, 'AUTH_RESET_INVALID', 'Verification code is invalid or expired.');
+	}
+
+	if (session.email !== email) {
+		throw createHttpError(400, 'AUTH_RESET_INVALID', 'Verification code is invalid or expired.');
+	}
+
+	if (session.expiresAt <= now()) {
+		clearResetSession(email);
+		throw createHttpError(400, 'AUTH_RESET_EXPIRED', 'Verification code is invalid or expired.');
+	}
 }
 
 export const authService = {
@@ -90,6 +139,10 @@ export const authService = {
 		await ensureDbAvailable();
 
 		const payload = verifyAuthToken(token);
+		if (!payload || !payload.sub) {
+			throw createHttpError(401, 'AUTH_INVALID_TOKEN', 'Invalid authentication token.');
+		}
+
 		const user = await userRepository.findById(payload.sub);
 
 		if (!user) {
@@ -99,62 +152,158 @@ export const authService = {
 		return sanitizeUser(user);
 	},
 
-	async forgotPassword(payload) {
+	async sendResetCode(payload) {
 		await ensureDbAvailable();
 
 		const email = normalizeEmail(payload.email);
 		const user = await userRepository.findByEmail(email);
-
 		if (!user) {
 			return createForgotPasswordResponse();
 		}
 
-		const rawToken = randomBytes(32).toString('hex');
-		const expiresAt = new Date(Date.now() + env.RESET_TOKEN_TTL_MINUTES * 60 * 1000);
+		const existingSession = getResetSession(email);
+		if (existingSession && existingSession.resendAvailableAt > now()) {
+			throw createHttpError(
+				429,
+				'AUTH_RESET_COOLDOWN',
+				'Please wait a moment before requesting a new code.',
+				{ retryAfterSeconds: Math.ceil((existingSession.resendAvailableAt - now()) / 1000) }
+			);
+		}
 
-		await userRepository.markActiveResetTokensConsumed(user.id);
-		await userRepository.createPasswordResetToken({
+		const code = generateOtp();
+		const expiresAt = now() + minutesToMs(env.RESET_CODE_TTL_MINUTES);
+		const resendAvailableAt = now() + secondsToMs(env.RESET_CODE_RESEND_COOLDOWN_SECONDS);
+
+		if (env.NODE_ENV !== 'production') {
+			console.warn('Reset code generated for local development', {
+				email,
+				code,
+				expiresInMinutes: env.RESET_CODE_TTL_MINUTES
+			});
+		}
+
+		upsertResetSession(email, {
 			userId: user.id,
-			tokenHash: hashResetToken(rawToken),
-			expiresAt
+			userEmail: user.email,
+			codeHash: bcrypt.hashSync(code, 10),
+			expiresAt,
+			resendAvailableAt,
+			attempts: 0,
+			verifiedAt: null,
+			resetTokenHash: null,
+			resetTokenExpiresAt: null
 		});
 
-		const resetLink = createResetLink(user, rawToken);
-
 		try {
-			await sendPasswordResetEmail({
+			await sendVerificationCodeEmail({
 				to: user.email,
 				name: user.name,
-				resetLink,
-				expiresInMinutes: env.RESET_TOKEN_TTL_MINUTES
+				code,
+				expiresInMinutes: env.RESET_CODE_TTL_MINUTES
 			});
 		} catch (_error) {
 			throw createHttpError(
 				500,
 				'AUTH_RESET_EMAIL_FAILED',
-				'Unable to send the reset email right now. Please try again in a moment.'
+				'Unable to send the verification code right now. Please try again in a moment.'
 			);
 		}
 
 		return createForgotPasswordResponse();
 	},
 
+	async verifyResetCode(payload) {
+		await ensureDbAvailable();
+
+		const email = normalizeEmail(payload.email);
+		const code = String(payload.code || '').trim();
+		const session = getResetSession(email);
+		assertResetSessionActive(session, email);
+
+		if (session.attempts >= RESET_CODE_MAX_ATTEMPTS) {
+			clearResetSession(email);
+			throw createHttpError(429, 'AUTH_RESET_ATTEMPTS', 'Too many invalid attempts. Request a new code.');
+		}
+
+		if (!bcrypt.compareSync(code, session.codeHash)) {
+			session.attempts += 1;
+			resetCodeSessions.set(email, session);
+			throw createHttpError(400, 'AUTH_RESET_INVALID', 'Verification code is invalid or expired.');
+		}
+
+		const resetToken = generateResetToken();
+		const resetTokenExpiresAt = now() + minutesToMs(env.RESET_CODE_TTL_MINUTES);
+
+		upsertResetSession(email, {
+			verifiedAt: now(),
+			resetTokenHash: bcrypt.hashSync(resetToken, 10),
+			resetTokenExpiresAt
+		});
+
+		return {
+			message: 'Verification code confirmed successfully.',
+			email,
+			resetToken,
+			expiresInMinutes: env.RESET_CODE_TTL_MINUTES
+		};
+	},
+
 	async resetPassword(payload) {
 		await ensureDbAvailable();
 
 		const email = normalizeEmail(payload.email);
-		const resetEntry = await userRepository.findActivePasswordResetToken({
-			email,
-			tokenHash: hashResetToken(payload.token.trim())
-		});
+		const password = payload.password;
+		const resetToken = String(payload.resetToken || payload.token || '').trim();
+		const session = getResetSession(email);
+		assertResetSessionActive(session, email);
 
-		if (!resetEntry) {
-			throw createHttpError(400, 'AUTH_RESET_INVALID', 'Reset token is invalid or expired.');
+		if (!session.verifiedAt || !session.resetTokenHash || !session.resetTokenExpiresAt) {
+			throw createHttpError(400, 'AUTH_RESET_UNVERIFIED', 'Please verify the code before resetting your password.');
 		}
 
-		await userRepository.updatePassword(resetEntry.userId, hashPassword(payload.password));
-		await userRepository.consumePasswordResetToken(resetEntry.id);
+		if (session.resetTokenExpiresAt <= now()) {
+			clearResetSession(email);
+			throw createHttpError(400, 'AUTH_RESET_EXPIRED', 'Your reset session expired. Request a new code.');
+		}
 
-		return createSessionResponse(resetEntry.user);
+		if (!bcrypt.compareSync(resetToken, session.resetTokenHash)) {
+			throw createHttpError(400, 'AUTH_RESET_INVALID', 'Reset session is invalid or expired.');
+		}
+
+		const user = await userRepository.findByEmail(email);
+		if (!user) {
+			clearResetSession(email);
+			throw createHttpError(400, 'AUTH_USER_NOT_FOUND', 'User account could not be found.');
+		}
+
+		await userRepository.updatePassword(user.id, hashPassword(password));
+		clearResetSession(email);
+
+		return {
+			message: 'Password updated successfully'
+		};
+	},
+
+	async forgotPassword(payload) {
+		return this.sendResetCode(payload);
+	},
+
+	async verifyCode(payload) {
+		return this.verifyResetCode(payload);
+	},
+
+	async getResetSession(email) {
+		const session = getResetSession(normalizeEmail(email));
+		if (!session) {
+			return null;
+		}
+
+		return {
+			email: session.email,
+			expiresAt: session.expiresAt,
+			resendAvailableAt: session.resendAvailableAt,
+			verifiedAt: session.verifiedAt
+		};
 	}
 };
