@@ -19,12 +19,24 @@ function toBoolean(value, fallback) {
 	return value === 'true' || value === '1';
 }
 
+function resolveHost(value, nodeEnv) {
+	const host = value || '0.0.0.0';
+	const isLocalBind = host === '127.0.0.1' || host === 'localhost';
+
+	if (nodeEnv === 'production' && isLocalBind) {
+		return '0.0.0.0';
+	}
+
+	return host;
+}
+
 const appName = resolveEnvValue(process.env.APP_NAME, 'Goli-Transit');
+const nodeEnv = process.env.NODE_ENV || 'development';
 
 export const env = {
 	APP_NAME: appName,
-	NODE_ENV: process.env.NODE_ENV || 'development',
-	HOST: process.env.HOST || '0.0.0.0',
+	NODE_ENV: nodeEnv,
+	HOST: resolveHost(process.env.HOST, nodeEnv),
 	PORT: toInt(process.env.PORT, 8080),
 	DB_ENABLED: toBoolean(process.env.DB_ENABLED, false),
 	DB_HOST: process.env.DB_HOST || '127.0.0.1',
