@@ -3,15 +3,47 @@ import { env } from './env.js';
 import { logger } from '../utils/logger.js';
 import { createHttpError } from '../utils/http-error.js';
 
+function parseDatabaseUrl(databaseUrl) {
+	if (!databaseUrl) {
+		return null;
+	}
+
+	try {
+		const parsed = new URL(databaseUrl);
+		if (!parsed.hostname) {
+			return null;
+		}
+
+		const protocol = parsed.protocol.replace(':', '');
+		if (!protocol.startsWith('mysql')) {
+			return null;
+		}
+
+		const databaseName = parsed.pathname?.replace(/^\//, '') || '';
+
+		return {
+			host: parsed.hostname,
+			port: Number(parsed.port) || 3306,
+			user: decodeURIComponent(parsed.username || ''),
+			password: decodeURIComponent(parsed.password || ''),
+			database: decodeURIComponent(databaseName)
+		};
+	} catch {
+		return null;
+	}
+}
+
+const parsedDbUrl = parseDatabaseUrl(env.DATABASE_URL);
+
 export const dbConfig = {
   enabled: env.DB_ENABLED === true || env.DB_ENABLED === 'true',
 
-  host: env.DB_HOST || '127.0.0.1',
-  port: Number(env.DB_PORT) || 3306,
+  host: parsedDbUrl?.host || env.DB_HOST || '127.0.0.1',
+  port: Number(parsedDbUrl?.port || env.DB_PORT) || 3306,
 
-  user: env.DB_USER || 'root',
-  password: env.DB_PASSWORD || '',
-  database: env.DB_NAME || 'test',
+  user: parsedDbUrl?.user || env.DB_USER || 'root',
+  password: parsedDbUrl?.password || env.DB_PASSWORD || '',
+  database: parsedDbUrl?.database || env.DB_NAME || 'test',
 
   connectionLimit: Number(env.DB_POOL_SIZE) || 10
 };

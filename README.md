@@ -215,13 +215,32 @@ Notes:
 
 ## 🐳 Docker Setup (Optional)
 
-Docker files are scaffolded and marked as optional for this hackathon submission.
+You can run MySQL + Redis + phpMyAdmin locally using Docker Compose:
 
-- docker-compose.yml currently has placeholder services.
-- backend and frontend Dockerfiles are base-image stubs.
-- nginx.conf is a skeleton.
+```bash
+docker compose up -d
+```
 
-For judging, local setup is the recommended execution path.
+Services:
+- MySQL: `127.0.0.1:3307` (root / root123)
+- phpMyAdmin: `http://127.0.0.1:8080`
+- Redis: `127.0.0.1:6379`
+
+Suggested backend `.env` values for this Docker setup:
+
+```env
+DB_ENABLED=true
+DB_HOST=127.0.0.1
+DB_PORT=3307
+DB_USER=root
+DB_PASSWORD=root123
+DB_NAME=GoliTransitDB
+
+REDIS_ENABLED=true
+REDIS_URL=redis://127.0.0.1:6379
+```
+
+If your backend is also running on port `8080`, change the phpMyAdmin host port in `docker-compose.yml` (for example `8081:80`) to avoid a port conflict.
 
 ## 🎥 Demo Instructions
 

@@ -38,6 +38,7 @@ export const env = {
 	NODE_ENV: nodeEnv,
 	HOST: resolveHost(process.env.HOST, nodeEnv),
 	PORT: toInt(process.env.PORT, 8080),
+	DATABASE_URL: process.env.DATABASE_URL || '',
 	DB_ENABLED: toBoolean(process.env.DB_ENABLED, false),
 	DB_HOST: process.env.DB_HOST || '127.0.0.1',
 	DB_PORT: toInt(process.env.DB_PORT, 3306),

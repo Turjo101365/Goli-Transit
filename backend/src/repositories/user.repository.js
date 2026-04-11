@@ -30,6 +30,18 @@ async function findById(id) {
 }
 
 export const userRepository = {
+	async listUsers() {
+		const rows = await dbQuery(
+			[
+				'SELECT id, name, email, password_hash, created_at, updated_at',
+				'FROM users',
+				'ORDER BY id DESC'
+			].join(' ')
+		);
+
+		return rows.map(mapUserRow).filter(Boolean);
+	},
+
 	async findByEmail(email) {
 		const rows = await dbQuery(
 			[
