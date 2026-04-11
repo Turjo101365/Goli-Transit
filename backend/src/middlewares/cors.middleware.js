@@ -1,9 +1,20 @@
 import { env } from '../config/env.js';
 
+function parseOrigins(value) {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}
+
 const allowedOrigins = new Set(
   [
-    env.FRONTEND_URL,
-    env.APP_URL,
+    ...parseOrigins(env.FRONTEND_URL),
+    ...parseOrigins(env.APP_URL),
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     'http://localhost:8080',

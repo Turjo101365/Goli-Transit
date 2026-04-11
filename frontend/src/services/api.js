@@ -4,22 +4,37 @@ import {
 	AUTH_UNAUTHORIZED_EVENT
 } from './auth.storage.js';
 
-function resolveApiBaseUrl() {
+const LOCAL_BACKEND_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i;
+
+function resolveApiBaseConfig() {
 	const configuredBaseUrl = (import.meta.env.VITE_BACKEND_ENDPOINT || '').trim();
 
 	if (configuredBaseUrl) {
-		return configuredBaseUrl.replace(/\/$/, '');
+		const baseUrl = configuredBaseUrl.replace(/\/$/, '');
+
+		if (!import.meta.env.DEV && LOCAL_BACKEND_PATTERN.test(baseUrl)) {
+			return {
+				baseUrl: '',
+				error:
+					'Invalid VITE_BACKEND_ENDPOINT for production. Set it to your public backend URL (for example https://your-service.onrender.com).'
+			};
+		}
+
+		return { baseUrl, error: null };
 	}
 
 	if (typeof window === 'undefined') {
-		return '';
+		return { baseUrl: '', error: null };
 	}
 
 	const isLocalHostname = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
-	return isLocalHostname ? 'http://127.0.0.1:8080' : '';
+	return {
+		baseUrl: isLocalHostname ? 'http://127.0.0.1:8080' : '',
+		error: null
+	};
 }
 
-const API_BASE_URL = resolveApiBaseUrl();
+const { baseUrl: API_BASE_URL, error: API_BASE_URL_ERROR } = resolveApiBaseConfig();
 
 function buildRequestUrl(path) {
 	if (/^https?:\/\//.test(path)) {
@@ -59,6 +74,10 @@ async function parseResponse(response) {
 }
 
 export async function apiRequest(path, options = {}) {
+	if (API_BASE_URL_ERROR) {
+		throw new Error(API_BASE_URL_ERROR);
+	}
+
 	const { auth = true, headers = {}, ...requestOptions } = options;
 	const authToken = auth ? getStoredAuthToken() : null;
 	const requestUrl = buildRequestUrl(path);
