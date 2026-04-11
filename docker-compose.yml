@@ -1,75 +1,34 @@
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: mysql-container
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: root123
-      MYSQL_ROOT_HOST: "%"
-      MYSQL_DATABASE: GoliTransitDB
-    ports:
-      - "3307:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    networks:
-      goli-network:
-        aliases:
-          - mysql
-          - mysql-container
-
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    container_name: phpmyadmin-container
-    restart: always
-    depends_on:
-      - mysql
-    environment:
-      PMA_HOST: mysql-container
-      PMA_PORT: 3306
-      PMA_USER: root
-      PMA_PASSWORD: root123
-    ports:
-      - "8080:80"
-    networks:
-      - goli-network
-
   redis:
-    image: redis:7
-    container_name: redis-container
-    restart: always
+    image: redis:7-alpine
+    container_name: goli-redis
     ports:
       - "6379:6379"
-    networks:
-      - goli-network
-
-  backend:
-    build: ./backend
-    container_name: backend-container
-    restart: always
-    depends_on:
-      - mysql
-      - redis
-    ports:
-      - "5000:5000"
-    environment:
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PASSWORD: root123
-      DB_NAME: GoliTransitDB
-      PORT: 5000
-      REDIS_URL: redis://redis-container:6379
-      DB_ENABLED: true
-      REDIS_ENABLED: true
     volumes:
-      - ./backend:/app
-    command: npm run dev
-    networks:
-      - goli-network
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  mysql:
+    image: mysql:8
+    container_name: goli-mysql
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: GoliTransitDB
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot123"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 volumes:
+  redis_data:
   mysql_data:
-
-networks:
-  goli-network:
-    driver: bridge
