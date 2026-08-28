@@ -94,6 +94,14 @@ async function buildMetroOption(graph, origin, destination) {
 
 	const accessFare = fromMode === 'rickshaw' || toMode === 'rickshaw' ? null : 0;
 
+	// Access legs are short, but still real road/footpath hops, not a drawn
+	// straight line — same OSRM call the direct options use. Falls back to
+	// the straight two-point line only if OSRM can't resolve this short hop.
+	const [fromAccessOsrm, toAccessOsrm] = await Promise.all([
+		fetchOsrmRoute(fromMode, origin, fromStation.coords),
+		fetchOsrmRoute(toMode, toStation.coords, destination)
+	]);
+
 	return {
 		id: 'metro',
 		p50,
@@ -105,7 +113,7 @@ async function buildMetroOption(graph, origin, destination) {
 				min: Math.round(fromAccessMin),
 				fare: fromMode === 'walk' ? 0 : null,
 				label: ACCESS_LABEL[fromMode],
-				pts: [[origin.lat, origin.lng], [fromStation.coords.lat, fromStation.coords.lng]]
+				pts: fromAccessOsrm?.geometry || [[origin.lat, origin.lng], [fromStation.coords.lat, fromStation.coords.lng]]
 			},
 			{
 				mode: 'metro',
@@ -119,7 +127,7 @@ async function buildMetroOption(graph, origin, destination) {
 				min: Math.round(toAccessMin),
 				fare: toMode === 'walk' ? 0 : null,
 				label: ACCESS_LABEL[toMode],
-				pts: [[toStation.coords.lat, toStation.coords.lng], [destination.lat, destination.lng]]
+				pts: toAccessOsrm?.geometry || [[toStation.coords.lat, toStation.coords.lng], [destination.lat, destination.lng]]
 			}
 		]
 	};

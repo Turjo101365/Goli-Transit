@@ -2,20 +2,31 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, useMapEvents } from 'react-leaflet';
 import '../styles/tokens.css';
-import { createRoute, getGraphSnapshot } from '../services/route.service.js';
-import { formatTime } from '../utils/format.js';
+import { createRoute, getGraphSnapshot, simulateRoute } from '../services/route.service.js';
+import { formatTime, toBanglaDigits } from '../utils/format.js';
 import { nearestStation } from '../utils/geo.js';
 import { RouteOptionsTable } from './RouteOptionsTable.jsx';
+import { LocationSearchField } from './LocationSearchField.jsx';
 import { useLanguage } from '../state/LanguageContext.jsx';
+import { useTheme } from '../state/ThemeContext.jsx';
+import { useTrip } from '../state/TripContext.jsx';
 
 const DHAKA_CENTER = [23.7808, 90.4];
-const NOMINATIM_DEBOUNCE_MS = 600;
-// Esri World Light Gray Canvas — free, no key, no signup. Two layers: the
-// base (terrain/roads/water) and a transparent reference overlay (labels).
-// Esri's tile REST API is z/row/col, i.e. {z}/{y}/{x} — swapped from the
-// standard XYZ order Leaflet/OSM/CARTO use.
-const ESRI_BASE_URL = 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
-const ESRI_REFERENCE_URL = 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}';
+// Esri World Gray Canvas — free, no key, no signup — in both a dark and a
+// light variant. Two layers each: the base (terrain/roads/water) and a
+// transparent reference overlay (labels). Esri's tile REST API is
+// z/row/col, i.e. {z}/{y}/{x} — swapped from the standard XYZ order
+// Leaflet/OSM/CARTO use.
+const ESRI_URLS = {
+	dark: {
+		base: 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+		reference: 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}'
+	},
+	light: {
+		base: 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+		reference: 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}'
+	}
+};
 const ACCESS_WALK_LIMIT_KM = 0.9; // 900m — beyond this, access leg is labelled rickshaw, not walk
 const ARRIVE_BY_OFFSETS_MIN = [45, 90, 150];
 
@@ -36,26 +47,22 @@ function buildArriveByOptions(referenceDate) {
 }
 
 // Leaflet marker/circle colours are set via JS, not CSS, so tokens.css
-// custom properties aren't reachable here — these mirror --cream/--stamp/
-// --ground2/--metro literally. Keep them in sync if the tokens change.
-const COLOUR = {
-	cream: '#F4EFE3',
-	stamp: '#A8382A',
-	ground2: '#1D2A34',
-	metro: '#006747'
+// custom properties aren't reachable here — these mirror the --cream/
+// --stamp/--ground2/--metro token VALUES for each theme literally. Keep in
+// sync if those tokens change.
+const COLOUR_BY_THEME = {
+	dark: { cream: '#F4EFE3', stamp: '#A8382A', ground2: '#1D2A34', metro: '#006747' },
+	light: { cream: '#22261B', stamp: '#A8382A', ground2: '#DFE4CE', metro: '#006747' }
 };
 
-function pinIcon(colour) {
+function pinIcon(colour, borderColour) {
 	return L.divIcon({
 		className: '',
-		html: `<span style="display:block;width:16px;height:16px;border-radius:50%;background:${colour};border:2px solid ${COLOUR.ground2};box-shadow:0 0 0 1px ${colour};"></span>`,
+		html: `<span style="display:block;width:16px;height:16px;border-radius:50%;background:${colour};border:2px solid ${borderColour};box-shadow:0 0 0 1px ${colour};"></span>`,
 		iconSize: [16, 16],
 		iconAnchor: [8, 8]
 	});
 }
-
-const PIN_ICON_A = pinIcon(COLOUR.cream);
-const PIN_ICON_B = pinIcon(COLOUR.stamp);
 
 function MapClickHandler({ armed, onPick }) {
 	useMapEvents({
@@ -73,6 +80,10 @@ function MapClickHandler({ armed, onPick }) {
 
 function t(bn, en, lang) {
 	return lang === 'en' ? en : bn;
+}
+
+function num(value, lang) {
+	return lang === 'bn' ? toBanglaDigits(value) : String(value);
 }
 
 // Real street address for a picked point, via Nominatim's reverse endpoint
@@ -100,21 +111,40 @@ async function reverseGeocode(lat, lng) {
 }
 
 export function FurutMap() {
-	const { lang, toggleLang } = useLanguage();
+	const { lang } = useLanguage();
+	const { theme } = useTheme();
+	const COLOUR = COLOUR_BY_THEME[theme];
+	const esriUrls = ESRI_URLS[theme];
+	const pinIconA = useMemo(() => pinIcon(COLOUR.cream, COLOUR.ground2), [COLOUR.cream, COLOUR.ground2]);
+	const pinIconB = useMemo(() => pinIcon(COLOUR.stamp, COLOUR.ground2), [COLOUR.stamp, COLOUR.ground2]);
 	const [stations, setStations] = useState([]);
 	const [stationsError, setStationsError] = useState(null);
-	const [endpoints, setEndpoints] = useState({ A: null, B: null });
-	const [armed, setArmed] = useState(null); // 'A' | 'B' | null
-	const [query, setQuery] = useState('');
-	const [searchResults, setSearchResults] = useState([]);
-	const [searchLoading, setSearchLoading] = useState(false);
+	// Shared with Live and Belt (TripContext) so a point picked on one screen
+	// carries over to the others, and survives navigating away and back.
+	const { origin, setOrigin, destination, setDestination } = useTrip();
+	const endpoints = useMemo(() => ({ A: origin, B: destination }), [origin, destination]);
+	function setEndpoints(updater) {
+		const current = { A: origin, B: destination };
+		const next = typeof updater === 'function' ? updater(current) : updater;
+		if (next.A !== current.A) {
+			setOrigin(next.A);
+		}
+		if (next.B !== current.B) {
+			setDestination(next.B);
+		}
+	}
+	const [armed, setArmed] = useState(null); // 'A' | 'B' | null — which endpoint a map tap targets
 	const [routeOptions, setRouteOptions] = useState([]);
 	const [routeError, setRouteError] = useState(null);
 	const [routeLoading, setRouteLoading] = useState(false);
 	const [selectedOptionId, setSelectedOptionId] = useState('metro');
 	const [arriveByOptions] = useState(() => buildArriveByOptions(new Date()));
 	const [arriveByIndex, setArriveByIndex] = useState(1);
-	const debounceRef = useRef(null);
+	const [simulation, setSimulation] = useState(null);
+	const [simLoading, setSimLoading] = useState(false);
+	const [simError, setSimError] = useState(null);
+	const [simStep, setSimStep] = useState(0);
+	const [simPlaying, setSimPlaying] = useState(false);
 	const geoRequestedRef = useRef(false);
 	const stationsRef = useRef(stations);
 	const endpointsRef = useRef(endpoints);
@@ -195,61 +225,70 @@ export function FurutMap() {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [originPoint?.lat, originPoint?.lng, destinationPoint?.lat, destinationPoint?.lng]);
 
-	// Local stations first; Nominatim only when there's no local match at all.
+	// A stale simulation trace from a previous origin/destination shouldn't
+	// keep animating (or keep claiming to be "done") once the query changes.
 	useEffect(() => {
-		window.clearTimeout(debounceRef.current);
+		setSimulation(null);
+		setSimStep(0);
+		setSimPlaying(false);
+		setSimError(null);
+	}, [originPoint?.lat, originPoint?.lng, destinationPoint?.lat, destinationPoint?.lng]);
 
-		const trimmed = query.trim();
-		if (!armed || trimmed.length < 2) {
-			setSearchResults([]);
-			setSearchLoading(false);
+	// Steps through the recorded trace on a timer while playing — this is a
+	// replay of the real search astarMetroPath() already ran server-side,
+	// not a live re-run, so the pacing here is purely presentational.
+	useEffect(() => {
+		if (!simPlaying || !simulation) {
 			return undefined;
 		}
 
-		const localMatches = stations.filter(
-			(station) =>
-				station.nameBn.includes(trimmed) || station.nameEn.toLowerCase().includes(trimmed.toLowerCase())
-		);
+		const id = setInterval(() => {
+			setSimStep((current) => {
+				if (current >= simulation.trace.length - 1) {
+					setSimPlaying(false);
+					return current;
+				}
 
-		if (localMatches.length > 0) {
-			setSearchResults(localMatches.map((station) => ({ source: 'local', ...station })));
-			setSearchLoading(false);
-			return undefined;
+				return current + 1;
+			});
+		}, 450);
+
+		return () => clearInterval(id);
+	}, [simPlaying, simulation]);
+
+	async function handleSimulate() {
+		if (!originPoint || !destinationPoint) {
+			return;
 		}
 
-		setSearchLoading(true);
-		debounceRef.current = window.setTimeout(async () => {
-			try {
-				const url = new URL('https://nominatim.openstreetmap.org/search');
-				url.searchParams.set('q', trimmed);
-				url.searchParams.set('format', 'jsonv2');
-				url.searchParams.set('viewbox', '90.30,23.92,90.50,23.66');
-				url.searchParams.set('bounded', '1');
-				url.searchParams.set('limit', '5');
+		setSimLoading(true);
+		setSimError(null);
+		setSimulation(null);
+		setSimStep(0);
+		setSimPlaying(false);
 
-				const response = await fetch(url.toString());
-				const results = response.ok ? await response.json() : [];
-				setSearchResults(
-					(Array.isArray(results) ? results : []).map((result) => ({
-						source: 'nominatim',
-						id: `nom_${result.place_id}`,
-						nameBn: result.display_name,
-						nameEn: result.display_name,
-						lat: Number(result.lat),
-						lng: Number(result.lon)
-					}))
-				);
-			} catch {
-				setSearchResults([]);
-			} finally {
-				setSearchLoading(false);
+		try {
+			const result = await simulateRoute({
+				originLat: originPoint.lat,
+				originLng: originPoint.lng,
+				destinationLat: destinationPoint.lat,
+				destinationLng: destinationPoint.lng
+			});
+
+			if (!result.possible) {
+				setSimError(t('এই দুই জায়গার মধ্যে মেট্রো সিমুলেশন সম্ভব না', 'Metro simulation not possible for these two points', lang));
+			} else {
+				setSimulation(result);
+				setSimPlaying(true);
 			}
-		}, NOMINATIM_DEBOUNCE_MS);
+		} catch (err) {
+			setSimError(err.message);
+		} finally {
+			setSimLoading(false);
+		}
+	}
 
-		return () => window.clearTimeout(debounceRef.current);
-	}, [query, armed, stations]);
-
-	function resolveEndpoint(endpointId, point, label, { onlyIfEmpty = false } = {}) {
+	function resolveEndpoint(endpointId, point, label, { onlyIfEmpty = false, nodeId = null } = {}) {
 		// Decided from the ref (always current, unlike a variable mutated
 		// inside the setEndpoints updater below — React doesn't guarantee
 		// that updater runs synchronously, so reading a flag it set right
@@ -275,6 +314,11 @@ export function FurutMap() {
 					label: label || fallbackLabel,
 					lat: point.lat,
 					lng: point.lng,
+					// Only set when the pick itself IS a real station (passed through
+					// from LocationSearchField's local-station match) — not inferred
+					// from nearestStation, which can be up to METRO_ACCESS_RADIUS_KM
+					// away and isn't the same as "this point is that station."
+					nodeId,
 					nearestStation: resolved?.station || null,
 					accessKm,
 					accessMode: accessKm !== null && accessKm > ACCESS_WALK_LIMIT_KM ? 'rickshaw' : 'walk'
@@ -282,8 +326,6 @@ export function FurutMap() {
 			};
 		});
 		setArmed(null);
-		setQuery('');
-		setSearchResults([]);
 
 		// No caller-supplied label (geolocation, map-tap, drag) — upgrade the
 		// synchronous fallback (nearest-station or raw coordinates) to a real
@@ -335,14 +377,6 @@ export function FurutMap() {
 		);
 	}, []);
 
-	function handlePickResult(result) {
-		if (!armed) {
-			return;
-		}
-
-		resolveEndpoint(armed, { lat: result.lat, lng: result.lng }, t(result.nameBn, result.nameEn, lang));
-	}
-
 	function handleMapPick(point) {
 		resolveEndpoint(armed, point, null);
 	}
@@ -353,6 +387,37 @@ export function FurutMap() {
 	}
 
 	const selectedOption = routeOptions.find((option) => option.id === selectedOptionId);
+	const hasMetroOption = routeOptions.some((option) => option.id === 'metro');
+	const currentSimStep = simulation?.trace[simStep] || null;
+	const simDone = simulation ? simStep >= simulation.trace.length - 1 : false;
+
+	// Per-station colour for the current point in playback: 'frontier'
+	// (queued, not yet expanded) or 'visited' (expanded) from the real
+	// trace up to this step, then every station on the final path once
+	// playback reaches the end — not a fixed "the path was X" overlay
+	// shown from the start.
+	const simStateByStation = useMemo(() => {
+		if (!simulation) {
+			return {};
+		}
+
+		const map = {};
+		for (let i = 0; i <= simStep && i < simulation.trace.length; i++) {
+			const step = simulation.trace[i];
+			if (step.action === 'visit' || map[step.key] !== 'visited') {
+				map[step.key] = step.action === 'visit' ? 'visited' : 'frontier';
+			}
+		}
+
+		if (simDone) {
+			for (const stationId of simulation.path) {
+				map[stationId] = 'path';
+			}
+		}
+
+		return map;
+	}, [simulation, simStep, simDone]);
+
 	const arriveBy = arriveByOptions[arriveByIndex];
 	const departureDate = useMemo(() => {
 		if (!selectedOption) {
@@ -367,13 +432,8 @@ export function FurutMap() {
 	return (
 		<section style={{ background: 'var(--ground)', padding: '32px 0', minHeight: '100vh', color: 'var(--cream)' }}>
 			<div className="map-wrap">
-				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-					<h1 className="t-brand">{t('ফুরুৎ', 'FURUT', lang)}</h1>
-					<button type="button" onClick={toggleLang} className="chip">
-						{lang === 'bn' ? 'EN' : 'বাং'}
-					</button>
-				</div>
-				<p className="t-label">{t('নং ০০৪৭', 'No. 0047', lang)}</p>
+				<h1 className="t-brand">{t('ফুরুৎ', 'FURUT', lang)}</h1>
+				<p className="t-label">{t('জ্যাম লাগার আগেই', 'Out before the jam', lang)}</p>
 
 				<div className="rule-double" style={{ margin: '16px 0' }} />
 
@@ -384,92 +444,38 @@ export function FurutMap() {
 					const isArmed = armed === endpointId;
 
 					return (
-						<div key={endpointId}>
-							<button
-								type="button"
-								onClick={() => {
-									setArmed(isArmed ? null : endpointId);
-									setQuery('');
-								}}
-								className="rule-hair"
-								style={{
-									display: 'flex',
-									alignItems: 'center',
-									gap: 12,
-									width: '100%',
-									background: 'transparent',
-									border: 'none',
-									padding: '10px 0',
-									cursor: 'pointer',
-									textAlign: 'left',
-									color: 'var(--cream)'
-								}}
-							>
-								<span
-									style={{
-										width: 10,
-										height: 10,
-										borderRadius: '50%',
-										background: endpointId === 'A' ? 'var(--cream)' : 'var(--stamp)',
-										flexShrink: 0
-									}}
-								/>
-								<span>
-									<div className="t-label">{t(endpointId === 'A' ? 'কোথা থেকে' : 'কোথায়', endpointId === 'A' ? 'From' : 'To', lang)}</div>
-									<div className="t-place">
-										{endpoint ? endpoint.label : t('বাছাই করুন', 'Tap to choose', lang)}
-									</div>
-									{endpoint && endpoint.accessMode === 'rickshaw' ? (
-										<div className="t-label" style={{ color: 'var(--stamp)' }}>
-											{t('৯০০ মিটারের বেশি — রিকশা', '>900m — rickshaw access', lang)}
-										</div>
-									) : null}
-								</span>
-							</button>
-
-							{isArmed ? (
-								<div style={{ padding: '4px 0 16px 22px' }}>
-									<input
-										type="text"
-										value={query}
-										onChange={(event) => setQuery(event.target.value)}
-										placeholder={t('জায়গার নাম লিখুন', 'Type a place name', lang)}
-										style={{
-											width: '100%',
-											background: 'var(--ground2)',
-											border: '1px solid var(--line)',
-											padding: '8px 10px',
-											font: 'inherit',
-											color: 'var(--cream)'
-										}}
-									/>
-									<p className="t-label" style={{ marginTop: 6 }}>
-										{t('অথবা ম্যাপে ট্যাপ করুন', 'or tap the map', lang)}
-									</p>
-
-									{searchLoading ? <p className="t-body">…</p> : null}
-
-									{searchResults.map((result) => (
-										<button
-											key={result.id}
-											type="button"
-											onClick={() => handlePickResult(result)}
-											className="rule-hair"
+						<div key={endpointId} className="rule-hair" style={{ padding: '10px 0' }}>
+							<LocationSearchField
+								label={
+									<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+										<span
 											style={{
-												display: 'block',
-												width: '100%',
-												textAlign: 'left',
-												background: 'transparent',
-												border: 'none',
-												padding: '8px 0',
-												cursor: 'pointer',
-												color: 'var(--cream)'
+												width: 8,
+												height: 8,
+												borderRadius: '50%',
+												background: endpointId === 'A' ? 'var(--cream)' : 'var(--stamp)',
+												flexShrink: 0
 											}}
-										>
-											<span className="t-body">{t(result.nameBn, result.nameEn, lang)}</span>
-										</button>
-									))}
+										/>
+										{t(endpointId === 'A' ? 'কোথা থেকে' : 'কোথায়', endpointId === 'A' ? 'From' : 'To', lang)}
+									</span>
+								}
+								placeholder={t('জায়গার নাম লিখুন', 'Type a place name', lang)}
+								stations={stations}
+								value={endpoint}
+								onSelect={(point) => resolveEndpoint(endpointId, { lat: point.lat, lng: point.lng }, point.label, { nodeId: point.nodeId || null })}
+								onFocus={() => setArmed(endpointId)}
+								lang={lang}
+							/>
+							{endpoint && endpoint.accessMode === 'rickshaw' ? (
+								<div className="t-label" style={{ color: 'var(--stamp)', marginTop: 4 }}>
+									{t('৯০০ মিটারের বেশি — রিকশা', '>900m — rickshaw access', lang)}
 								</div>
+							) : null}
+							{isArmed ? (
+								<p className="t-label" style={{ marginTop: 6 }}>
+									{t('অথবা ম্যাপে ট্যাপ করুন', 'or tap the map', lang)}
+								</p>
 							) : null}
 						</div>
 					);
@@ -482,19 +488,29 @@ export function FurutMap() {
 				<div className="rule-solid" />
 				<div className="map-frame">
 					<MapContainer center={DHAKA_CENTER} zoom={12} scrollWheelZoom style={{ width: '100%', height: '100%' }}>
-						<TileLayer attribution="Tiles &copy; Esri" url={ESRI_BASE_URL} />
-						<TileLayer url={ESRI_REFERENCE_URL} />
+						<TileLayer attribution="Tiles &copy; Esri" url={esriUrls.base} />
+						<TileLayer url={esriUrls.reference} />
 
 						<MapClickHandler armed={armed} onPick={handleMapPick} />
 
-						{stations.map((station) => (
-							<CircleMarker
-								key={station.id}
-								center={[station.lat, station.lng]}
-								radius={3.5}
-								pathOptions={{ color: COLOUR.metro, weight: 1.5, fillColor: COLOUR.ground2, fillOpacity: 1 }}
-							/>
-						))}
+						{stations.map((station) => {
+							const simState = simStateByStation[station.id];
+							const simFill = { frontier: '#E0B028', visited: COLOUR.metro, path: COLOUR.stamp }[simState];
+
+							return (
+								<CircleMarker
+									key={station.id}
+									center={[station.lat, station.lng]}
+									radius={simState === 'path' ? 5 : simState ? 4.5 : 3.5}
+									pathOptions={{
+										color: simState === 'path' ? COLOUR.stamp : COLOUR.metro,
+										weight: simState === 'path' ? 2.5 : 1.5,
+										fillColor: simFill || COLOUR.ground2,
+										fillOpacity: 1
+									}}
+								/>
+							);
+						})}
 
 						{selectedOption?.segments.map((segment, index) => (
 							<Polyline
@@ -507,7 +523,7 @@ export function FurutMap() {
 						{endpoints.A ? (
 							<Marker
 								position={[endpoints.A.lat, endpoints.A.lng]}
-								icon={PIN_ICON_A}
+								icon={pinIconA}
 								draggable
 								eventHandlers={{ dragend: (event) => handleDrag('A', event) }}
 							/>
@@ -515,13 +531,76 @@ export function FurutMap() {
 						{endpoints.B ? (
 							<Marker
 								position={[endpoints.B.lat, endpoints.B.lng]}
-								icon={PIN_ICON_B}
+								icon={pinIconB}
 								draggable
 								eventHandlers={{ dragend: (event) => handleDrag('B', event) }}
 							/>
 						) : null}
 					</MapContainer>
 				</div>
+
+				{hasMetroOption ? (
+					<div style={{ marginTop: 12 }}>
+						{!simulation ? (
+							<button type="button" className="chip" onClick={handleSimulate} disabled={simLoading}>
+								{simLoading
+									? t('হিসাব হচ্ছে…', 'Computing…', lang)
+									: t('A* দিয়ে রুট খোঁজা দেখুন', 'Watch A* find the route', lang)}
+							</button>
+						) : (
+							<div className="panel" style={{ padding: '10px 14px' }}>
+								<div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+									<button type="button" className="chip" onClick={() => setSimPlaying((playing) => !playing)}>
+										{simPlaying ? t('থামান', 'Pause', lang) : t('চালান', 'Play', lang)}
+									</button>
+									<button
+										type="button"
+										className="chip"
+										onClick={() => {
+											setSimStep(0);
+											setSimPlaying(true);
+										}}
+									>
+										{t('আবার শুরু', 'Restart', lang)}
+									</button>
+									<span className="t-label">{num(simStep + 1, lang)} / {num(simulation.trace.length, lang)}</span>
+									<button
+										type="button"
+										className="chip"
+										style={{ marginLeft: 'auto' }}
+										onClick={() => setSimulation(null)}
+									>
+										{t('বন্ধ', 'Close', lang)}
+									</button>
+								</div>
+
+								{currentSimStep ? (
+									<p className="t-body" style={{ marginTop: 8, fontSize: 13 }}>
+										{currentSimStep.action === 'visit'
+											? t('পরীক্ষা করা হচ্ছে', 'Expanding', lang)
+											: t('বিবেচনায় রাখা হচ্ছে', 'Queued', lang)}
+										{': '}
+										<b>
+											{t(
+												stations.find((station) => station.id === currentSimStep.key)?.nameBn,
+												stations.find((station) => station.id === currentSimStep.key)?.nameEn,
+												lang
+											) || currentSimStep.key}
+										</b>
+										{' — g='}{num(currentSimStep.g.toFixed(1), lang)} h={num(currentSimStep.h.toFixed(1), lang)} f={num(currentSimStep.f.toFixed(1), lang)}
+									</p>
+								) : null}
+
+								{simDone ? (
+									<p className="t-body" style={{ marginTop: 6, color: 'var(--metro)', fontSize: 13 }}>
+										{t('সেরা রুট পাওয়া গেছে', 'Optimal route found', lang)} — {num(simulation.minutes, lang)} {t('মিনিট', 'min', lang)} · ৳{num(simulation.fareTaka, lang)}
+									</p>
+								) : null}
+							</div>
+						)}
+						{simError ? <p className="t-body" style={{ color: 'var(--stamp)', marginTop: 6 }}>{simError}</p> : null}
+					</div>
+				) : null}
 				</div>
 
 				<div className="map-grid-ticket">

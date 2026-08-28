@@ -7,6 +7,13 @@ export async function createRoute(payload) {
   });
 }
 
+export async function simulateRoute(payload) {
+  return apiRequest('/route/simulate', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function getRecentDynamicNodes(limit = 10) {
   return apiRequest(`/graph/dynamic-nodes?limit=${encodeURIComponent(limit)}`);
 }

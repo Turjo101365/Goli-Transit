@@ -5,15 +5,19 @@ import { SideRail } from './components/SideRail.jsx';
 import { FurutMap } from './components/FurutMap.jsx';
 import { LiveJourney } from './components/LiveJourney.jsx';
 import { GoliUI } from './components/GoliUI.jsx';
+import { ThemeToggle } from './components/ThemeToggle.jsx';
 import { Login } from './pages/Login.jsx';
 import { Register } from './pages/Register.jsx';
 import { ForgotPassword } from './pages/ForgotPassword.jsx';
 import { VerifyCode } from './pages/VerifyCode.jsx';
 import { ResetPassword } from './pages/ResetPassword.jsx';
 import { LanguageProvider, useLanguage } from './state/LanguageContext.jsx';
+import { ThemeProvider } from './state/ThemeContext.jsx';
+import { TripProvider } from './state/TripContext.jsx';
 import {
   hasActiveSession,
   getCurrentUser,
+  loginAsGuest,
   loginUser,
   logoutUser,
   registerUser,
@@ -31,8 +35,9 @@ const NAV_LINKS = [
 ];
 
 // The three screens have no other way to reach each other.
-function ScreenNav({ onLogout }) {
-  const { lang } = useLanguage();
+function ScreenNav({ authUser, onLogout }) {
+  const { lang, toggleLang } = useLanguage();
+  const navigate = useNavigate();
 
   return (
     <nav className="screen-nav">
@@ -57,9 +62,25 @@ function ScreenNav({ onLogout }) {
           </NavLink>
         ))}
       </div>
-      <button type="button" onClick={onLogout} className="chip screen-nav-logout">
-        {lang === 'en' ? 'Logout' : 'লগআউট'}
-      </button>
+      <div className="screen-nav-logout" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <ThemeToggle />
+        <button type="button" onClick={toggleLang} className="chip">
+          {lang === 'bn' ? 'English' : 'বাংলা'}
+        </button>
+        {authUser?.isGuest ? (
+          <button
+            type="button"
+            onClick={() => navigate('/register')}
+            className="chip"
+            style={{ borderColor: 'var(--stamp)', color: 'var(--stamp)' }}
+          >
+            {lang === 'en' ? 'Guest · Save account' : 'গেস্ট · সেভ করুন'}
+          </button>
+        ) : null}
+        <button type="button" onClick={onLogout} className="chip">
+          {lang === 'en' ? 'Logout' : 'লগআউট'}
+        </button>
+      </div>
     </nav>
   );
 }
@@ -74,7 +95,7 @@ function RequireAuth({ authUser, children }) {
   return children;
 }
 
-function LoginRoute({ onLogin }) {
+function LoginRoute({ onLogin, onGuestLogin }) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -83,9 +104,15 @@ function LoginRoute({ onLogin }) {
     navigate(location.state?.from?.pathname || '/map', { replace: true });
   }
 
+  async function handleGuestLogin() {
+    await onGuestLogin();
+    navigate(location.state?.from?.pathname || '/map', { replace: true });
+  }
+
   return (
     <Login
       onLogin={handleLogin}
+      onGuestLogin={handleGuestLogin}
       onSwitchToRegister={() => navigate('/register')}
       onSwitchToForgotPassword={() => navigate('/forgot-password')}
     />
@@ -103,12 +130,12 @@ function RegisterRoute({ onRegister }) {
   return <Register onRegister={handleRegister} onSwitchToLogin={() => navigate('/login')} />;
 }
 
-function AppRoutes({ authUser, onLogin, onRegister, onForgotPassword, onResendCode, onVerifyCode, onResetPassword, onLogout }) {
+function AppRoutes({ authUser, onLogin, onGuestLogin, onRegister, onForgotPassword, onResendCode, onVerifyCode, onResetPassword, onLogout }) {
   const navigate = useNavigate();
 
   return (
     <Routes>
-      <Route path="/login" element={<LoginRoute onLogin={onLogin} />} />
+      <Route path="/login" element={<LoginRoute onLogin={onLogin} onGuestLogin={onGuestLogin} />} />
       <Route path="/register" element={<RegisterRoute onRegister={onRegister} />} />
       <Route
         path="/forgot-password"
@@ -149,13 +176,24 @@ function AppRoutes({ authUser, onLogin, onRegister, onForgotPassword, onResendCo
         }
       />
 
-      <Route path="/" element={<FurutHero authUser={authUser} />} />
+      <Route
+        path="/"
+        element={
+          <FurutHero
+            authUser={authUser}
+            onGuestLogin={async () => {
+              await onGuestLogin();
+              navigate('/map', { replace: true });
+            }}
+          />
+        }
+      />
       <Route
         path="/map"
         element={
           <RequireAuth authUser={authUser}>
             <>
-              <ScreenNav onLogout={onLogout} />
+              <ScreenNav authUser={authUser} onLogout={onLogout} />
               <FurutMap />
             </>
           </RequireAuth>
@@ -166,7 +204,7 @@ function AppRoutes({ authUser, onLogin, onRegister, onForgotPassword, onResendCo
         element={
           <RequireAuth authUser={authUser}>
             <>
-              <ScreenNav onLogout={onLogout} />
+              <ScreenNav authUser={authUser} onLogout={onLogout} />
               <LiveJourney />
             </>
           </RequireAuth>
@@ -177,7 +215,7 @@ function AppRoutes({ authUser, onLogin, onRegister, onForgotPassword, onResendCo
         element={
           <RequireAuth authUser={authUser}>
             <>
-              <ScreenNav onLogout={onLogout} />
+              <ScreenNav authUser={authUser} onLogout={onLogout} />
               <GoliUI />
             </>
           </RequireAuth>
@@ -229,6 +267,11 @@ function AppShell() {
     setAuthUser(user);
   }
 
+  async function handleGuestLogin() {
+    const user = await loginAsGuest();
+    setAuthUser(user);
+  }
+
   async function handleRegister(payload) {
     const user = await registerUser(payload);
     setAuthUser(user);
@@ -248,6 +291,7 @@ function AppShell() {
       <AppRoutes
         authUser={authUser}
         onLogin={handleLogin}
+        onGuestLogin={handleGuestLogin}
         onRegister={handleRegister}
         onForgotPassword={sendResetCode}
         onResendCode={sendResetCode}
@@ -266,9 +310,13 @@ function AppShell() {
 export default function App() {
   return (
     <BrowserRouter>
-      <LanguageProvider>
-        <AppShell />
-      </LanguageProvider>
+      <ThemeProvider>
+        <LanguageProvider>
+          <TripProvider>
+            <AppShell />
+          </TripProvider>
+        </LanguageProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

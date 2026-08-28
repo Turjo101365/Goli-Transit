@@ -15,6 +15,16 @@ const RESET_CODE_LENGTH = 6;
 const RESET_CODE_MAX_ATTEMPTS = 5;
 let memoryUserSequence = 1;
 
+// Guest sessions: never touch the real users table (DB or in-memory
+// fallback) regardless of DB availability — "emergency, temporary access"
+// means genuinely temporary, not a shadow account. Kept in their own map so
+// a guest is findable by getCurrentUser() the same way whether or not
+// MySQL is up, and a short, fixed TTL (not env.AUTH_TOKEN_TTL_HOURS' 7
+// days) so a guest session doesn't linger indefinitely.
+const guestUsersById = new Map();
+const GUEST_SESSION_TTL_HOURS = 6;
+const GUEST_EMAIL_DOMAIN = 'guest.furut.local';
+
 function normalizeEmail(email) {
 	return String(email || '').trim().toLowerCase();
 }
@@ -28,12 +38,36 @@ function serializeDate(value) {
 }
 
 function sanitizeUser(user) {
-	return {
+	const safe = {
 		id: String(user.id),
 		name: user.name,
 		email: user.email,
 		createdAt: serializeDate(user.createdAt)
 	};
+
+	if (user.isGuest) {
+		safe.isGuest = true;
+	}
+
+	return safe;
+}
+
+function createGuestUser() {
+	const id = `guest-${memoryUserSequence++}-${randomBytes(4).toString('hex')}`;
+	const user = {
+		id,
+		name: 'Guest',
+		email: `${id}@${GUEST_EMAIL_DOMAIN}`,
+		createdAt: new Date(),
+		isGuest: true
+	};
+
+	guestUsersById.set(id, user);
+	return user;
+}
+
+function findGuestUserById(id) {
+	return guestUsersById.get(String(id)) || null;
 }
 
 function createMemoryUser({ name, email, passwordHash }) {
@@ -69,11 +103,11 @@ async function hasLiveDatabase() {
 	}
 }
 
-function createSessionResponse(user) {
+function createSessionResponse(user, { ttlHours } = {}) {
 	const safeUser = sanitizeUser(user);
 
 	return {
-		token: createAuthToken(safeUser),
+		token: createAuthToken(safeUser, { ttlHours }),
 		user: safeUser
 	};
 }
@@ -196,10 +230,23 @@ export const authService = {
 		return createSessionResponse(memoryUser);
 	},
 
+	// Emergency access: no email, no password, no rate-limit-by-identity —
+	// just a working session for whoever needs FURUT right now. Never
+	// touches the real users table; see the guestUsersById comment above.
+	async guest() {
+		const user = createGuestUser();
+		return createSessionResponse(user, { ttlHours: GUEST_SESSION_TTL_HOURS });
+	},
+
 	async getCurrentUser(token) {
 		const payload = verifyAuthToken(token);
 		if (!payload || !payload.sub) {
 			throw createHttpError(401, 'AUTH_INVALID_TOKEN', 'Invalid authentication token.');
+		}
+
+		const guestUser = findGuestUserById(payload.sub);
+		if (guestUser) {
+			return sanitizeUser(guestUser);
 		}
 
 		const dbAvailable = await hasLiveDatabase();

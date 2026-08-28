@@ -37,6 +37,18 @@ export async function loginUser(payload) {
   return session.user;
 }
 
+// Emergency access — no email/password. Short-lived session (6h), never a
+// real account; see backend/src/services/auth.service.js's guest().
+export async function loginAsGuest() {
+  const session = await apiRequest('/auth/guest', {
+    method: 'POST',
+    auth: false
+  });
+
+  saveStoredSession(session);
+  return session.user;
+}
+
 export async function requestPasswordReset(payload) {
   return apiRequest('/auth/forgot-password', {
     method: 'POST',

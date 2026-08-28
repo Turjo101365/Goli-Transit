@@ -12,23 +12,41 @@ const TEXT = {
     title: 'ফিরে স্বাগতম', subtitle: 'রুট প্ল্যানার আর লাইভ ট্র্যাফিক দেখতে সাইন ইন করুন।',
     email: 'ইমেইল', password: 'পাসওয়ার্ড', show: 'দেখাও', hide: 'লুকাও',
     submit: 'সাইন ইন', submitting: 'সাইন ইন হচ্ছে…',
-    noAccount: 'অ্যাকাউন্ট নেই?', create: 'নতুন করুন', forgot: 'পাসওয়ার্ড ভুলে গেছেন?'
+    noAccount: 'অ্যাকাউন্ট নেই?', create: 'নতুন করুন', forgot: 'পাসওয়ার্ড ভুলে গেছেন?',
+    or: 'অথবা', guest: 'জরুরি হলে গেস্ট হিসেবে ঢুকুন', guestBusy: 'ঢোকা হচ্ছে…',
+    guestNote: 'অ্যাকাউন্ট ছাড়াই ৬ ঘণ্টার জন্য — পরে চাইলে সেভ করা যাবে।'
   },
   en: {
     title: 'Welcome back', subtitle: 'Sign in to see your route planner and live traffic.',
     email: 'Email', password: 'Password', show: 'Show', hide: 'Hide',
     submit: 'Sign In', submitting: 'Signing in…',
-    noAccount: "Don't have an account?", create: 'Create one', forgot: 'Forgot password?'
+    noAccount: "Don't have an account?", create: 'Create one', forgot: 'Forgot password?',
+    or: 'or', guest: 'In a hurry? Continue as guest', guestBusy: 'Continuing…',
+    guestNote: 'No account, 6-hour session — you can save it as a real account later.'
   }
 };
 
-export function Login({ onLogin, onSwitchToRegister, onSwitchToForgotPassword }) {
+export function Login({ onLogin, onGuestLogin, onSwitchToRegister, onSwitchToForgotPassword }) {
   const { lang } = useLanguage();
   const t = TEXT[lang];
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGuestSubmitting, setIsGuestSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  async function handleGuestLogin() {
+    setError('');
+    setIsGuestSubmitting(true);
+
+    try {
+      await onGuestLogin();
+    } catch (guestError) {
+      setError(guestError.message || 'Unable to start a guest session.');
+    } finally {
+      setIsGuestSubmitting(false);
+    }
+  }
 
   function handleChange(event) {
     const { name, value } = event.target;
@@ -98,6 +116,25 @@ export function Login({ onLogin, onSwitchToRegister, onSwitchToForgotPassword })
         >
           {isSubmitting ? t.submitting : t.submit}
         </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0' }}>
+          <div className="rule-hair" style={{ flex: 1 }} />
+          <span className="t-label">{t.or}</span>
+          <div className="rule-hair" style={{ flex: 1 }} />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleGuestLogin}
+          disabled={isGuestSubmitting}
+          className="chip"
+          style={{ width: '100%', padding: '11px 0', fontSize: 15, borderColor: 'var(--stamp)', color: 'var(--stamp)' }}
+        >
+          {isGuestSubmitting ? t.guestBusy : t.guest}
+        </button>
+        <p className="t-label" style={{ textAlign: 'center', marginTop: 6, letterSpacing: 'normal' }} lang={lang}>
+          {t.guestNote}
+        </p>
 
         <p style={{ textAlign: 'center', marginTop: 14 }}>
           <button type="button" onClick={onSwitchToForgotPassword} className="t-label" style={{ background: 'none', border: 'none', color: 'var(--c45)', cursor: 'pointer' }}>

@@ -4,15 +4,15 @@ import { createHttpError } from './http-error.js';
 
 const JWT_ALGORITHM = 'HS256';
 
-function getJwtOptions() {
+function getJwtOptions(ttlHours = env.AUTH_TOKEN_TTL_HOURS) {
 	return {
 		algorithm: JWT_ALGORITHM,
-		expiresIn: `${env.AUTH_TOKEN_TTL_HOURS}h`,
+		expiresIn: `${ttlHours}h`,
 		issuer: env.AUTH_JWT_ISSUER
 	};
 }
 
-export function createAuthToken(user) {
+export function createAuthToken(user, { ttlHours } = {}) {
 	return jwt.sign(
 		{
 			name: user.name,
@@ -20,7 +20,7 @@ export function createAuthToken(user) {
 		},
 		env.AUTH_SECRET,
 		{
-			...getJwtOptions(),
+			...getJwtOptions(ttlHours),
 			subject: String(user.id)
 		}
 	);
@@ -28,7 +28,10 @@ export function createAuthToken(user) {
 
 export function verifyAuthToken(token) {
 	try {
-		const payload = jwt.verify(token, env.AUTH_SECRET, getJwtOptions());
+		// jwt.verify reads exp from the token's own claim, so a shorter-TTL
+		// guest token (createAuthToken's ttlHours) verifies exactly the same
+		// way as a normal one — nothing here needs to know which it is.
+		const payload = jwt.verify(token, env.AUTH_SECRET, { algorithms: [JWT_ALGORITHM], issuer: env.AUTH_JWT_ISSUER });
 		if (typeof payload !== 'object' || !payload.sub || !payload.email || !payload.exp) {
 			throw createHttpError(401, 'AUTH_INVALID_TOKEN', 'Authentication token is invalid.');
 		}

@@ -28,6 +28,20 @@ export async function loginController(req, res, next) {
 	}
 }
 
+export async function guestLoginController(req, res, next) {
+	try {
+		const result = await authService.guest();
+
+		return res.status(201).json({
+			ok: true,
+			data: result,
+			requestId: req.id
+		});
+	} catch (error) {
+		return next(error);
+	}
+}
+
 export async function currentUserController(req, res, next) {
 	try {
 		return res.status(200).json({
