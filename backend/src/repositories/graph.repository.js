@@ -2,31 +2,36 @@ import { dbQuery } from '../config/db.js';
 
 export const graphRepository = {
   async getAllNodes() {
-    const rows = await dbQuery('SELECT id, metadata FROM nodes ORDER BY id');
+    const rows = await dbQuery('SELECT id, name_bn, name_en, lat, lng, type FROM nodes ORDER BY id');
     return rows.map((row) => ({
       id: row.id,
-      metadata: row.metadata || {}
+      metadata: {
+        nameBn: row.name_bn,
+        nameEn: row.name_en,
+        lat: Number(row.lat),
+        lng: Number(row.lng),
+        type: row.type
+      }
     }));
   },
 
   async getAllEdges() {
     const rows = await dbQuery(
       [
-        'SELECT from_node_id, to_node_id, mode, base_weight, current_weight, allowed_vehicles',
+        'SELECT from_node, to_node, mode, base_minutes, fare_taka',
         'FROM edges',
-        'ORDER BY from_node_id, to_node_id, mode'
+        'ORDER BY from_node, to_node, mode'
       ].join(' ')
     );
 
     return rows.map((row) => ({
-      from: row.from_node_id,
-      to: row.to_node_id,
+      from: row.from_node,
+      to: row.to_node,
       mode: row.mode,
-      baseWeight: Number(row.base_weight),
-      currentWeight: Number(row.current_weight),
-      allowedVehicles: Array.isArray(row.allowed_vehicles)
-        ? row.allowed_vehicles
-        : JSON.parse(row.allowed_vehicles || '[]')
+      baseWeight: Number(row.base_minutes),
+      currentWeight: Number(row.base_minutes),
+      fareTaka: Number(row.fare_taka),
+      allowedVehicles: [row.mode]
     }));
   },
 
@@ -95,33 +100,12 @@ export const graphRepository = {
     );
   },
 
-  async getRecentDynamicNodes(limit = 10) {
-    const rows = await dbQuery(
-      [
-        'SELECT id, metadata, created_at',
-        'FROM nodes',
-        "WHERE JSON_EXTRACT(metadata, '$.dynamic') = true",
-        "ORDER BY COALESCE(JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.lastUsedAt')), created_at) DESC",
-        'LIMIT :limit'
-      ].join(' '),
-      { limit: Number(limit) }
-    );
+  async getRecentDynamicNodes() {
+    // The new nodes schema (name_bn/name_en/lat/lng/type) has no concept of a
+    // dynamically-geocoded node; that metadata-JSON mechanism belonged to the
+    // old placeholder graph. Callers already fall back to the in-memory graph
+    // cache when this returns empty.
+    return [];
+  },
 
-    return rows.map((row) => {
-      const metadata = row.metadata && typeof row.metadata === 'string'
-        ? JSON.parse(row.metadata)
-        : (row.metadata || {});
-
-      return {
-        nodeId: row.id,
-        label: metadata.displayName || metadata.label || row.id,
-        coordinates: {
-          lat: Number(metadata.latitude ?? metadata.lat),
-          lng: Number(metadata.longitude ?? metadata.lng)
-        },
-        lastUsedAt: metadata.lastUsedAt || null,
-        createdAt: row.created_at || null
-      };
-    }).filter((node) => !Number.isNaN(node.coordinates.lat) && !Number.isNaN(node.coordinates.lng));
-  }
 };

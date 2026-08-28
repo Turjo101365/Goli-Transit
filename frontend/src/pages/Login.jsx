@@ -1,11 +1,30 @@
 import { useState } from 'react';
+import { AuthShell, AuthField, authInputStyle } from '../components/AuthShell.jsx';
+import { useLanguage } from '../state/LanguageContext.jsx';
 
 const initialForm = {
   email: '',
   password: ''
 };
 
+const TEXT = {
+  bn: {
+    title: 'ফিরে স্বাগতম', subtitle: 'রুট প্ল্যানার আর লাইভ ট্র্যাফিক দেখতে সাইন ইন করুন।',
+    email: 'ইমেইল', password: 'পাসওয়ার্ড', show: 'দেখাও', hide: 'লুকাও',
+    submit: 'সাইন ইন', submitting: 'সাইন ইন হচ্ছে…',
+    noAccount: 'অ্যাকাউন্ট নেই?', create: 'নতুন করুন', forgot: 'পাসওয়ার্ড ভুলে গেছেন?'
+  },
+  en: {
+    title: 'Welcome back', subtitle: 'Sign in to see your route planner and live traffic.',
+    email: 'Email', password: 'Password', show: 'Show', hide: 'Hide',
+    submit: 'Sign In', submitting: 'Signing in…',
+    noAccount: "Don't have an account?", create: 'Create one', forgot: 'Forgot password?'
+  }
+};
+
 export function Login({ onLogin, onSwitchToRegister, onSwitchToForgotPassword }) {
+  const { lang } = useLanguage();
+  const t = TEXT[lang];
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -13,10 +32,7 @@ export function Login({ onLogin, onSwitchToRegister, onSwitchToForgotPassword })
 
   function handleChange(event) {
     const { name, value } = event.target;
-    setForm((currentForm) => ({
-      ...currentForm,
-      [name]: value
-    }));
+    setForm((currentForm) => ({ ...currentForm, [name]: value }));
   }
 
   async function handleSubmit(event) {
@@ -34,113 +50,61 @@ export function Login({ onLogin, onSwitchToRegister, onSwitchToForgotPassword })
   }
 
   return (
-    <section className="login-container about-section fade-in">
-      <div className="login-card about-card feature-card card-3d hover-glow">
-
-        <h2 className="section-title neon-glow" style={{fontSize: '1.8rem', marginBottom: '0.5rem', textAlign: 'center'}}>
-          Welcome Back
-        </h2>
-
-        <p style={{color: 'var(--text-secondary)', marginBottom: '2rem', textAlign: 'center'}}>
-          Sign in to access your personalized route planner and real-time traffic updates.
+    <AuthShell
+      title={t.title}
+      subtitle={t.subtitle}
+      footer={
+        <p className="t-body" style={{ textAlign: 'center', marginTop: 16, color: 'var(--c70)' }}>
+          {t.noAccount}{' '}
+          <button type="button" onClick={onSwitchToRegister} style={{ background: 'none', border: 'none', color: 'var(--metro)', cursor: 'pointer', font: 'inherit', textDecoration: 'underline' }}>
+            {t.create}
+          </button>
         </p>
+      }
+    >
+      <form onSubmit={handleSubmit}>
+        <AuthField label={t.email}>
+          <input type="email" name="email" value={form.email} onChange={handleChange} required style={authInputStyle} />
+        </AuthField>
 
-        <form className="auth-form" onSubmit={handleSubmit}>
-
-          {/* EMAIL */}
-          <div className="floating-group">
-            <input
-              type="email"
-              name="email"
-              value={form.email}
-              onChange={handleChange}
-              placeholder=" "
-              required
-            />
-            <label>Email</label>
-          </div>
-
-          {/* PASSWORD */}
-          <div className="floating-group" style={{position: 'relative'}}>
+        <AuthField label={t.password}>
+          <div style={{ position: 'relative' }}>
             <input
               type={showPassword ? 'text' : 'password'}
               name="password"
               value={form.password}
               onChange={handleChange}
-              placeholder=" "
               required
+              style={{ ...authInputStyle, paddingRight: 56 }}
             />
-            <label>Password</label>
-
-            {/* SHOW/HIDE */}
             <button
               type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              style={{
-                position: 'absolute',
-                right: '10px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'none',
-                border: 'none',
-                color: '#00d4aa',
-                cursor: 'pointer',
-                fontSize: '0.8rem'
-              }}
+              onClick={() => setShowPassword((v) => !v)}
+              className="t-label"
+              style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--metro)', cursor: 'pointer' }}
             >
-              {showPassword ? 'Hide' : 'Show'}
+              {showPassword ? t.hide : t.show}
             </button>
           </div>
+        </AuthField>
 
-          {/* ERROR */}
-          {error && (
-            <p className="error-box">
-              {error}
-            </p>
-          )}
+        {error ? <p className="t-body" style={{ color: 'var(--stamp)', marginBottom: 14 }}>{error}</p> : null}
 
-          {/* BUTTON */}
-          <button
-            type="submit"
-            className="primary-btn auth-submit"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <span className="loader-wrap">
-                <span className="loader"></span>
-                Logging in...
-              </span>
-            ) : (
-              'Sign In'
-            )}
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="chip"
+          style={{ width: '100%', padding: '11px 0', fontSize: 15, background: 'var(--cream)', color: 'var(--ground)' }}
+        >
+          {isSubmitting ? t.submitting : t.submit}
+        </button>
+
+        <p style={{ textAlign: 'center', marginTop: 14 }}>
+          <button type="button" onClick={onSwitchToForgotPassword} className="t-label" style={{ background: 'none', border: 'none', color: 'var(--c45)', cursor: 'pointer' }}>
+            {t.forgot}
           </button>
-
-          {/* LINKS */}
-          <div className="auth-links">
-            <p>
-              Don’t have an account?{' '}
-              <button
-                type="button"
-                className="text-btn"
-                onClick={onSwitchToRegister}
-              >
-                Create one
-              </button>
-            </p>
-
-            <p>
-              <button
-                type="button"
-                className="text-btn"
-                onClick={() => onSwitchToForgotPassword(form.email)}
-              >
-                Forgot Password?
-              </button>
-            </p>
-          </div>
-
-        </form>
-      </div>
-    </section>
+        </p>
+      </form>
+    </AuthShell>
   );
 }

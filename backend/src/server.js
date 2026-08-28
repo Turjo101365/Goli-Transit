@@ -23,7 +23,7 @@ async function bootstrap() {
       await runMigrations();
       const existingUsers = await dbQuery('SELECT id FROM users LIMIT 1');
 
-      if (existingUsers.length === 0) {
+      if (existingUsers.length === 0 && env.NODE_ENV !== 'production') {
         await dbQuery(
           [
             'INSERT INTO users (name, email, password, password_hash)',

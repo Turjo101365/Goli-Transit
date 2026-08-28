@@ -1,0 +1,53 @@
+INSERT INTO nodes (id, name_bn, name_en, lat, lng, type) VALUES
+  ('mrt_uttara_north', 'উত্তরা উত্তর', 'Uttara North', 23.8694, 90.3675, 'metro_station'),
+  ('mrt_uttara_center', 'উত্তরা সেন্টার', 'Uttara Center', 23.8598, 90.3651, 'metro_station'),
+  ('mrt_uttara_south', 'উত্তরা দক্ষিণ', 'Uttara South', 23.8456, 90.3631, 'metro_station'),
+  ('mrt_pallabi', 'পল্লবী', 'Pallabi', 23.8262, 90.3642, 'metro_station'),
+  ('mrt_mirpur_11', 'মিরপুর ১১', 'Mirpur 11', 23.8191, 90.3653, 'metro_station'),
+  ('mrt_mirpur_10', 'মিরপুর ১০', 'Mirpur 10', 23.8084, 90.3682, 'metro_station'),
+  ('mrt_kazipara', 'কাজীপাড়া', 'Kazipara', 23.7992, 90.3720, 'metro_station'),
+  ('mrt_shewrapara', 'শেওড়াপাড়া', 'Shewrapara', 23.7909, 90.3755, 'metro_station'),
+  ('mrt_agargaon', 'আগারগাঁও', 'Agargaon', 23.7777, 90.3802, 'metro_station'),
+  ('mrt_bijoy_sarani', 'বিজয় সরণি', 'Bijoy Sarani', 23.7664, 90.3763, 'metro_station'),
+  ('mrt_farmgate', 'ফার্মগেট', 'Farmgate', 23.7602, 90.3865, 'metro_station'),
+  ('mrt_karwan_bazar', 'কাওরান বাজার', 'Karwan Bazar', 23.7513, 90.3927, 'metro_station'),
+  ('mrt_shahbagh', 'শাহবাগ', 'Shahbagh', 23.7395, 90.3960, 'metro_station'),
+  ('mrt_dhaka_university', 'ঢাকা বিশ্ববিদ্যালয়', 'Dhaka University', 23.7319, 90.3965, 'metro_station'),
+  ('mrt_secretariat', 'বাংলাদেশ সচিবালয়', 'Bangladesh Secretariat', 23.7300, 90.4075, 'metro_station'),
+  ('mrt_motijheel', 'মতিঝিল', 'Motijheel', 23.7281, 90.4191, 'metro_station');
+
+-- base_minutes and fare_taka are real DMTCL published values (schedule + fare chart).
+-- fare_taka is the marginal fare for this hop; summed along the line it reproduces
+-- the official cumulative origin-fare for any station pair, since MRT-6 fares are a
+-- monotonic step function along the single line.
+INSERT INTO edges (from_node, to_node, mode, base_minutes, fare_taka) VALUES
+  ('mrt_uttara_north', 'mrt_uttara_center', 'metro', 2, 20),
+  ('mrt_uttara_center', 'mrt_uttara_north', 'metro', 2, 20),
+  ('mrt_uttara_center', 'mrt_uttara_south', 'metro', 2, 0),
+  ('mrt_uttara_south', 'mrt_uttara_center', 'metro', 2, 0),
+  ('mrt_uttara_south', 'mrt_pallabi', 'metro', 3, 10),
+  ('mrt_pallabi', 'mrt_uttara_south', 'metro', 3, 10),
+  ('mrt_pallabi', 'mrt_mirpur_11', 'metro', 2, 0),
+  ('mrt_mirpur_11', 'mrt_pallabi', 'metro', 2, 0),
+  ('mrt_mirpur_11', 'mrt_mirpur_10', 'metro', 2, 10),
+  ('mrt_mirpur_10', 'mrt_mirpur_11', 'metro', 2, 10),
+  ('mrt_mirpur_10', 'mrt_kazipara', 'metro', 2, 0),
+  ('mrt_kazipara', 'mrt_mirpur_10', 'metro', 2, 0),
+  ('mrt_kazipara', 'mrt_shewrapara', 'metro', 2, 10),
+  ('mrt_shewrapara', 'mrt_kazipara', 'metro', 2, 10),
+  ('mrt_shewrapara', 'mrt_agargaon', 'metro', 3, 0),
+  ('mrt_agargaon', 'mrt_shewrapara', 'metro', 3, 0),
+  ('mrt_agargaon', 'mrt_bijoy_sarani', 'metro', 3, 10),
+  ('mrt_bijoy_sarani', 'mrt_agargaon', 'metro', 3, 10),
+  ('mrt_bijoy_sarani', 'mrt_farmgate', 'metro', 3, 10),
+  ('mrt_farmgate', 'mrt_bijoy_sarani', 'metro', 3, 10),
+  ('mrt_farmgate', 'mrt_karwan_bazar', 'metro', 2, 10),
+  ('mrt_karwan_bazar', 'mrt_farmgate', 'metro', 2, 10),
+  ('mrt_karwan_bazar', 'mrt_shahbagh', 'metro', 3, 0),
+  ('mrt_shahbagh', 'mrt_karwan_bazar', 'metro', 3, 0),
+  ('mrt_shahbagh', 'mrt_dhaka_university', 'metro', 2, 10),
+  ('mrt_dhaka_university', 'mrt_shahbagh', 'metro', 2, 10),
+  ('mrt_dhaka_university', 'mrt_secretariat', 'metro', 3, 0),
+  ('mrt_secretariat', 'mrt_dhaka_university', 'metro', 3, 0),
+  ('mrt_secretariat', 'mrt_motijheel', 'metro', 3, 10),
+  ('mrt_motijheel', 'mrt_secretariat', 'metro', 3, 10);

@@ -5,6 +5,7 @@ export class Edge {
 		this.mode = mode;
 		this.baseWeight = baseWeight;
 		this.currentWeight = baseWeight;
+		this.fareTaka = 0;
 		this.allowedVehicles = new Set();
 	}
 

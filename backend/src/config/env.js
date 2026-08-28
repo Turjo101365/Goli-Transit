@@ -33,6 +33,27 @@ function resolveHost(value, nodeEnv) {
 const appName = resolveEnvValue(process.env.APP_NAME, 'Goli-Transit');
 const nodeEnv = process.env.NODE_ENV || 'development';
 
+const DEV_JWT_SECRET_PLACEHOLDERS = new Set([
+	'goli-transit-dev-secret',
+	'change-this-in-production'
+]);
+
+function resolveAuthSecret(nodeEnvValue) {
+	const configuredSecret = process.env.JWT_SECRET || process.env.AUTH_SECRET || '';
+
+	if (nodeEnvValue === 'production') {
+		if (!configuredSecret || DEV_JWT_SECRET_PLACEHOLDERS.has(configuredSecret)) {
+			throw new Error(
+				'JWT_SECRET must be set to a real secret in production (refusing to start with a missing or placeholder value).'
+			);
+		}
+
+		return configuredSecret;
+	}
+
+	return configuredSecret || 'goli-transit-dev-secret';
+}
+
 export const env = {
 	APP_NAME: appName,
 	NODE_ENV: nodeEnv,
@@ -50,7 +71,7 @@ export const env = {
 	REDIS_URL: process.env.REDIS_URL || 'redis://127.0.0.1:6379',
 	REDIS_GRAPH_TTL_SECONDS: toInt(process.env.REDIS_GRAPH_TTL_SECONDS, 3600),
 	REDIS_ROUTE_TTL_SECONDS: toInt(process.env.REDIS_ROUTE_TTL_SECONDS, 600),
-	AUTH_SECRET: process.env.JWT_SECRET || process.env.AUTH_SECRET || 'goli-transit-dev-secret',
+	AUTH_SECRET: resolveAuthSecret(nodeEnv),
 	AUTH_TOKEN_TTL_HOURS: toInt(process.env.AUTH_TOKEN_TTL_HOURS, 168),
 	AUTH_JWT_ISSUER: process.env.AUTH_JWT_ISSUER || appName || 'goli-transit',
 	RESET_TOKEN_TTL_MINUTES: toInt(process.env.RESET_TOKEN_TTL_MINUTES, 30),

@@ -1,0 +1,14 @@
+{
+  "areas": [
+    { "id": "shantinagar", "name_bn": "শান্তিনগর", "name_en": "Shantinagar", "polygon": [] },
+    { "id": "malibagh", "name_bn": "মালিবাগ", "name_en": "Malibagh", "polygon": [] },
+    { "id": "kakrail", "name_bn": "কাকরাইল", "name_en": "Kakrail", "polygon": [] },
+    { "id": "green_road", "name_bn": "গ্রীন রোড", "name_en": "Green Road", "polygon": [] },
+    { "id": "kazipara", "name_bn": "কাজীপাড়া", "name_en": "Kazipara", "polygon": [] },
+    { "id": "shewrapara", "name_bn": "শেওড়াপাড়া", "name_en": "Shewrapara", "polygon": [] },
+    { "id": "badda", "name_bn": "বাড্ডা", "name_en": "Badda", "polygon": [] },
+    { "id": "rampura", "name_bn": "রামপুরা", "name_en": "Rampura", "polygon": [] },
+    { "id": "jatrabari", "name_bn": "যাত্রাবাড়ী", "name_en": "Jatrabari", "polygon": [] },
+    { "id": "nilkhet", "name_bn": "নীলক্ষেত", "name_en": "Nilkhet", "polygon": [] }
+  ]
+}

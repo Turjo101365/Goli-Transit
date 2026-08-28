@@ -1,19 +1,11 @@
 import { z } from 'zod';
-import { modes } from '../constants/modes.js';
 
+// Real coordinates, not place-name strings — POST /route computes options
+// for whatever origin/destination the client sends (dynamicRoute.service.js),
+// so it needs real lat/lng, not a name to look up.
 export const routeValidation = z.object({
-	origin: z.string().trim().min(1),
-	destination: z.string().trim().min(1),
-	preferredModes: z.array(z.enum(modes)).min(1).optional().default(modes),
-	avoidModes: z.array(z.enum(modes)).optional().default([]),
-	vehicleType: z.enum([
-		'pedestrian',
-		'bicycle',
-		'rickshaw',
-		'three-wheeler',
-		'bus',
-		'metro',
-		'motorized',
-		'car'
-	]).optional().nullable().default(null)
+	originLat: z.number().min(-90).max(90),
+	originLng: z.number().min(-180).max(180),
+	destinationLat: z.number().min(-90).max(90),
+	destinationLng: z.number().min(-180).max(180)
 });

@@ -1,0 +1,451 @@
+/* Design tokens — dark, colour-coded ticket-stub visual language.
+   See CLAUDE.md "Design law" (superseded 2026-08-28): tokens live here,
+   never redefined in a component. Per-instance area accents (--a/--b)
+   are set once on a screen's root element, not a design token. */
+
+@font-face {
+  font-family: 'Tiro Bangla';
+  src: url('/fonts/TiroBangla-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Anek Bangla';
+  src: url('/fonts/AnekBangla-Variable.ttf') format('truetype-variations');
+  font-weight: 100 800;
+  font-stretch: 75% 125%;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root{
+  --ground:#151E26;    /* page background */
+  --ground2:#1D2A34;   /* recessed panels, inputs, card fill */
+  --cream:#F4EFE3;     /* text and structural lines on ground */
+  --c70:rgba(244,239,227,.70);
+  --c45:rgba(244,239,227,.45);
+  --c20:rgba(244,239,227,.20);
+  --c10:rgba(244,239,227,.10);
+  --line:rgba(244,239,227,.16);
+  --stamp:#A8382A;
+  --metro:#006747;
+  --head:'Tiro Bangla','Noto Serif Bengali',Georgia,serif;
+  --data:'Anek Bangla','Noto Sans Bengali',system-ui,sans-serif;
+
+  /* Mode colour — fixed across the whole app, independent of area colour. */
+  --mode-walk:#8A94A0;
+  --mode-metro:#006747;
+  --mode-bus:#C7362B;
+  --mode-rickshaw:#E0651F;
+  --mode-bike:#2B4A7A;
+  --mode-cng:#7BA428;
+
+  /* Jam-severity / reliability ramp — fixed, never themed by area colour. */
+  --sev-0:#2E7D4F;
+  --sev-1:#77A32C;
+  --sev-2:#E0B028;
+  --sev-3:#E2712B;
+  --sev-4:#C7362B;
+  --sev-5:#8E2130;
+}
+
+:focus-visible {
+  outline: 2.5px solid var(--stamp);
+  outline-offset: 2px;
+}
+
+/* Type scale */
+
+.t-brand {
+  font-family: var(--head);
+  font-size: 31px;
+  line-height: 0.95;
+}
+
+.t-section {
+  font-family: var(--head);
+  font-size: 17px;
+}
+
+.t-place {
+  font-family: var(--head);
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.t-big {
+  font-family: var(--data);
+  font-weight: 800;
+  font-size: 30px;
+  font-variation-settings: 'wdth' 88;
+}
+
+.t-num {
+  font-family: var(--data);
+  font-weight: 700;
+  font-size: 17.5px;
+  font-variant-numeric: tabular-nums;
+  font-variation-settings: 'wdth' 88;
+}
+
+.t-body {
+  font-family: var(--data);
+  font-weight: 400;
+  font-size: 13.5px;
+}
+
+/* Latin labels only — letter-spacing breaks Bangla conjuncts
+   ("বেরোন" -> "বে রো ন"). Off by default; only lang="en" text gets
+   tracking, so a component that forgets to tag Bangla text can't
+   reintroduce the bug (an allow-list, not a cancel-for-bn rule). */
+.t-label {
+  font-family: var(--data);
+  font-weight: 700;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: normal;
+  color: var(--c45);
+}
+
+.t-label:lang(en) {
+  letter-spacing: .15em;
+}
+
+/* Structural devices */
+
+/* Tear edge. Default (outer card edge) uses --ground, add .perf--inner
+   for internal tears (recessed panels) to swap in --ground2. */
+.perf {
+  --perf-color: var(--ground);
+  height: 9px;
+  background-image: radial-gradient(circle at 6px 50%, var(--perf-color) 4.5px, transparent 5px);
+  background-size: 14px 9px;
+}
+
+.perf--inner {
+  --perf-color: var(--ground2);
+}
+
+.rule-double {
+  border-bottom: 3px double var(--cream);
+}
+
+.rule-hair {
+  border-bottom: 1px solid var(--line);
+}
+
+.rule-solid {
+  border-bottom: 1.5px solid var(--cream);
+}
+
+.stamp {
+  border: 2.5px solid var(--stamp);
+  color: var(--stamp);
+  padding: 8px 18px 10px;
+  transform: rotate(-1.4deg);
+  position: relative;
+}
+
+.stamp::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid var(--stamp);
+  opacity: .55;
+}
+
+.punch {
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  border: 1.5px solid var(--c20);
+}
+
+.punch--selected {
+  background: var(--ground);
+  border-color: var(--cream);
+  box-shadow: inset 1.5px 1.5px 0 rgba(0,0,0,.35);
+  transform: scale(1.06);
+}
+
+/* Mode line styles — for SVG path/polyline stroke props. Line style
+   carries the mode first, colour second (CLAUDE.md "Design law"). */
+
+.mode-walk {
+  stroke: var(--mode-walk);
+  stroke-width: 4;
+  stroke-dasharray: 1 8;
+}
+
+.mode-metro {
+  stroke: var(--metro);
+  stroke-width: 6;
+  stroke-dasharray: none;
+}
+
+.mode-rickshaw {
+  stroke: var(--mode-rickshaw);
+  stroke-width: 5;
+  stroke-dasharray: 11 7;
+}
+
+.mode-bus {
+  stroke: var(--mode-bus);
+  stroke-width: 5;
+  stroke-dasharray: 12 5;
+}
+
+.mode-bike {
+  stroke: var(--mode-bike);
+  stroke-width: 4;
+  stroke-dasharray: 3 3;
+}
+
+.mode-cng {
+  stroke: var(--mode-cng);
+  stroke-width: 4.5;
+  stroke-dasharray: 6 4;
+}
+
+/* Chip — the recurring toggle-button shape (condition, deadline, lang). */
+.chip {
+  font-family: var(--data);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--cream);
+  background: transparent;
+  border: 1.5px solid var(--line);
+  padding: 6px 13px;
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: var(--cream);
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--cream);
+  color: var(--ground);
+  border-color: var(--cream);
+}
+
+/* Panel — a recessed content block on the dark ground. */
+.panel {
+  background: var(--ground2);
+  border: 1.5px solid var(--line);
+}
+
+/* Side rail — decorative, slow-scrolling mode icons filling the empty
+   margins either side of the narrow (mobile-first) content column on wide
+   viewports. Hidden below 1100px, where there is no margin to fill. */
+.side-rail {
+  display: none;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: 72px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.side-rail--left {
+  left: 18px;
+}
+
+.side-rail--right {
+  right: 18px;
+}
+
+.side-rail-track {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 56px;
+  width: 100%;
+  padding: 40px 0;
+}
+
+.side-rail--left .side-rail-track {
+  animation: side-rail-scroll-up 34s linear infinite;
+}
+
+.side-rail--right .side-rail-track {
+  animation: side-rail-scroll-down 40s linear infinite;
+}
+
+@keyframes side-rail-scroll-up {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+
+@keyframes side-rail-scroll-down {
+  from { transform: translateY(-50%); }
+  to { transform: translateY(0); }
+}
+
+@media (min-width: 1100px) {
+  .side-rail {
+    display: block;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .side-rail-track {
+    animation: none !important;
+  }
+}
+
+/* App nav — sticky + glass, sized responsively (mobile-first: tight and
+   compact so three links plus brand plus logout never wrap or clip on a
+   phone; roomier past 640px). */
+.screen-nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  background: rgba(21, 30, 38, 0.55);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border-bottom: 1.5px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.screen-nav-brand {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.screen-nav-links {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.screen-nav-links::-webkit-scrollbar {
+  display: none;
+}
+
+.screen-nav-link {
+  font-family: var(--data);
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.screen-nav-logout {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+@media (min-width: 640px) {
+  .screen-nav {
+    gap: 32px;
+    padding: 16px 28px;
+  }
+
+  .screen-nav-brand {
+    font-size: 24px;
+  }
+
+  .screen-nav-links {
+    gap: 28px;
+  }
+
+  .screen-nav-link {
+    font-size: 16px;
+  }
+
+  .screen-nav-logout {
+    font-size: 14px;
+    padding: 8px 18px;
+  }
+}
+
+/* Page column — mobile-first (this is a commuter's phone app first), but
+   grows on wider viewports instead of sitting fixed-width in empty space.
+   --wrap-max sets the mobile/base width; set it inline per screen (e.g.
+   auth pages use a narrower one than the three main app screens). */
+.page-wrap {
+  --wrap-max: 640px;
+  max-width: var(--wrap-max);
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+@media (min-width: 860px) {
+  .page-wrap {
+    max-width: calc(var(--wrap-max) + 120px);
+  }
+}
+
+@media (min-width: 1300px) {
+  .page-wrap {
+    max-width: calc(var(--wrap-max) + 240px);
+  }
+}
+
+/* Map screen — same mobile-first single column, but a real two-column
+   desktop layout above 900px: picker+ticket on the left, map on the
+   right, instead of everything stacked in one narrow strip. */
+.map-wrap {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+@media (min-width: 900px) {
+  .map-wrap {
+    max-width: 1080px;
+  }
+}
+
+.map-grid {
+  display: grid;
+  grid-template-areas: "endpoints" "map" "ticket";
+  gap: 4px 28px;
+}
+
+.map-grid-endpoints {
+  grid-area: endpoints;
+  min-width: 0;
+}
+
+.map-grid-map {
+  grid-area: map;
+  min-width: 0;
+}
+
+.map-grid-ticket {
+  grid-area: ticket;
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .map-grid {
+    grid-template-columns: minmax(0, 400px) 1fr;
+    grid-template-areas: "endpoints map" "ticket map";
+    align-items: start;
+  }
+}
+
+.map-frame {
+  width: 100%;
+  height: 380px;
+}
+
+@media (min-width: 900px) {
+  .map-frame {
+    height: 640px;
+    position: sticky;
+    top: 88px;
+  }
+}

@@ -175,7 +175,7 @@ cd backend
 npm start
 ```
 
-Backend URL: http://localhost:3001
+Backend URL: http://localhost:8080
 
 ### Frontend Setup
 
@@ -192,7 +192,7 @@ Frontend URL: Vite default (typically http://localhost:5173)
 Create a .env file inside backend and set values as needed:
 
 ```env
-PORT=3001
+PORT=8080
 NODE_ENV=development
 
 DB_ENABLED=false
@@ -222,8 +222,8 @@ docker compose up -d
 ```
 
 Services:
-- MySQL: `127.0.0.1:3307` (root / root123)
-- phpMyAdmin: `http://127.0.0.1:8080`
+- MySQL: `127.0.0.1:3308` (root / root123)
+- phpMyAdmin: `http://127.0.0.1:8081`
 - Redis: `127.0.0.1:6379`
 
 Suggested backend `.env` values for this Docker setup:
@@ -231,7 +231,7 @@ Suggested backend `.env` values for this Docker setup:
 ```env
 DB_ENABLED=true
 DB_HOST=127.0.0.1
-DB_PORT=3307
+DB_PORT=3308
 DB_USER=root
 DB_PASSWORD=root123
 DB_NAME=GoliTransitDB
@@ -240,7 +240,30 @@ REDIS_ENABLED=true
 REDIS_URL=redis://127.0.0.1:6379
 ```
 
-If your backend is also running on port `8080`, change the phpMyAdmin host port in `docker-compose.yml` (for example `8081:80`) to avoid a port conflict.
+## 🚦 Traffic Corridor Polling
+
+`backend/scripts/poll-traffic.js` calls the TomTom Traffic Flow API
+(`flowSegmentData`) once for every row in the `corridors` table and inserts
+the result into `corridor_observations`. Requires `TOMTOM_API_KEY` in
+`backend/.env` (free tier: 2,500 non-tile requests/day).
+
+Run once manually:
+
+```bash
+cd backend
+npm run poll
+```
+
+For continuous baseline collection, run it every 15 minutes via cron:
+
+```cron
+*/15 * * * * cd /path/to/Goli-Transit/backend && npm run poll >> /var/log/furut-poll.log 2>&1
+```
+
+At 15-minute intervals, stay at or under 20 corridors to keep daily calls
+under the 2,000/day safety budget (20 × 96 = 1,920 calls/day). The script
+logs the projected daily call count on every run and warns if it's over
+budget.
 
 ## 🎥 Demo Instructions
 
