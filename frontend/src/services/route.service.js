@@ -10,3 +10,7 @@ export async function createRoute(payload) {
 export async function getRecentDynamicNodes(limit = 10) {
   return apiRequest(`/graph/dynamic-nodes?limit=${encodeURIComponent(limit)}`);
 }
+
+export async function getGraphSnapshot() {
+  return apiRequest('/graph/snapshot');
+}

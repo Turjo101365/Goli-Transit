@@ -191,3 +191,10 @@ export async function ensureDbAvailable() {
 export function getDbStatus() {
 	return { ...status };
 }
+
+export async function closeDb() {
+	if (pool) {
+		await pool.end().catch(() => {});
+		pool = null;
+	}
+}

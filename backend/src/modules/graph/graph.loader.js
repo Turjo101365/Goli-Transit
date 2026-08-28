@@ -21,6 +21,7 @@ function hydrateGraph(nodes, edges) {
     );
 
     edge.currentWeight = Number(edgeRecord.currentWeight);
+    edge.fareTaka = Number(edgeRecord.fareTaka || 0);
     for (const vehicle of edgeRecord.allowedVehicles || []) {
       edge.allowedVehicles.add(vehicle);
     }

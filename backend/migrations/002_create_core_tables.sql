@@ -16,30 +16,43 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 
 CREATE TABLE IF NOT EXISTS nodes (
   id VARCHAR(64) NOT NULL,
-  metadata JSON NULL,
+  name_bn VARCHAR(255) NOT NULL,
+  name_en VARCHAR(255) NOT NULL,
+  lat DECIMAL(10,7) NOT NULL,
+  lng DECIMAL(10,7) NOT NULL,
+  type ENUM('metro_station','bus_stop','landmark') NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS edges (
   id BIGINT NOT NULL AUTO_INCREMENT,
-  from_node_id VARCHAR(64) NOT NULL,
-  to_node_id VARCHAR(64) NOT NULL,
+  from_node VARCHAR(64) NOT NULL,
+  to_node VARCHAR(64) NOT NULL,
   mode VARCHAR(20) NOT NULL,
-  base_weight DECIMAL(10,2) NOT NULL,
-  current_weight DECIMAL(10,2) NOT NULL,
-  allowed_vehicles JSON NULL,
+  base_minutes INT NOT NULL,
+  fare_taka INT NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_edges_from_to_mode (from_node_id, to_node_id, mode),
-  KEY idx_edges_from_node (from_node_id),
-  KEY idx_edges_to_node (to_node_id),
+  UNIQUE KEY uq_edges_from_to_mode (from_node, to_node, mode),
+  KEY idx_edges_from_node (from_node),
+  KEY idx_edges_to_node (to_node),
   KEY idx_edges_mode (mode),
   CONSTRAINT fk_edges_from_node
-    FOREIGN KEY (from_node_id) REFERENCES nodes(id) ON DELETE CASCADE,
+    FOREIGN KEY (from_node) REFERENCES nodes(id) ON DELETE CASCADE,
   CONSTRAINT fk_edges_to_node
-    FOREIGN KEY (to_node_id) REFERENCES nodes(id) ON DELETE CASCADE
+    FOREIGN KEY (to_node) REFERENCES nodes(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS corridors (
+  id VARCHAR(64) NOT NULL,
+  name_bn VARCHAR(255) NOT NULL,
+  name_en VARCHAR(255) NOT NULL,
+  polyline JSON NOT NULL,
+  length_m INT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS trips (
@@ -107,8 +120,8 @@ CREATE TABLE IF NOT EXISTS anomalies (
 CREATE TABLE IF NOT EXISTS anomaly_edges (
   id BIGINT NOT NULL AUTO_INCREMENT,
   anomaly_id BIGINT NOT NULL,
-  from_node_id VARCHAR(64) NOT NULL,
-  to_node_id VARCHAR(64) NOT NULL,
+  from_node VARCHAR(64) NOT NULL,
+  to_node VARCHAR(64) NOT NULL,
   mode VARCHAR(20) NOT NULL,
   multiplier DECIMAL(10,2) NOT NULL,
   updated_weight DECIMAL(10,2) NOT NULL,
@@ -118,6 +131,6 @@ CREATE TABLE IF NOT EXISTS anomaly_edges (
   CONSTRAINT fk_anomaly_edges_anomaly
     FOREIGN KEY (anomaly_id) REFERENCES anomalies(id) ON DELETE CASCADE,
   CONSTRAINT fk_anomaly_edges_edge
-    FOREIGN KEY (from_node_id, to_node_id, mode)
-    REFERENCES edges(from_node_id, to_node_id, mode) ON DELETE CASCADE
+    FOREIGN KEY (from_node, to_node, mode)
+    REFERENCES edges(from_node, to_node, mode) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
