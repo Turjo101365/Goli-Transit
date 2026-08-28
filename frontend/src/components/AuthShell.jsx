@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import '../styles/tokens.css';
 import { useLanguage } from '../state/LanguageContext.jsx';
+import { ThemeToggle } from './ThemeToggle.jsx';
 
 const BRAND = 'ফুরুৎ';
 
@@ -45,9 +46,12 @@ export function AuthShell({ title, subtitle, children, footer }) {
         <header style={{ display: 'flex', alignItems: 'baseline', gap: 12, padding: '18px 0 6px' }}>
           <Link to="/" className="t-brand" style={{ color: 'var(--cream)', textDecoration: 'none' }}>{BRAND}</Link>
           <p className="t-label" lang={lang} style={{ margin: 0 }}>{t.tag}</p>
-          <button type="button" className="chip" style={{ marginLeft: 'auto' }} onClick={toggleLang}>
-            {lang === 'bn' ? 'English' : 'বাংলা'}
-          </button>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+            <ThemeToggle />
+            <button type="button" className="chip" onClick={toggleLang}>
+              {lang === 'bn' ? 'English' : 'বাংলা'}
+            </button>
+          </div>
         </header>
 
         <div className="panel" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', margin: '14px 0 22px' }}>

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
 	currentUserController,
 	forgotPasswordController,
+	guestLoginController,
 	loginController,
 	registerController,
 	sendResetCodeController,
@@ -28,6 +29,7 @@ const authAttemptLimiter = rateLimitMiddleware({
 	message: 'Too many attempts. Please wait a few minutes and try again.'
 });
 
+authRoutes.post('/guest', authAttemptLimiter, guestLoginController);
 authRoutes.post('/register', authAttemptLimiter, validationMiddleware(registerValidation), registerController);
 authRoutes.post('/login', authAttemptLimiter, validationMiddleware(loginValidation), loginController);
 authRoutes.post('/forgot-password', authAttemptLimiter, validationMiddleware(forgotPasswordValidation), forgotPasswordController);

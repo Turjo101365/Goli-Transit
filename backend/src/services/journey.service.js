@@ -1,6 +1,6 @@
 import { ensureGraphCache } from '../cache/graph.cache.js';
 import { getCondition } from './weatherService.js';
-import { getModeState } from '../core/modeMatrix.js';
+import { getModeState, combineCondition } from '../core/modeMatrix.js';
 import { metroPath, nodeCoords } from '../core/algorithms/metroPath.js';
 import { distance } from '../utils/distance.js';
 import { config } from '../constants/config.js';
@@ -20,16 +20,6 @@ const {
 // userId -> ms timestamp of the last alert sent. In-memory, per-process —
 // same tradeoff as the existing OTP session store in auth.service.js.
 const lastAlertAtByUser = new Map();
-
-// weatherService.getCondition() returns 'clear' | 'rain' | 'heavy_rain';
-// modeMatrix's CONDITIONS are 'clear' | 'jam' | 'rain' (no heavy_rain tier —
-// the mode matrix rules never distinguished one). 'jam' has no real detector
-// yet: that needs corridor_observations (current vs free-flow speed), which
-// is empty until corridors are seeded and polled. So 'jam' is unreachable
-// here for now — flagging rather than inventing a fake jam heuristic.
-function toModeMatrixCondition(weatherCondition) {
-	return weatherCondition === 'heavy_rain' ? 'rain' : weatherCondition;
-}
 
 function effectiveSpeedKmh(mode, state) {
 	const baseline = MODE_SPEED_KMH[mode] ?? WALKING_SPEED_KMH;
@@ -93,7 +83,10 @@ export async function evaluateJourney({ userId, lat, lng, currentMode, destinati
 		throw createHttpError(404, errors.GRAPH_NODE_NOT_FOUND, `Destination node has no coordinates: ${destinationNodeId}`);
 	}
 
-	const condition = toModeMatrixCondition(await getCondition());
+	// Live weather (rain, directly observed) combined with the real
+	// school/office/Jummah peak schedule (see modeMatrix.js combineCondition) —
+	// rain takes precedence when both could apply.
+	const condition = combineCondition(await getCondition(), now);
 	const currentPos = { lat, lng };
 	const distanceToDestinationKm = distance(currentPos, destinationCoords);
 

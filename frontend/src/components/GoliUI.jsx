@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import '../styles/tokens.css';
 import { useLanguage } from '../state/LanguageContext.jsx';
-import { createRoute } from '../services/route.service.js';
+import { createRoute, getGraphSnapshot } from '../services/route.service.js';
 import { getModeStates } from '../services/modes.service.js';
+import { getCondition } from '../services/condition.service.js';
 import { modeLabel } from '../utils/modes.js';
+import { LocationSearchField } from './LocationSearchField.jsx';
+import { useTrip } from '../state/TripContext.jsx';
 
 const BRAND = 'ফুরুৎ';
 
@@ -54,8 +57,11 @@ function StadiumMotif() {
   );
 }
 
+const DEFAULT_ORIGIN = { lat: 23.8084, lng: 90.3682, label: 'মিরপুর ১০ / Mirpur 10' };
+const DEFAULT_DESTINATION = { lat: 23.7281, lng: 90.4191, label: 'মতিঝিল / Motijheel' };
+
 export function GoliUI() {
-  const { lang, toggleLang } = useLanguage();
+  const { lang } = useLanguage();
   const t = TEXT[lang];
 
   const [condition, setCondition] = useState('clear');
@@ -65,6 +71,49 @@ export function GoliUI() {
   const [selectedLegIndex, setSelectedLegIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [stations, setStations] = useState([]);
+  // Shared with Map and Live (TripContext) — a point picked there shows up
+  // here too. Falls back to the Mirpur10->Motijheel default only when
+  // nothing has been picked anywhere yet.
+  const { origin: sharedOrigin, setOrigin, destination: sharedDestination, setDestination } = useTrip();
+  const origin = sharedOrigin || DEFAULT_ORIGIN;
+  const destination = sharedDestination || DEFAULT_DESTINATION;
+  const userChangedConditionRef = useRef(false);
+
+  useEffect(() => {
+    getGraphSnapshot()
+      .then((snapshot) => {
+        const list = (snapshot.nodes || [])
+          .filter((node) => node.metadata?.type === 'metro_station')
+          .map((node) => ({
+            id: node.id,
+            nameBn: node.metadata.nameBn,
+            nameEn: node.metadata.nameEn,
+            lat: node.metadata.lat,
+            lng: node.metadata.lng
+          }));
+        setStations(list);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Real auto-detected condition (live weather + the school/office/Jummah
+  // peak schedule) as the default, unless the rider already picked a
+  // condition chip themselves.
+  useEffect(() => {
+    getCondition()
+      .then((data) => {
+        if (!userChangedConditionRef.current) {
+          setCondition(data.trafficCondition);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  function handleConditionPick(id) {
+    userChangedConditionRef.current = true;
+    setCondition(id);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -72,10 +121,9 @@ export function GoliUI() {
     setError(null);
 
     Promise.all([
-      // Real Mirpur 10 / Motijheel coordinates (same as routeOptions used to
-      // hardcode) — /route now computes options dynamically from these,
-      // rather than returning a frozen dataset.
-      createRoute({ originLat: 23.8084, originLng: 90.3682, destinationLat: 23.7281, destinationLng: 90.4191 }),
+      // /route computes options dynamically from whatever origin/destination
+      // is picked below — Mirpur 10 -> Motijheel is only the initial default.
+      createRoute({ originLat: origin.lat, originLng: origin.lng, destinationLat: destination.lat, destinationLng: destination.lng }),
       getModeStates(condition)
     ])
       .then(([routeResult, modesResult]) => {
@@ -105,7 +153,7 @@ export function GoliUI() {
     return () => {
       cancelled = true;
     };
-  }, [condition]);
+  }, [condition, origin.lat, origin.lng, destination.lat, destination.lng]);
 
   const selectedOption = options.find((entry) => entry.id === selectedOptionId);
   const totalMinutes = selectedOption ? selectedOption.segments.reduce((sum, seg) => sum + seg.min, 0) : 0;
@@ -129,14 +177,30 @@ export function GoliUI() {
         <header style={{ display: 'flex', alignItems: 'baseline', gap: 12, padding: '18px 0 20px' }}>
           <h1 className="t-brand">{BRAND}</h1>
           <p className="t-label" lang={lang} style={{ margin: 0 }}>{t.screenName}</p>
-          <button type="button" className="chip" style={{ marginLeft: 'auto' }} onClick={toggleLang}>
-            {lang === 'bn' ? 'English' : 'বাংলা'}
-          </button>
         </header>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginBottom: 16 }}>
+          <LocationSearchField
+            label={t.fromLabel}
+            placeholder={t.searchPlaceholder}
+            stations={stations}
+            value={origin.label ? origin : null}
+            onSelect={(point) => setOrigin(point)}
+            lang={lang}
+          />
+          <LocationSearchField
+            label={t.toLabel}
+            placeholder={t.searchPlaceholder}
+            stations={stations}
+            value={destination.label ? destination : null}
+            onSelect={(point) => setDestination(point)}
+            lang={lang}
+          />
+        </div>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 22, flexWrap: 'wrap' }}>
           {CONDITIONS.map((entry) => (
-            <button key={entry.id} type="button" className="chip" aria-pressed={condition === entry.id} onClick={() => setCondition(entry.id)}>
+            <button key={entry.id} type="button" className="chip" aria-pressed={condition === entry.id} onClick={() => handleConditionPick(entry.id)}>
               {lang === 'bn' ? entry.bn : entry.en}
             </button>
           ))}
@@ -155,10 +219,12 @@ export function GoliUI() {
               </div>
               <div className="t-label" style={{ color: 'var(--cream)', opacity: 0.8 }}>{t.onRoute}</div>
               <div className="t-brand" style={{ fontSize: 'clamp(28px,6vw,40px)', margin: '4px 0 3px', position: 'relative' }}>
-                {lang === 'bn' ? ORIGIN_AREA.bn : ORIGIN_AREA.en}
+                {origin.label || (lang === 'bn' ? ORIGIN_AREA.bn : ORIGIN_AREA.en)}
               </div>
               <p className="t-body" style={{ color: 'var(--cream)', opacity: 0.85, marginBottom: 16 }}>
-                {lang === 'bn' ? ORIGIN_AREA.noteBn : ORIGIN_AREA.noteEn}
+                {origin.label
+                  ? `${t.toWord} ${destination.label || '…'}`
+                  : (lang === 'bn' ? ORIGIN_AREA.noteBn : ORIGIN_AREA.noteEn)}
               </p>
               <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
                 {options.map((option) => {
@@ -292,11 +358,13 @@ const TEXT = {
   bn: {
     screenName: 'জ্যাম বেল্ট',
     onRoute: 'রুটের শুরু', total: 'মোট সময়', fare: 'ভাড়া', min: 'মিনিট',
-    belt: 'ধাপের বেল্ট', fareVaries: 'ভাড়া পরিবর্তনশীল'
+    belt: 'ধাপের বেল্ট', fareVaries: 'ভাড়া পরিবর্তনশীল',
+    fromLabel: 'কোথা থেকে', toLabel: 'কোথায় যাবেন', searchPlaceholder: 'জায়গার নাম লিখুন', toWord: '→'
   },
   en: {
     screenName: 'Jam Belt',
     onRoute: 'Route starts at', total: 'Total', fare: 'Fare', min: 'min',
-    belt: 'Leg belt', fareVaries: 'Fare varies'
+    belt: 'Leg belt', fareVaries: 'Fare varies',
+    fromLabel: 'From', toLabel: 'To', searchPlaceholder: 'Type a place name', toWord: '→'
   }
 };

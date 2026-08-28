@@ -1,11 +1,27 @@
 // Pure mode-condition matrix. No DB access, no I/O. Rules from docs/PROPOSAL.md
 // section 4 plus the metro service-window rules (§4, "Service-window rules").
 
+import { WEEKDAY_PEAK_WINDOWS, FRIDAY_PEAK_WINDOW } from '../constants/trafficSchedule.js';
+
 export const MODES = ['walk', 'metro', 'bus', 'rickshaw', 'bike', 'cng'];
 export const CONDITIONS = ['clear', 'jam', 'rain'];
 
-const METRO_LATE_CLOSE_HOUR = 20;
-const METRO_LATE_CLOSE_MINUTE = 50;
+// Metro operating hours. Two independently-sourced closing checkpoints are
+// kept distinct rather than one replacing the other (2026-08-29): 8:50 PM
+// is when ticket counters stop selling; 9:00 PM is when the station closes
+// to the general public; 10:00 PM is full closure, after which even a
+// Rapid Pass / MRT Pass holder cannot enter. There is no "holds a pass"
+// attribute anywhere in this app, so the 9-10 PM window is reported as
+// degraded (not fully closed) with the exception named in the reason,
+// rather than tracking who actually has one.
+const METRO_MORNING_OPEN_HOUR = 6;
+const METRO_MORNING_OPEN_MINUTE = 30;
+const METRO_TICKET_COUNTER_CLOSE_HOUR = 20;
+const METRO_TICKET_COUNTER_CLOSE_MINUTE = 50;
+const METRO_PUBLIC_CLOSE_HOUR = 21;
+const METRO_PUBLIC_CLOSE_MINUTE = 0;
+const METRO_PASS_HOLDER_CLOSE_HOUR = 22;
+const METRO_PASS_HOLDER_CLOSE_MINUTE = 0;
 const METRO_FRIDAY_OPEN_HOUR = 15;
 const METRO_FRIDAY_OPEN_MINUTE = 30;
 const FRIDAY_WEEKDAY_INDEX = 5; // Intl weekday index: Sun=0 .. Sat=6
@@ -43,7 +59,7 @@ const MATRIX = {
 	}
 };
 
-function dhakaParts(timestamp) {
+export function dhakaParts(timestamp) {
 	const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
 	const formatter = new Intl.DateTimeFormat('en-US', {
 		timeZone: 'Asia/Dhaka',
@@ -67,19 +83,20 @@ function metroServiceWindowOverride(timestamp) {
 	const { weekdayIndex, hour, minute } = dhakaParts(timestamp);
 	const minutesSinceMidnight = hour * 60 + minute;
 
-	const closesLate = minutesSinceMidnight >= METRO_LATE_CLOSE_HOUR * 60 + METRO_LATE_CLOSE_MINUTE;
-	if (closesLate) {
+	// Overnight, every day: no trains — engineering trains and staff run
+	// track maintenance and safety checks in this window.
+	const morningOpenMinutes = METRO_MORNING_OPEN_HOUR * 60 + METRO_MORNING_OPEN_MINUTE;
+	if (minutesSinceMidnight < morningOpenMinutes) {
 		return {
 			state: 2,
 			fareMultiplier: 1,
-			reason: { bn: 'কাউন্টার বন্ধ (রাত ৮:৫০ এর পর)', en: 'Ticket counters closed (after 8:50 PM)' }
+			reason: { bn: 'মধ্যরাতের পর কোনো ট্রেন নেই — রক্ষণাবেক্ষণ চলছে', en: 'No trains after midnight — maintenance in progress' }
 		};
 	}
 
-	const isFridayBeforeOpening =
-		weekdayIndex === FRIDAY_WEEKDAY_INDEX &&
-		minutesSinceMidnight < METRO_FRIDAY_OPEN_HOUR * 60 + METRO_FRIDAY_OPEN_MINUTE;
-	if (isFridayBeforeOpening) {
+	// Friday only: normal hours don't start until the afternoon.
+	const fridayOpenMinutes = METRO_FRIDAY_OPEN_HOUR * 60 + METRO_FRIDAY_OPEN_MINUTE;
+	if (weekdayIndex === FRIDAY_WEEKDAY_INDEX && minutesSinceMidnight < fridayOpenMinutes) {
 		return {
 			state: 2,
 			fareMultiplier: 1,
@@ -87,7 +104,79 @@ function metroServiceWindowOverride(timestamp) {
 		};
 	}
 
+	// 10 PM onward: fully closed, even to pass holders.
+	const passHolderCloseMinutes = METRO_PASS_HOLDER_CLOSE_HOUR * 60 + METRO_PASS_HOLDER_CLOSE_MINUTE;
+	if (minutesSinceMidnight >= passHolderCloseMinutes) {
+		return {
+			state: 2,
+			fareMultiplier: 1,
+			reason: { bn: 'রাত ১০টার পর স্টেশন সম্পূর্ণ বন্ধ', en: 'Station fully closed after 10 PM' }
+		};
+	}
+
+	// 9-10 PM: closed to the general public, but a Rapid Pass / MRT Pass
+	// holder can still get in — reported as degraded, not fully closed,
+	// since this app has no way to know which one a given rider holds.
+	const publicCloseMinutes = METRO_PUBLIC_CLOSE_HOUR * 60 + METRO_PUBLIC_CLOSE_MINUTE;
+	if (minutesSinceMidnight >= publicCloseMinutes) {
+		return {
+			state: 1,
+			fareMultiplier: 1,
+			reason: {
+				bn: 'সাধারণ যাত্রীদের জন্য বন্ধ — র‍্যাপিড/এমআরটি পাস থাকলে রাত ১০টা পর্যন্ত চলবে',
+				en: 'Closed to general ticket buyers — still usable until 10 PM with a Rapid Pass or MRT Pass'
+			}
+		};
+	}
+
+	// 8:50-9 PM: ticket counters have stopped selling; station closes soon.
+	const ticketCounterCloseMinutes = METRO_TICKET_COUNTER_CLOSE_HOUR * 60 + METRO_TICKET_COUNTER_CLOSE_MINUTE;
+	if (minutesSinceMidnight >= ticketCounterCloseMinutes) {
+		return {
+			state: 1,
+			fareMultiplier: 1,
+			reason: { bn: 'টিকিট কাউন্টার বন্ধ, স্টেশন শীঘ্রই বন্ধ হবে', en: 'Ticket counters closed, station closing soon' }
+		};
+	}
+
 	return null;
+}
+
+// Real, schedule-based jam detection — school/office shift changes and
+// Friday Jummah (see constants/trafficSchedule.js for sourcing/reasoning).
+// Same epistemic status as metroServiceWindowOverride above: a known
+// schedule, not sensor data. Returns 'jam' or null (no override), never
+// invents a jam outside these windows.
+export function getAutoCondition(timestamp) {
+	const { weekdayIndex, hour, minute } = dhakaParts(timestamp);
+	const minutesSinceMidnight = hour * 60 + minute;
+
+	const SATURDAY_WEEKDAY_INDEX = 6;
+	if (weekdayIndex === SATURDAY_WEEKDAY_INDEX) {
+		return null; // weekend — no institutional shift pattern
+	}
+
+	if (weekdayIndex === FRIDAY_WEEKDAY_INDEX) {
+		const { start, end } = FRIDAY_PEAK_WINDOW;
+		return minutesSinceMidnight >= start && minutesSinceMidnight < end ? 'jam' : null;
+	}
+
+	const active = WEEKDAY_PEAK_WINDOWS.find(
+		(window) => minutesSinceMidnight >= window.start && minutesSinceMidnight < window.end
+	);
+	return active ? 'jam' : null;
+}
+
+// Combines a live-observed weather condition with the schedule-based jam
+// guess. Rain is directly observed in real time and its per-mode rules are
+// already at least as severe as jam's, so it takes precedence; the jam
+// schedule only applies when it isn't raining.
+export function combineCondition(weatherCondition, timestamp) {
+	if (weatherCondition === 'rain' || weatherCondition === 'heavy_rain') {
+		return 'rain';
+	}
+
+	return getAutoCondition(timestamp) || 'clear';
 }
 
 export function getModeState(mode, condition, timestamp) {

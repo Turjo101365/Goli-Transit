@@ -35,8 +35,17 @@ Zod validation, Winston logging. React + Vite + Leaflet frontend.
   value is missing, stop and ask me for it.
 
 ## Current state
-The graph uses placeholder nodes A/B/C with invented weights. It is being
-replaced with real Dhaka data. Do not build anything on top of it.
+The invented placeholder graph (fictional bus/bike/walk nodes with
+hand-picked edge weights) has been removed — `graphBuilder()` now returns
+an empty graph, used only as an honest fallback when the database has no
+graph data yet. Real data that exists and is wired in: the 16 real MRT-6
+metro stations and real per-station fares/schedule (migrations 003/004),
+real BRTA bus fare and CNG fare formulas, real OSRM road-snapped distance
+per mode. Still missing, not invented: real Dhaka bus route/stop data
+(GTFS-style if it exists, otherwise a manually compiled BRTA/DTCA route
+list) — bus legs today use real road distance (OSRM) and a real fare
+formula, but not a real bus route/stop graph, since none exists yet. Do
+not invent one — ask for the real data or leave the gap as is.
 
 ## Design law — do not redesign
 

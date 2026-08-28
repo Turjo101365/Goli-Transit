@@ -51,9 +51,39 @@
   --sev-5:#8E2130;
 }
 
+/* Light mode — the original pale ticket-stub palette, restored as a toggle
+   rather than the only option. Ground/text swap; mode colours, stamp red
+   and metro green are brand colours and stay the same in both themes.
+   Explicit [data-theme] only — ThemeContext always sets one before first
+   paint, so no prefers-color-scheme fallback is needed here. */
+:root[data-theme="light"]{
+  --ground:#E9EDDC;
+  --ground2:#DFE4CE;
+  --cream:#22261B;
+  --c70:rgba(34,38,27,.70);
+  --c45:rgba(34,38,27,.45);
+  --c20:rgba(34,38,27,.20);
+  --c10:rgba(34,38,27,.10);
+  --line:rgba(34,38,27,.16);
+}
+
 :focus-visible {
   outline: 2.5px solid var(--stamp);
   outline-offset: 2px;
+}
+
+/* Theme switch — every colour token repaints smoothly instead of snapping
+   between light and dark. Scoped to colour properties only (never
+   transform/opacity) so it can't fight the side-rail marquee or the punch
+   micro-interaction, which have their own timing below. */
+*, *::before, *::after {
+  transition: background-color .28s ease, color .28s ease, border-color .28s ease, box-shadow .28s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition: none !important;
+  }
 }
 
 /* Type scale */
@@ -161,6 +191,7 @@
   height: 19px;
   border-radius: 50%;
   border: 1.5px solid var(--c20);
+  transition: background-color .2s ease, border-color .2s ease, box-shadow .2s ease, transform .2s cubic-bezier(.34,1.56,.64,1);
 }
 
 .punch--selected {
@@ -219,10 +250,16 @@
   border: 1.5px solid var(--line);
   padding: 6px 13px;
   cursor: pointer;
+  transition: background-color .2s ease, color .2s ease, border-color .2s ease, transform .15s ease;
 }
 
 .chip:hover {
   border-color: var(--cream);
+  transform: translateY(-1px);
+}
+
+.chip:active {
+  transform: translateY(0);
 }
 
 .chip[aria-pressed="true"] {
@@ -249,6 +286,10 @@
   overflow: hidden;
   pointer-events: none;
   z-index: 0;
+  /* Fade the top/bottom 12% instead of hard-cutting icons at the
+     viewport edge — the difference between a marquee and a rail. */
+  mask-image: linear-gradient(to bottom, transparent, black 12%, black 88%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 12%, black 88%, transparent);
 }
 
 .side-rail--left {
@@ -266,14 +307,19 @@
   gap: 56px;
   width: 100%;
   padding: 40px 0;
+  will-change: transform;
 }
 
 .side-rail--left .side-rail-track {
-  animation: side-rail-scroll-up 34s linear infinite;
+  animation: side-rail-scroll-up 52s linear infinite;
 }
 
 .side-rail--right .side-rail-track {
-  animation: side-rail-scroll-down 40s linear infinite;
+  animation: side-rail-scroll-down 60s linear infinite;
+}
+
+.side-rail-track > span {
+  transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 @keyframes side-rail-scroll-up {
@@ -390,6 +436,38 @@
 @media (min-width: 1300px) {
   .page-wrap {
     max-width: calc(var(--wrap-max) + 240px);
+  }
+}
+
+/* Hero split — the headline/pitch and the proof (the two time-comparison
+   stubs) sit stacked on mobile, but side by side above 1024px instead of
+   the stubs just trailing along under a lone narrow text column. */
+.hero-split {
+  display: block;
+}
+
+@media (min-width: 1024px) {
+  .hero-split {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 44px;
+    align-items: start;
+  }
+}
+
+/* Responsive list — repeating rows (feature items, rain-impact rows,
+   schedule rows, the status ledger) stack on mobile but flow into
+   however many columns fit above 860px, instead of one tall column with
+   huge empty margins either side on a wide screen. */
+.responsive-list {
+  display: block;
+}
+
+@media (min-width: 860px) {
+  .responsive-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    column-gap: 32px;
   }
 }
 
