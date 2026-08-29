@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import { OAuth2Client } from 'google-auth-library';
 import { randomBytes } from 'node:crypto';
 import { ensureDbAvailable } from '../config/db.js';
 import { env } from '../config/env.js';
@@ -24,6 +25,36 @@ let memoryUserSequence = 1;
 const guestUsersById = new Map();
 const GUEST_SESSION_TTL_HOURS = 6;
 const GUEST_EMAIL_DOMAIN = 'guest.furut.local';
+
+const googleClient = env.GOOGLE_CLIENT_ID ? new OAuth2Client(env.GOOGLE_CLIENT_ID) : null;
+
+// Verifies the ID token's signature, audience and expiry against Google's
+// own public keys — never trust a client-supplied credential without this.
+async function verifyGoogleCredential(credential) {
+	if (!googleClient) {
+		throw createHttpError(500, 'AUTH_GOOGLE_NOT_CONFIGURED', 'Google sign-in is not configured on this server.');
+	}
+
+	let ticket;
+	try {
+		ticket = await googleClient.verifyIdToken({
+			idToken: credential,
+			audience: env.GOOGLE_CLIENT_ID
+		});
+	} catch {
+		throw createHttpError(401, 'AUTH_GOOGLE_INVALID', 'Google sign-in could not be verified.');
+	}
+
+	const payload = ticket.getPayload();
+	if (!payload?.email || !payload.email_verified) {
+		throw createHttpError(401, 'AUTH_GOOGLE_UNVERIFIED_EMAIL', 'Your Google account email is not verified.');
+	}
+
+	return {
+		email: normalizeEmail(payload.email),
+		name: payload.name || payload.email.split('@')[0]
+	};
+}
 
 function normalizeEmail(email) {
 	return String(email || '').trim().toLowerCase();
@@ -236,6 +267,37 @@ export const authService = {
 	async guest() {
 		const user = createGuestUser();
 		return createSessionResponse(user, { ttlHours: GUEST_SESSION_TTL_HOURS });
+	},
+
+	// Same account as email/password login when the emails match — Google
+	// sign-in isn't a separate identity, it's just another way into the same
+	// user row. A brand-new Google email creates one with no password_hash,
+	// same as any account that hasn't set a local password.
+	async googleLogin(payload) {
+		const { email, name } = await verifyGoogleCredential(payload.credential);
+		const dbAvailable = await hasLiveDatabase();
+
+		if (dbAvailable) {
+			const existingUser = await userRepository.findByEmail(email);
+			if (existingUser) {
+				return createSessionResponse(existingUser);
+			}
+
+			const user = await userRepository.createUser({ name, email, passwordHash: null });
+			if (!user) {
+				throw createHttpError(500, 'AUTH_GOOGLE_LOGIN_FAILED', 'Unable to sign in with Google right now.');
+			}
+
+			return createSessionResponse(user);
+		}
+
+		const existingMemoryUser = findMemoryUserByEmail(email);
+		if (existingMemoryUser) {
+			return createSessionResponse(existingMemoryUser);
+		}
+
+		const user = createMemoryUser({ name, email, passwordHash: null });
+		return createSessionResponse(user);
 	},
 
 	async getCurrentUser(token) {

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
 	currentUserController,
 	forgotPasswordController,
+	googleLoginController,
 	guestLoginController,
 	loginController,
 	registerController,
@@ -14,6 +15,7 @@ import { validationMiddleware } from '../middlewares/validation.middleware.js';
 import { rateLimitMiddleware } from '../middlewares/rate-limit.middleware.js';
 import {
 	forgotPasswordValidation,
+	googleLoginValidation,
 	loginValidation,
 	registerValidation,
 	sendResetCodeValidation,
@@ -30,6 +32,7 @@ const authAttemptLimiter = rateLimitMiddleware({
 });
 
 authRoutes.post('/guest', authAttemptLimiter, guestLoginController);
+authRoutes.post('/google', authAttemptLimiter, validationMiddleware(googleLoginValidation), googleLoginController);
 authRoutes.post('/register', authAttemptLimiter, validationMiddleware(registerValidation), registerController);
 authRoutes.post('/login', authAttemptLimiter, validationMiddleware(loginValidation), loginController);
 authRoutes.post('/forgot-password', authAttemptLimiter, validationMiddleware(forgotPasswordValidation), forgotPasswordController);

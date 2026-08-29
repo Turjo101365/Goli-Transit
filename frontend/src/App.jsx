@@ -18,6 +18,7 @@ import {
   getCurrentUser,
   loginAsGuest,
   loginUser,
+  loginWithGoogle,
   logoutUser,
   registerUser,
   resetUserPassword,
@@ -37,7 +38,7 @@ function RequireAuth({ authUser, children }) {
   return children;
 }
 
-function LoginRoute({ onLogin, onGuestLogin }) {
+function LoginRoute({ onLogin, onGuestLogin, onGoogleLogin }) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -51,10 +52,16 @@ function LoginRoute({ onLogin, onGuestLogin }) {
     navigate(location.state?.from?.pathname || '/map', { replace: true });
   }
 
+  async function handleGoogleLogin(credential) {
+    await onGoogleLogin(credential);
+    navigate(location.state?.from?.pathname || '/map', { replace: true });
+  }
+
   return (
     <Login
       onLogin={handleLogin}
       onGuestLogin={handleGuestLogin}
+      onGoogleLogin={handleGoogleLogin}
       onSwitchToRegister={() => navigate('/register')}
       onSwitchToForgotPassword={() => navigate('/forgot-password')}
     />
@@ -76,6 +83,7 @@ function AppRoutes({
   authUser,
   onLogin,
   onGuestLogin,
+  onGoogleLogin,
   onRegister,
   onForgotPassword,
   onResendCode,
@@ -87,7 +95,7 @@ function AppRoutes({
 
   return (
     <Routes>
-      <Route path="/login" element={<LoginRoute onLogin={onLogin} onGuestLogin={onGuestLogin} />} />
+      <Route path="/login" element={<LoginRoute onLogin={onLogin} onGuestLogin={onGuestLogin} onGoogleLogin={onGoogleLogin} />} />
       <Route path="/register" element={<RegisterRoute onRegister={onRegister} />} />
       <Route
         path="/forgot-password"
@@ -215,6 +223,11 @@ function AppShell() {
     setAuthUser(user);
   }
 
+  async function handleGoogleLogin(credential) {
+    const user = await loginWithGoogle(credential);
+    setAuthUser(user);
+  }
+
   async function handleRegister(payload) {
     const user = await registerUser(payload);
     setAuthUser(user);
@@ -250,6 +263,7 @@ function AppShell() {
         authUser={authUser}
         onLogin={handleLogin}
         onGuestLogin={handleGuestLogin}
+        onGoogleLogin={handleGoogleLogin}
         onRegister={handleRegister}
         onForgotPassword={sendResetCode}
         onResendCode={sendResetCode}

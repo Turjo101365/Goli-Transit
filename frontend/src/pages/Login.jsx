@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { AuthShell, AuthField, authInputStyle } from '../components/AuthShell.jsx';
+import { GoogleSignInButton } from '../components/GoogleSignInButton.jsx';
 import { useLanguage } from '../state/LanguageContext.jsx';
 
 const initialForm = {
   email: '',
   password: ''
 };
+
+const GOOGLE_LOGIN_AVAILABLE = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 
 const TEXT = {
   bn: {
@@ -14,7 +17,8 @@ const TEXT = {
     submit: 'সাইন ইন', submitting: 'সাইন ইন হচ্ছে…',
     noAccount: 'অ্যাকাউন্ট নেই?', create: 'নতুন করুন', forgot: 'পাসওয়ার্ড ভুলে গেছেন?',
     or: 'অথবা', guest: 'জরুরি হলে গেস্ট হিসেবে ঢুকুন', guestBusy: 'ঢোকা হচ্ছে…',
-    guestNote: 'অ্যাকাউন্ট ছাড়াই ৬ ঘণ্টার জন্য — পরে চাইলে সেভ করা যাবে।'
+    guestNote: 'অ্যাকাউন্ট ছাড়াই ৬ ঘণ্টার জন্য — পরে চাইলে সেভ করা যাবে।',
+    googleFailed: 'গুগল দিয়ে সাইন ইন করা যায়নি।'
   },
   en: {
     title: 'Welcome back', subtitle: 'Sign in to see your route planner and live traffic.',
@@ -22,11 +26,12 @@ const TEXT = {
     submit: 'Sign In', submitting: 'Signing in…',
     noAccount: "Don't have an account?", create: 'Create one', forgot: 'Forgot password?',
     or: 'or', guest: 'In a hurry? Continue as guest', guestBusy: 'Continuing…',
-    guestNote: 'No account, 6-hour session — you can save it as a real account later.'
+    guestNote: 'No account, 6-hour session — you can save it as a real account later.',
+    googleFailed: 'Unable to sign in with Google.'
   }
 };
 
-export function Login({ onLogin, onGuestLogin, onSwitchToRegister, onSwitchToForgotPassword }) {
+export function Login({ onLogin, onGuestLogin, onGoogleLogin, onSwitchToRegister, onSwitchToForgotPassword }) {
   const { lang } = useLanguage();
   const t = TEXT[lang];
   const [form, setForm] = useState(initialForm);
@@ -34,6 +39,16 @@ export function Login({ onLogin, onGuestLogin, onSwitchToRegister, onSwitchToFor
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGuestSubmitting, setIsGuestSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  async function handleGoogleCredential(credential) {
+    setError('');
+
+    try {
+      await onGoogleLogin(credential);
+    } catch (googleError) {
+      setError(googleError.message || t.googleFailed);
+    }
+  }
 
   async function handleGuestLogin() {
     setError('');
@@ -116,6 +131,17 @@ export function Login({ onLogin, onGuestLogin, onSwitchToRegister, onSwitchToFor
         >
           {isSubmitting ? t.submitting : t.submit}
         </button>
+
+        {GOOGLE_LOGIN_AVAILABLE ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0' }}>
+              <div className="rule-hair" style={{ flex: 1 }} />
+              <span className="t-label">{t.or}</span>
+              <div className="rule-hair" style={{ flex: 1 }} />
+            </div>
+            <GoogleSignInButton onCredential={handleGoogleCredential} onError={setError} />
+          </>
+        ) : null}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0' }}>
           <div className="rule-hair" style={{ flex: 1 }} />

@@ -74,6 +74,9 @@ export const env = {
 	AUTH_SECRET: resolveAuthSecret(nodeEnv),
 	AUTH_TOKEN_TTL_HOURS: toInt(process.env.AUTH_TOKEN_TTL_HOURS, 168),
 	AUTH_JWT_ISSUER: process.env.AUTH_JWT_ISSUER || appName || 'goli-transit',
+	// OAuth client ID from Google Cloud Console — required for POST
+	// /auth/google to work. Must match the frontend's VITE_GOOGLE_CLIENT_ID.
+	GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
 	RESET_TOKEN_TTL_MINUTES: toInt(process.env.RESET_TOKEN_TTL_MINUTES, 30),
 	RESET_CODE_TTL_MINUTES: toInt(process.env.RESET_CODE_TTL_MINUTES, 10),
 	RESET_CODE_RESEND_COOLDOWN_SECONDS: toInt(process.env.RESET_CODE_RESEND_COOLDOWN_SECONDS, 45),

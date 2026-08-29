@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
-import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, useMapEvents } from 'react-leaflet';
+import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import '../styles/tokens.css';
 import { createRoute, getGraphSnapshot, simulateRoute } from '../services/route.service.js';
+import { getCondition } from '../services/condition.service.js';
 import { formatTime, toBanglaDigits } from '../utils/format.js';
 import { nearestStation } from '../utils/geo.js';
 import { RouteOptionsTable } from './RouteOptionsTable.jsx';
@@ -29,6 +30,50 @@ const ESRI_URLS = {
 };
 const ACCESS_WALK_LIMIT_KM = 0.9; // 900m — beyond this, access leg is labelled rickshaw, not walk
 const ARRIVE_BY_OFFSETS_MIN = [45, 90, 150];
+
+// Explicit per-segment Leaflet style, not a CSS className — a className on
+// an SVG path only works as long as a matching CSS rule exists, and that
+// rule has gone missing from tokens.css before. These read straight off
+// the design tokens (mode is carried by dash pattern first, colour
+// second, per CLAUDE.md) so the map can't silently fall back to Leaflet's
+// default blue again.
+const MODE_LINE_STYLE = {
+	walk: { color: 'var(--cream)', weight: 4, dashArray: '1 8' },
+	metro: { color: 'var(--metro)', weight: 6 },
+	rickshaw: { color: 'var(--stamp)', weight: 5, dashArray: '11 7' },
+	bus: { color: 'var(--mode-bus)', weight: 5, dashArray: '12 5' },
+	cng: { color: 'var(--mode-cng)', weight: 5, dashArray: '6 4' },
+	bike: { color: 'var(--mode-bike)', weight: 5, dashArray: '3 3' }
+};
+
+const WEATHER_CONDITION_LABEL = {
+	clear: { bn: 'পরিষ্কার', en: 'Clear' },
+	rain: { bn: 'বৃষ্টি', en: 'Rain' },
+	heavy_rain: { bn: 'ভারী বৃষ্টি', en: 'Heavy rain' }
+};
+
+// Keeps the two picked points (and the pins) in view whenever either one
+// changes — without this the map stays at its initial Dhaka-wide center
+// and a far-off pick (e.g. Keraniganj) can render off in a corner or look
+// zoomed to nothing in particular.
+function FitBoundsHandler({ originLat, originLng, destLat, destLng }) {
+	const map = useMap();
+
+	useEffect(() => {
+		if (originLat == null || originLng == null || destLat == null || destLng == null) {
+			return;
+		}
+
+		map.fitBounds(
+			[[originLat, originLng], [destLat, destLng]],
+			{ padding: [45, 45], maxZoom: 15 }
+		);
+		// Only origin/destination should trigger a re-fit — not every render.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [originLat, originLng, destLat, destLng]);
+
+	return null;
+}
 
 // Arrive-by options relative to the moment this screen was opened, not a
 // fixed clock time — every visitor gets their own set. Rounds up to the
@@ -145,6 +190,7 @@ export function FurutMap() {
 	const [simError, setSimError] = useState(null);
 	const [simStep, setSimStep] = useState(0);
 	const [simPlaying, setSimPlaying] = useState(false);
+	const [weather, setWeather] = useState(null);
 	const geoRequestedRef = useRef(false);
 	const stationsRef = useRef(stations);
 	const endpointsRef = useRef(endpoints);
@@ -172,6 +218,15 @@ export function FurutMap() {
 				setStations(list);
 			})
 			.catch((err) => setStationsError(err.message));
+	}, []);
+
+	// Real live reading (Open-Meteo, via the backend's weather cache) — not
+	// a placeholder. Fetched once per visit; the backend's own TTL keeps it
+	// fresh enough without this screen needing to poll.
+	useEffect(() => {
+		getCondition()
+			.then((data) => setWeather({ condition: data.condition, temperatureC: data.temperatureC }))
+			.catch(() => {});
 	}, []);
 
 	const originPoint = endpoints.A;
@@ -486,12 +541,24 @@ export function FurutMap() {
 
 				<div className="map-grid-map">
 				<div className="rule-solid" />
+				{weather ? (
+					<p className="t-label" style={{ margin: '10px 0 6px' }}>
+						{t('এখন', 'Now', lang)}: {t(WEATHER_CONDITION_LABEL[weather.condition]?.bn, WEATHER_CONDITION_LABEL[weather.condition]?.en, lang) || weather.condition}
+						{weather.temperatureC !== null ? ` · ${num(Math.round(weather.temperatureC), lang)}°` : ''}
+					</p>
+				) : null}
 				<div className="map-frame">
 					<MapContainer center={DHAKA_CENTER} zoom={12} scrollWheelZoom style={{ width: '100%', height: '100%' }}>
 						<TileLayer attribution="Tiles &copy; Esri" url={esriUrls.base} />
 						<TileLayer url={esriUrls.reference} />
 
 						<MapClickHandler armed={armed} onPick={handleMapPick} />
+						<FitBoundsHandler
+							originLat={originPoint?.lat ?? null}
+							originLng={originPoint?.lng ?? null}
+							destLat={destinationPoint?.lat ?? null}
+							destLng={destinationPoint?.lng ?? null}
+						/>
 
 						{stations.map((station) => {
 							const simState = simStateByStation[station.id];
@@ -516,7 +583,7 @@ export function FurutMap() {
 							<Polyline
 								key={`${segment.mode}-${index}`}
 								positions={segment.pts}
-								pathOptions={{ className: `mode-${segment.mode}` }}
+								pathOptions={MODE_LINE_STYLE[segment.mode] || {}}
 							/>
 						))}
 
