@@ -53,6 +53,25 @@ function withP90(mode, p50) {
 	return Math.round(p50 * ratio);
 }
 
+function round1(value) {
+	return Math.round(value * 10) / 10;
+}
+
+// Real distance along a real MRT-6 station path — haversine between each
+// consecutive pair of the path's actual station coordinates, not a
+// straight origin-to-destination line.
+function sumPathKm(points) {
+	let total = 0;
+	for (let i = 1; i < points.length; i++) {
+		total += distance(
+			{ lat: points[i - 1][0], lng: points[i - 1][1] },
+			{ lat: points[i][0], lng: points[i][1] }
+		);
+	}
+
+	return total;
+}
+
 // Metro option: nearest real station to each point, a real dijkstra path
 // (and real cumulative fare) between them, plus real access legs on each
 // end. Returns null if either point is too far from a station, both
@@ -102,11 +121,22 @@ async function buildMetroOption(graph, origin, destination) {
 		fetchOsrmRoute(toMode, toStation.coords, destination)
 	]);
 
+	// Real distance end to end: road-snapped access legs (or their straight-
+	// line haversine fallback — fromStation.km/toStation.km, already computed
+	// by nearestMetroStation) plus the real distance along the MRT-6 path's
+	// own station coordinates.
+	const totalDistanceKm = round1(
+		(fromAccessOsrm?.distanceKm ?? fromStation.km) +
+		sumPathKm(metroPts) +
+		(toAccessOsrm?.distanceKm ?? toStation.km)
+	);
+
 	return {
 		id: 'metro',
 		p50,
 		p90: withP90('metro', p50),
 		fare: accessFare === null ? null : path.fareTaka,
+		distanceKm: totalDistanceKm,
 		segments: [
 			{
 				mode: fromMode,
@@ -162,6 +192,7 @@ async function buildDirectOption(mode, origin, destination) {
 		p50,
 		p90: withP90(mode, p50),
 		fare,
+		distanceKm: round1(osrm.distanceKm),
 		segments: [
 			{
 				mode,

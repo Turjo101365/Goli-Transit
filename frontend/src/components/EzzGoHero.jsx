@@ -6,7 +6,7 @@ import { getCondition } from '../services/condition.service.js';
 import { formatMinutesOfDay } from '../utils/format.js';
 import { ThemeToggle } from './ThemeToggle.jsx';
 
-const BRAND = 'ফুরুৎ';
+const BRAND = 'EZZ GO';
 
 // Real per-mode rain reasons, copied from backend/src/core/modeMatrix.js
 // MATRIX[mode].rain — not rewritten, so this can't drift into a claim the
@@ -43,7 +43,7 @@ function statusIndex(status) {
   return status === 1 ? 0 : status === 0 ? 1 : 2;
 }
 
-export function FurutHero({ authUser, onGuestLogin }) {
+export function EzzGoHero({ authUser, onGuestLogin }) {
   const { lang, toggleLang } = useLanguage();
   const navigate = useNavigate();
   const t = TEXT[lang];
@@ -274,13 +274,13 @@ const TEXT = {
     head: 'সমস্যা হলো, কখন — সেটা কেউ বলে না।',
     route: 'মিরপুর ১০ → মতিঝিল · বাসে',
     usual: 'সাধারণত', badDay: 'খারাপ দিনে', min: 'মিনিট',
-    lede: 'একই যাত্রা, একই বাহন — কিন্তু খারাপ দিনে সময় প্রায় দ্বিগুণ লাগে। কোন দিন কেমন লাগবে, সেটাই ফুরুৎ হিসাব করে দেয়।',
+    lede: 'একই যাত্রা, একই বাহন — কিন্তু খারাপ দিনে সময় প্রায় দ্বিগুণ লাগে। কোন দিন কেমন লাগবে, সেটাই EZZ GO হিসাব করে দেয়।',
     openApp: 'অ্যাপ খুলুন', login: 'লগইন', register: 'নতুন অ্যাকাউন্ট', guest: 'গেস্ট হিসেবে ঢুকুন',
     s2: 'যা করে',
     items: [
       ['কখন বেরোবেন', 'প্রতিটা সময় দুইভাবে দেওয়া হয় — একটা সাধারণ দিনের, একটা খারাপ দিনের। জরুরি কাজ থাকলে খারাপ দিনটা ধরেই বেরোন।'],
       ['কোন বাহনে', 'হাঁটা, রিকশা, বাস, মেট্রো, বাইক, সিএনজি। শুধু দ্রুততম না — কোনটা আসলে ভরসা করা যায়, সেটা।'],
-      ['রাস্তায় থাকতে', 'বাস আটকে গেছে? ফুরুৎ বলে দেয় কোথায় নামবেন আর কী ধরবেন — মেট্রো প্রায়ই মাথার উপরেই থাকে।']
+      ['রাস্তায় থাকতে', 'বাস আটকে গেছে? EZZ GO বলে দেয় কোথায় নামবেন আর কী ধরবেন — মেট্রো প্রায়ই মাথার উপরেই থাকে।']
     ],
     s3: 'বৃষ্টি নামলে যা বদলায়',
     s3sub: 'বৃষ্টি সব বাহনকে সমান ধীর করে না। বৃষ্টি বিকল্প কেড়ে নেয়।',
@@ -297,13 +297,13 @@ const TEXT = {
     head: "It's that nobody tells you when.",
     route: 'Mirpur 10 → Motijheel · by bus',
     usual: 'Usually', badDay: 'Bad day', min: 'min',
-    lede: 'Same trip, same mode — but on a bad day it takes almost twice as long. Which day you\'ll get is what Furut works out.',
-    openApp: 'Open Furut', login: 'Log in', register: 'Create account', guest: 'Continue as guest',
+    lede: 'Same trip, same mode — but on a bad day it takes almost twice as long. Which day you\'ll get is what EZZ GO works out.',
+    openApp: 'Open EZZ GO', login: 'Log in', register: 'Create account', guest: 'Continue as guest',
     s2: 'What it does',
     items: [
       ['When to leave', "Every time comes as a pair — a usual day and a bad one. If it matters, plan against the bad one."],
       ['What to take', "Walk, rickshaw, bus, metro, bike, CNG. Not just the fastest — which one you can actually rely on."],
-      ["While you're moving", "Bus stuck? Furut tells you where to get off and what to switch to. The metro is often directly overhead."]
+      ["While you're moving", "Bus stuck? EZZ GO tells you where to get off and what to switch to. The metro is often directly overhead."]
     ],
     s3: 'What rain changes',
     s3sub: 'Rain doesn\'t slow every mode equally. Rain removes options.',

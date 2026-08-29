@@ -502,7 +502,7 @@ export function Home({
         <p>
           Dhaka’s transport system is highly unpredictable due to congestion, roadblocks,
           and constantly changing traffic conditions, making daily travel difficult to plan reliably.
-          GoliTransit solves this by intelligently optimizing routes in real time,
+          EZZ GO solves this by intelligently optimizing routes in real time,
           helping users navigate the city faster and more efficiently despite urban chaos.
         </p>
 
@@ -532,7 +532,7 @@ export function Home({
             <h2 className="challenge-title">Urban Mobility in Dhaka</h2>
             <div className="challenge-description">
              
-              <p>GoliTransit uses a smart graph-based system to adapt routes in real time. It analyzes traffic, disruptions, and transport options to suggest efficient multi-modal journeys—combining walking, buses, and rickshaws—for faster and more reliable travel across Dhaka.</p>
+              <p>EZZ GO uses a smart graph-based system to adapt routes in real time. It analyzes traffic, disruptions, and transport options to suggest efficient multi-modal journeys—combining walking, buses, and rickshaws—for faster and more reliable travel across Dhaka.</p>
             </div>
           </div>
         </div>
@@ -653,7 +653,7 @@ export function Home({
 
 {/* About Us Section */}
 <section id="about" className={`section about-section ${isVisible.about ? 'slide-in' : ''}`}>
-  <h2 className="section-title neon-glow">About GoliTransit</h2>
+  <h2 className="section-title neon-glow">About EZZ GO</h2>
 
   <p className="about-intro">
     Smarter navigation for Dhaka’s chaotic streets—powered by real-time data, AI routing, and hyper-local intelligence.

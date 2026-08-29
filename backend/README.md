@@ -10,7 +10,7 @@ Default local URL: `http://127.0.0.1:8080`
 
 The migration seeds a local demo account for first-time login:
 
-`demo@goli-transit.local`
+`demo@ezzgo.local`
 
 `DemoPass123!`
 

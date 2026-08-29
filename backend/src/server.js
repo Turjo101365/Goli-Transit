@@ -31,7 +31,7 @@ async function bootstrap() {
           ].join(' '),
           {
             name: 'Demo User',
-            email: 'demo@goli-transit.local',
+            email: 'demo@ezzgo.local',
             passwordHash: hashPassword('DemoPass123!')
           }
         );

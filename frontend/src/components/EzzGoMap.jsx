@@ -52,6 +52,42 @@ const WEATHER_CONDITION_LABEL = {
 	heavy_rain: { bn: 'ভারী বৃষ্টি', en: 'Heavy rain' }
 };
 
+const HEAT_CONDITION_LABEL = {
+	cold: { bn: 'ঠান্ডা', en: 'Cold' },
+	mild: { bn: 'মৃদু', en: 'Mild' },
+	pleasant: { bn: 'মনোরম', en: 'Pleasant' },
+	hot: { bn: 'গরম', en: 'Hot' },
+	very_hot: { bn: 'অতি গরম', en: 'Very hot' }
+};
+
+// Practical advice from the real classified condition/heat band — rain
+// takes priority over heat (getting soaked matters more than the
+// temperature that moment), otherwise the hotter/colder end of the heat
+// scale gets a tip; the comfortable middle gets none.
+function weatherSuggestion(condition, heatCondition, lang) {
+	if (condition === 'heavy_rain') {
+		return t('ছাতা সঙ্গে নিন — রাস্তায় পানি জমতে পারে', 'Take an umbrella — roads may flood', lang);
+	}
+
+	if (condition === 'rain') {
+		return t('ছাতা সঙ্গে নিন', 'Take an umbrella', lang);
+	}
+
+	if (heatCondition === 'very_hot') {
+		return t('প্রচুর পানি পান করুন, সাথে ঠান্ডা পানি রাখুন', 'Drink plenty of water — carry cold water with you', lang);
+	}
+
+	if (heatCondition === 'hot') {
+		return t('সাথে পানি রাখুন', 'Carry water with you', lang);
+	}
+
+	if (heatCondition === 'cold') {
+		return t('গরম কাপড় পরে বের হন', 'Wear something warm', lang);
+	}
+
+	return null;
+}
+
 // Keeps the two picked points (and the pins) in view whenever either one
 // changes — without this the map stays at its initial Dhaka-wide center
 // and a far-off pick (e.g. Keraniganj) can render off in a corner or look
@@ -131,6 +167,13 @@ function num(value, lang) {
 	return lang === 'bn' ? toBanglaDigits(value) : String(value);
 }
 
+// Same সকাল/দুপুর H:MM convention as formatTime, with live-ticking seconds
+// appended — a plain "clock" reads as static without them.
+function formatClock(date, lang) {
+	const seconds = String(date.getSeconds()).padStart(2, '0');
+	return `${formatTime(date, lang)}:${num(seconds, lang)}`;
+}
+
 // Real street address for a picked point, via Nominatim's reverse endpoint
 // (same free, no-key service already used for forward search) — replaces
 // raw "lat, lng" text with something a person can actually read. Returns
@@ -155,7 +198,7 @@ async function reverseGeocode(lat, lng) {
 	}
 }
 
-export function FurutMap() {
+export function EzzGoMap() {
 	const { lang } = useLanguage();
 	const { theme } = useTheme();
 	const COLOUR = COLOUR_BY_THEME[theme];
@@ -191,6 +234,7 @@ export function FurutMap() {
 	const [simStep, setSimStep] = useState(0);
 	const [simPlaying, setSimPlaying] = useState(false);
 	const [weather, setWeather] = useState(null);
+	const [clockNow, setClockNow] = useState(() => new Date());
 	const geoRequestedRef = useRef(false);
 	const stationsRef = useRef(stations);
 	const endpointsRef = useRef(endpoints);
@@ -225,8 +269,22 @@ export function FurutMap() {
 	// fresh enough without this screen needing to poll.
 	useEffect(() => {
 		getCondition()
-			.then((data) => setWeather({ condition: data.condition, temperatureC: data.temperatureC }))
+			.then((data) =>
+				setWeather({
+					condition: data.condition,
+					temperatureC: data.temperatureC,
+					feelsLikeC: data.feelsLikeC,
+					heatCondition: data.heatCondition
+				})
+			)
 			.catch(() => {});
+	}, []);
+
+	// A real ticking clock, not a value frozen at mount — the whole point of
+	// a "live" watch is that the seconds actually move.
+	useEffect(() => {
+		const id = setInterval(() => setClockNow(new Date()), 1000);
+		return () => clearInterval(id);
 	}, []);
 
 	const originPoint = endpoints.A;
@@ -487,8 +545,32 @@ export function FurutMap() {
 	return (
 		<section style={{ background: 'var(--ground)', padding: '32px 0', minHeight: '100vh', color: 'var(--cream)' }}>
 			<div className="map-wrap">
-				<h1 className="t-brand">{t('ফুরুৎ', 'FURUT', lang)}</h1>
-				<p className="t-label">{t('জ্যাম লাগার আগেই', 'Out before the jam', lang)}</p>
+				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 20 }}>
+					<div>
+						<h1 className="t-brand">EZZ GO</h1>
+						<p className="t-label">{t('জ্যাম লাগার আগেই', 'Out before the jam', lang)}</p>
+					</div>
+
+					{weather ? (
+						<div style={{ textAlign: 'right' }}>
+							<p className="t-label">{t('এখন', 'Now', lang)}</p>
+							<p className="t-brand" style={{ fontSize: 'clamp(28px, 4vw, 44px)', margin: '2px 0 0' }}>
+								{t(WEATHER_CONDITION_LABEL[weather.condition]?.bn, WEATHER_CONDITION_LABEL[weather.condition]?.en, lang) || weather.condition}
+								{weather.temperatureC !== null ? ` · ${num(Math.round(weather.temperatureC), lang)}°` : ''}
+							</p>
+							<p className="t-body" style={{ marginTop: 2, color: 'var(--c70)' }}>
+								{weather.heatCondition ? t(HEAT_CONDITION_LABEL[weather.heatCondition]?.bn, HEAT_CONDITION_LABEL[weather.heatCondition]?.en, lang) : null}
+								{weather.heatCondition && weather.feelsLikeC !== null ? ' · ' : ''}
+								{weather.feelsLikeC !== null ? `${t('অনুভূত হচ্ছে', 'Feels like', lang)} ${num(Math.round(weather.feelsLikeC), lang)}°` : ''}
+							</p>
+							{weatherSuggestion(weather.condition, weather.heatCondition, lang) ? (
+								<p className="t-label" style={{ marginTop: 6, color: 'var(--stamp)' }}>
+									{weatherSuggestion(weather.condition, weather.heatCondition, lang)}
+								</p>
+							) : null}
+						</div>
+					) : null}
+				</div>
 
 				<div className="rule-double" style={{ margin: '16px 0' }} />
 
@@ -541,12 +623,11 @@ export function FurutMap() {
 
 				<div className="map-grid-map">
 				<div className="rule-solid" />
-				{weather ? (
-					<p className="t-label" style={{ margin: '10px 0 6px' }}>
-						{t('এখন', 'Now', lang)}: {t(WEATHER_CONDITION_LABEL[weather.condition]?.bn, WEATHER_CONDITION_LABEL[weather.condition]?.en, lang) || weather.condition}
-						{weather.temperatureC !== null ? ` · ${num(Math.round(weather.temperatureC), lang)}°` : ''}
-					</p>
-				) : null}
+				<div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '10px 0 6px' }}>
+					<span className="live-dot" />
+					<span className="t-label">{t('লাইভ সময়', 'Live time', lang)}</span>
+					<span className="t-num" style={{ fontSize: 18 }}>{formatClock(clockNow, lang)}</span>
+				</div>
 				<div className="map-frame">
 					<MapContainer center={DHAKA_CENTER} zoom={12} scrollWheelZoom style={{ width: '100%', height: '100%' }}>
 						<TileLayer attribution="Tiles &copy; Esri" url={esriUrls.base} />
@@ -666,6 +747,28 @@ export function FurutMap() {
 							</div>
 						)}
 						{simError ? <p className="t-body" style={{ color: 'var(--stamp)', marginTop: 6 }}>{simError}</p> : null}
+					</div>
+				) : null}
+
+				{selectedOption ? (
+					<div className="panel" style={{ marginTop: 12, padding: '12px 16px', display: 'flex', gap: 28, flexWrap: 'wrap' }}>
+						<div>
+							{/* Never a single ETA — p50 (usual) and p90 (bad day) side by side, same pairing as the options table above. */}
+							<p className="t-label">{t('সময়', 'Time', lang)}</p>
+							<p className="t-num" style={{ fontSize: 18 }}>
+								{num(selectedOption.p50, lang)} · {num(selectedOption.p90, lang)} {t('মিনিট', 'min', lang)}
+							</p>
+						</div>
+						<div>
+							<p className="t-label">{t('দূরত্ব', 'Distance', lang)}</p>
+							<p className="t-num" style={{ fontSize: 18 }}>{num(selectedOption.distanceKm, lang)} {t('কিমি', 'km', lang)}</p>
+						</div>
+						<div>
+							<p className="t-label">{t('ভাড়া', 'Fare', lang)}</p>
+							<p className="t-num" style={{ fontSize: 18 }}>
+								{selectedOption.fare === null ? t('পরিবর্তনশীল', 'Varies', lang) : `৳${num(selectedOption.fare, lang)}`}
+							</p>
+						</div>
 					</div>
 				) : null}
 				</div>

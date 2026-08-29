@@ -12,7 +12,7 @@ const GOOGLE_LOGIN_AVAILABLE = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 
 const TEXT = {
   bn: {
-    title: 'ফিরে স্বাগতম', subtitle: 'রুট প্ল্যানার আর লাইভ ট্র্যাফিক দেখতে সাইন ইন করুন।',
+    title: 'স্বাগতম', subtitle: 'রুট প্ল্যানার আর লাইভ ট্র্যাফিক দেখতে সাইন ইন করুন।',
     email: 'ইমেইল', password: 'পাসওয়ার্ড', show: 'দেখাও', hide: 'লুকাও',
     submit: 'সাইন ইন', submitting: 'সাইন ইন হচ্ছে…',
     noAccount: 'অ্যাকাউন্ট নেই?', create: 'নতুন করুন', forgot: 'পাসওয়ার্ড ভুলে গেছেন?',

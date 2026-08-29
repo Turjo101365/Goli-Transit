@@ -22,6 +22,7 @@ const optionSchema = z.object({
 	p50: z.number().int().nonnegative(),
 	p90: z.number().int().nonnegative(),
 	fare: z.number().int().nonnegative().nullable(),
+	distanceKm: z.number().nonnegative(),
 	segments: z.array(segmentSchema).min(1)
 });
 

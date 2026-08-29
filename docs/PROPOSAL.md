@@ -1,4 +1,4 @@
-# ফুরুৎ / FURUT
+# EZZ GO
 ### A departure-time and mid-journey advisor for Dhaka
 
 **Project proposal — showcase 6 September 2026**
@@ -19,7 +19,7 @@ The questions that are actually unanswered:
 1. **What time do I need to leave** to arrive by 9:30 — not on average, but reliably?
 2. **I am already stuck. Should I get off?** And if so, where, and onto what?
 
-FURUT answers those two.
+EZZ GO answers those two.
 
 ---
 
@@ -60,7 +60,7 @@ The bus is ৳35 cheaper and 71 minutes worse on a bad day. **That trade-off is 
 
 ### 3.3 Mid-journey rerouting — the core
 
-The user is already moving. FURUT re-evaluates every 60 seconds:
+The user is already moving. EZZ GO re-evaluates every 60 seconds:
 
 > কাজীপাড়ায় **নেমে পড়ুন**
 > ৪ মিনিট হেঁটে মেট্রো · পৌঁছাবেন সকাল ৮:৪১
@@ -203,4 +203,4 @@ Stated plainly, because a claim that collapses under one question costs more tha
 
 ---
 
-*ফুরুৎ — জ্যাম লাগার আগেই*
+*EZZ GO — Out before the jam*

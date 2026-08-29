@@ -1,5 +1,5 @@
 -- =========================================================
--- Goli-Transit: Supabase (PostgreSQL) Initial Schema & Seed
+-- EZZ GO: Supabase (PostgreSQL) Initial Schema & Seed
 -- Run this script inside Supabase Dashboard -> SQL Editor
 -- =========================================================
 

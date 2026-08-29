@@ -41,7 +41,7 @@ function buildDeadlineOptions(referenceDate) {
 const DEFAULT_POSITION = { lat: 23.7992, lng: 90.372, label: 'কাজীপাড়া / Kazipara' };
 const DEFAULT_DESTINATION = { nodeId: 'mrt_motijheel', label: 'মতিঝিল / Motijheel' };
 
-const BRAND = 'ফুরুৎ';
+const BRAND = 'EZZ GO';
 const STATUS_COLOR = ['var(--sev-0)', 'var(--sev-2)', 'var(--sev-4)'];
 
 function statusIndex(arriveMinuteOfDay, deadlineMinuteOfDay) {

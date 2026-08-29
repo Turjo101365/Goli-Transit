@@ -14,14 +14,8 @@ export function Footer() {
           {/* Brand & Overview Column */}
           <div className="footer-col footer-col--brand">
             <div className="footer-brand">
-              <div className="footer-logo-icon">
-                <svg width="32" height="32" viewBox="0 0 36 36" aria-hidden="true">
-                  <rect width="36" height="36" rx="9" fill="#F2A878" />
-                  <text x="17" y="25" textAnchor="middle" fontFamily="var(--head)" fontSize="19" fontWeight="800" fill="#221F1C">ফ</text>
-                  <circle cx="31" cy="6" r="4.5" fill="#C3E2A6" />
-                </svg>
-              </div>
-              <span className="footer-brand-name">ফুরুৎ</span>
+              <img src="/brand/ezz-go-icon.png" alt="EZZ GO" className="footer-logo-icon" width="32" height="32" />
+              <span className="footer-brand-name">EZZ GO</span>
             </div>
             <p className="footer-about">
               {isEn
@@ -104,7 +98,7 @@ export function Footer() {
         {/* Bottom copyright & attribution */}
         <div className="footer-bottom">
           <p className="footer-copy">
-            © {new Date().getFullYear()} ফুরুৎ. {isEn ? 'All rights reserved. Designed for Dhaka commuters.' : 'সর্বস্বত্ব সংরক্ষিত। ঢাকা শহরের যাত্রীদের জন্য নির্মিত।'}
+            © {new Date().getFullYear()} EZZ GO. {isEn ? 'All rights reserved. Designed for Dhaka commuters.' : 'সর্বস্বত্ব সংরক্ষিত। ঢাকা শহরের যাত্রীদের জন্য নির্মিত।'}
           </p>
           <div className="footer-bottom-links">
             <span className="footer-meta-item">{isEn ? 'Dhaka Urban Mobility' : 'ঢাকা নগর পরিবহন'}</span>

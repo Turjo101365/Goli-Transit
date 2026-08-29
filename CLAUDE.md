@@ -1,4 +1,4 @@
-# FURUT — project context
+# EZZ GO — project context
 
 Departure-time and mid-journey advisor for Dhaka commuters.
 Full background: docs/PROPOSAL.md — read it before any structural work.

@@ -8,7 +8,7 @@ import { modeLabel } from '../utils/modes.js';
 import { LocationSearchField } from './LocationSearchField.jsx';
 import { useTrip } from '../state/TripContext.jsx';
 
-const BRAND = 'ফুরুৎ';
+const BRAND = 'EZZ GO';
 
 const CONDITIONS = [
   { id: 'clear', bn: 'পরিষ্কার', en: 'Clear' },
@@ -52,7 +52,7 @@ function StadiumMotif() {
 const DEFAULT_ORIGIN = { lat: 23.8084, lng: 90.3682, label: 'মিরপুর ১০ / Mirpur 10' };
 const DEFAULT_DESTINATION = { lat: 23.7281, lng: 90.4191, label: 'মতিঝিল / Motijheel' };
 
-export function GoliUI() {
+export function EzzGoBelt() {
   const { lang } = useLanguage();
   const t = TEXT[lang];
 

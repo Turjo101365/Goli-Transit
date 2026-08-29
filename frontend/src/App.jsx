@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { FurutHero } from './components/FurutHero.jsx';
-import { FurutMap } from './components/FurutMap.jsx';
+import { EzzGoHero } from './components/EzzGoHero.jsx';
+import { EzzGoMap } from './components/EzzGoMap.jsx';
 import { LiveJourney } from './components/LiveJourney.jsx';
-import { GoliUI } from './components/GoliUI.jsx';
+import { EzzGoBelt } from './components/EzzGoBelt.jsx';
 import { Layout } from './components/Layout.jsx';
 import { Login } from './pages/Login.jsx';
 import { Register } from './pages/Register.jsx';
@@ -139,7 +139,7 @@ function AppRoutes({
       <Route
         path="/"
         element={
-          <FurutHero
+          <EzzGoHero
             authUser={authUser}
             onGuestLogin={async () => {
               await onGuestLogin();
@@ -152,7 +152,7 @@ function AppRoutes({
         path="/map"
         element={
           <RequireAuth authUser={authUser}>
-            <FurutMap />
+            <EzzGoMap />
           </RequireAuth>
         }
       />
@@ -168,7 +168,7 @@ function AppRoutes({
         path="/belt"
         element={
           <RequireAuth authUser={authUser}>
-            <GoliUI />
+            <EzzGoBelt />
           </RequireAuth>
         }
       />

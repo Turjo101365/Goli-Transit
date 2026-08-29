@@ -29,6 +29,7 @@ Returned directly — **no `{ ok, data, requestId }` envelope** (unlike every ot
       "p50": 33,
       "p90": 41,
       "fare": 80,
+      "distanceKm": 8.2,
       "segments": [
         {
           "mode": "walk",
@@ -51,6 +52,7 @@ Returned directly — **no `{ ok, data, requestId }` envelope** (unlike every ot
 | `options[].p50` | integer | Typical total minutes for this option. Never a single "ETA" — always paired with `p90`. |
 | `options[].p90` | integer | 90th-percentile (bad-day) total minutes. This, not `p50`, is what departure-time advice is chosen against. |
 | `options[].fare` | integer taka or `null` | Total fare. `null` means no official fixed rate exists for this option (rickshaw, bike) — the fare genuinely varies, not a missing value. |
+| `options[].distanceKm` | number | Real total distance — road-snapped (OSRM) for road modes, real MRT-6 station-to-station distance plus real access-leg distance for `metro`. Never derived from `p50`/speed. |
 | `options[].segments` | array | At least one segment, in travel order. |
 | `segments[].mode` | enum | One of `walk`, `metro`, `bus`, `rickshaw`, `bike`, `cng`. |
 | `segments[].min` | integer | Minutes for this segment. `sum(segments[].min) === option.p50`. |
