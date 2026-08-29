@@ -28,6 +28,20 @@ export async function loginController(req, res, next) {
 	}
 }
 
+export async function googleLoginController(req, res, next) {
+	try {
+		const result = await authService.googleLogin(req.body);
+
+		return res.status(200).json({
+			ok: true,
+			data: result,
+			requestId: req.id
+		});
+	} catch (error) {
+		return next(error);
+	}
+}
+
 export async function guestLoginController(req, res, next) {
 	try {
 		const result = await authService.guest();

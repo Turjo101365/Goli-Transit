@@ -4,7 +4,6 @@ import { useLanguage } from '../state/LanguageContext.jsx';
 import { ThemeToggle } from './ThemeToggle.jsx';
 
 const NAV_ITEMS = [
-  { to: '/', bn: 'হোম', en: 'Home' },
   { to: '/map', bn: 'মানচিত্র', en: 'Transit Map' },
   { to: '/live', bn: 'লাইভ জার্নি', en: 'Live Journey' },
   { to: '/belt', bn: 'জ্যাম বেল্ট', en: 'Traffic Belt' }
@@ -28,31 +27,34 @@ export function Header({ authUser, onLogout }) {
         {/* Brand Logo & Name */}
         <NavLink to="/" className="header-brand" onClick={closeMobileMenu}>
           <div className="header-logo-icon">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="4" />
-              <path d="M7 15h10M7 9h10M9 3v18M15 3v18" />
+            <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">
+              <rect width="36" height="36" rx="9" fill="#F2A878" />
+              <text x="17" y="25" textAnchor="middle" fontFamily="var(--head)" fontSize="19" fontWeight="800" fill="#221F1C">ফ</text>
+              <circle cx="31" cy="6" r="4.5" fill="#C3E2A6" />
             </svg>
           </div>
           <div className="header-brand-text">
-            <span className="brand-title">Goli Transit</span>
-            <span className="brand-sub">ফুরুৎ · ঢাকা</span>
+            <span className="brand-title">ফুরুৎ</span>
+            <span className="brand-sub">ঢাকা</span>
           </div>
         </NavLink>
 
-        {/* Desktop Navigation */}
-        <nav className="header-nav" aria-label="Main Navigation">
-          {NAV_ITEMS.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `header-nav-link ${isActive ? 'header-nav-link--active' : ''}`
-              }
-            >
-              {lang === 'en' ? item.en : item.bn}
-            </NavLink>
-          ))}
-        </nav>
+        {/* Desktop Navigation — the app screens only make sense once signed in */}
+        {authUser ? (
+          <nav className="header-nav" aria-label="Main Navigation">
+            {NAV_ITEMS.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `header-nav-link ${isActive ? 'header-nav-link--active' : ''}`
+                }
+              >
+                {lang === 'en' ? item.en : item.bn}
+              </NavLink>
+            ))}
+          </nav>
+        ) : null}
 
         {/* Header Right Actions */}
         <div className="header-actions">
@@ -140,20 +142,22 @@ export function Header({ authUser, onLogout }) {
       {/* Mobile Drawer Navigation */}
       {mobileMenuOpen && (
         <div className="mobile-menu-drawer">
-          <div className="mobile-menu-links">
-            {NAV_ITEMS.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onClick={closeMobileMenu}
-                className={({ isActive }) =>
-                  `mobile-nav-link ${isActive ? 'mobile-nav-link--active' : ''}`
-                }
-              >
-                {lang === 'en' ? item.en : item.bn}
-              </NavLink>
-            ))}
-          </div>
+          {authUser ? (
+            <div className="mobile-menu-links">
+              {NAV_ITEMS.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  onClick={closeMobileMenu}
+                  className={({ isActive }) =>
+                    `mobile-nav-link ${isActive ? 'mobile-nav-link--active' : ''}`
+                  }
+                >
+                  {lang === 'en' ? item.en : item.bn}
+                </NavLink>
+              ))}
+            </div>
+          ) : null}
 
           <div className="mobile-menu-footer">
             {authUser ? (

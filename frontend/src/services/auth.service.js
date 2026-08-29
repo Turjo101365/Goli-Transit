@@ -49,6 +49,20 @@ export async function loginAsGuest() {
   return session.user;
 }
 
+// `credential` is the signed ID token Google's Identity Services button
+// hands back client-side — the backend verifies it against GOOGLE_CLIENT_ID
+// before trusting anything in it, same as any other login.
+export async function loginWithGoogle(credential) {
+  const session = await apiRequest('/auth/google', {
+    method: 'POST',
+    auth: false,
+    body: JSON.stringify({ credential })
+  });
+
+  saveStoredSession(session);
+  return session.user;
+}
+
 export async function requestPasswordReset(payload) {
   return apiRequest('/auth/forgot-password', {
     method: 'POST',

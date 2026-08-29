@@ -38,6 +38,10 @@ export const loginValidation = z.object({
 	password: z.string().min(1, 'Password is required.')
 });
 
+export const googleLoginValidation = z.object({
+	credential: z.string().trim().min(1, 'Google credential is required.')
+});
+
 export const forgotPasswordValidation = z.object({
 	email: emailSchema
 });

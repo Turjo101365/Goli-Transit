@@ -234,13 +234,10 @@ body {
 .header-logo-icon {
   width: 36px;
   height: 36px;
-  border-radius: 8px;
-  background: var(--metro);
-  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 4px rgba(0, 103, 71, 0.25);
+  flex-shrink: 0;
 }
 
 .header-brand-text {
@@ -511,12 +508,10 @@ body {
 .footer-logo-icon {
   width: 32px;
   height: 32px;
-  border-radius: 6px;
-  background: var(--metro);
-  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .footer-brand-name {
@@ -603,6 +598,18 @@ body {
   height: 8px;
   border-radius: 2px;
 }
+
+/* Per-mode route line style — used on the map's Polyline segments and the
+   small mode-chain preview swatches (RouteOptionsTable). Design law: mode
+   is carried by dash pattern first, colour second, so a route still reads
+   correctly in print or for colour-blind riders. Without these, Leaflet's
+   own default blue is all that's left on every line. */
+.mode-walk { stroke: var(--mode-walk); stroke-dasharray: 1 8; }
+.mode-metro { stroke: var(--mode-metro); }
+.mode-bus { stroke: var(--mode-bus); stroke-dasharray: 12 5; }
+.mode-rickshaw { stroke: var(--mode-rickshaw); stroke-dasharray: 11 7; }
+.mode-bike { stroke: var(--mode-bike); stroke-dasharray: 3 3; }
+.mode-cng { stroke: var(--mode-cng); stroke-dasharray: 6 4; }
 
 .mode-tag--metro .mode-indicator { background: var(--mode-metro); }
 .mode-tag--bus .mode-indicator { background: var(--mode-bus); }
@@ -708,6 +715,78 @@ body {
   box-shadow: 0 0 0 1px rgba(39, 185, 122, 0.15);
 }
 
+/* The conductor's-punch radio selector used by route/option lists
+   (RouteOptionsTable, GoliUI, FurutMap) — same "selected" language as
+   .chip[aria-pressed] elsewhere (metro green, soft glow in dark mode),
+   so a picked route option and a pressed chip read as the same state
+   everywhere in the app. */
+.punch {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--c20);
+  background: var(--ground2);
+  box-shadow: var(--card-shadow);
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.punch:hover,
+[role="button"]:hover .punch,
+button:hover .punch {
+  border-color: var(--metro);
+}
+
+.punch--selected {
+  border-color: var(--metro);
+  background: var(--metro);
+  box-shadow: 0 0 0 3px rgba(0, 103, 71, 0.16);
+}
+
+.punch::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffffff;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s ease;
+}
+
+.punch--selected::after {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+}
+
+/* Dark mode: a soft tinted glow rather than a flat solid fill — same
+   treatment as .chip[aria-pressed="true"]'s dark override. */
+:root[data-theme="dark"] .punch {
+  border-color: #333028;
+  background: #1F2228;
+}
+
+:root[data-theme="dark"] .punch:hover,
+:root[data-theme="dark"] [role="button"]:hover .punch,
+:root[data-theme="dark"] button:hover .punch {
+  border-color: #27B97A;
+}
+
+:root[data-theme="dark"] .punch--selected {
+  border-color: #27B97A;
+  background: rgba(39, 185, 122, 0.22);
+  box-shadow: 0 0 0 3px rgba(39, 185, 122, 0.16);
+}
+
+:root[data-theme="dark"] .punch--selected::after {
+  background: #27B97A;
+}
+
 .rule-hair {
   border-bottom: 1px solid var(--line);
 }
@@ -798,8 +877,17 @@ body {
 @media (min-width: 900px) {
   .map-grid {
     grid-template-columns: minmax(0, 420px) 1fr;
+    /* "map" spans both rows so the decision stack (fields, then arrive-by/
+       stamp/options in "ticket") reads top-to-bottom in the left column
+       while the map holds the right column. Left deliberately unset
+       (default stretch) — with align-items:start the "map" grid ITEM
+       stayed content-sized instead of filling its tall spanning cell,
+       which both left a blank gap below the map and capped how far
+       position:sticky on .map-grid-map could actually stick (sticky's
+       range is bounded by its own box, not the grid track). Stretch
+       gives it the full track height, so sticky holds for the whole
+       scroll and there's no leftover empty space either. */
     grid-template-areas: "endpoints map" "ticket map";
-    align-items: start;
   }
 }
 
@@ -815,8 +903,15 @@ body {
 @media (min-width: 900px) {
   .map-frame {
     height: 640px;
+  }
+
+  /* The whole column (map + the A* simulation trigger/panel below it)
+     sticks together as one unit, not just the map frame on its own —
+     otherwise the non-sticky simulation panel would scroll independently
+     underneath the pinned map and the two would overlap. */
+  .map-grid-map {
     position: sticky;
-    top: 84px;
+    top: 20px;
   }
 }
 /* =========================================================================
@@ -828,7 +923,15 @@ body {
   to   { transform: translateY(-50%); }
 }
 
-/* Container: fixed to viewport right edge, full height, hidden on narrow screens */
+@keyframes rail-scroll-down {
+  from { transform: translateY(-50%); }
+  to   { transform: translateY(0); }
+}
+
+/* Container: fixed to viewport edge, full height, hidden on narrow screens.
+   Two columns (left/right) drifting at different slow speeds in opposite
+   directions reads as ambient parallax, not a marquee — a single fast
+   linear column is the "cheap" version of this effect. */
 .side-rail {
   display: none;
 }
@@ -839,29 +942,44 @@ body {
     position: fixed;
     top: 0;
     bottom: 0;
-    width: 44px;
+    width: 40px;
     overflow: hidden;
     pointer-events: none;
     z-index: 5;
   }
 
+  .side-rail--right,
+  .side-rail--left {
+    /* Subtle fade at top and bottom */
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+  }
+
   .side-rail--right {
     right: 0;
-    /* Subtle fade at top and bottom */
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
-    mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
+  }
+
+  .side-rail--left {
+    left: 0;
   }
 }
 
-/* The scrolling track itself */
+/* The scrolling track itself — slow and unhurried, not a ticking marquee.
+   Left and right run at different durations so they never fall back in
+   sync with each other. */
 .side-rail-track {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
+  gap: 22px;
   padding: 16px 0;
-  animation: rail-scroll-up 28s linear infinite;
+  animation: rail-scroll-up 96s linear infinite;
   will-change: transform;
+}
+
+.side-rail--left .side-rail-track {
+  animation-name: rail-scroll-down;
+  animation-duration: 122s;
 }
 
 /* Respect reduced motion */

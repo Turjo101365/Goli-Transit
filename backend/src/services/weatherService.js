@@ -5,7 +5,9 @@ import { pointInPolygon } from '../utils/point-in-polygon.js';
 import waterlogging from '../data/waterlogging.json' with { type: 'json' };
 
 const { DHAKA_LAT, DHAKA_LNG, CACHE_TTL_SECONDS, RAIN_MM_THRESHOLD, HEAVY_RAIN_MM_THRESHOLD } = config.weather;
-const WEATHER_CACHE_KEY = 'weather-cache:v1:dhaka';
+// v2: added temperatureC — bump so a stale v1 cache entry (missing that
+// field) doesn't get served as if it were fresh.
+const WEATHER_CACHE_KEY = 'weather-cache:v2:dhaka';
 
 let memoryCache = null;
 
@@ -22,7 +24,7 @@ async function fetchLiveWeather() {
 	const url = new URL('https://api.open-meteo.com/v1/forecast');
 	url.searchParams.set('latitude', String(DHAKA_LAT));
 	url.searchParams.set('longitude', String(DHAKA_LNG));
-	url.searchParams.set('current', 'precipitation');
+	url.searchParams.set('current', 'precipitation,temperature_2m');
 	url.searchParams.set('minutely_15', 'precipitation_probability');
 	url.searchParams.set('timezone', 'Asia/Dhaka');
 	url.searchParams.set('forecast_days', '1');
@@ -39,9 +41,12 @@ async function fetchLiveWeather() {
 		? payload.minutely_15.precipitation_probability[timeIndex]
 		: null;
 
+	const rawTemperature = payload.current?.temperature_2m;
+
 	return {
 		precipitationMm: Number(payload.current?.precipitation ?? 0),
 		precipitationProbability,
+		temperatureC: rawTemperature === undefined || rawTemperature === null ? null : Number(rawTemperature),
 		fetchedAt: new Date().toISOString()
 	};
 }
@@ -67,7 +72,7 @@ export async function getWeatherSnapshot() {
 			message: error?.message
 		});
 
-		return cached || memoryCache || { precipitationMm: 0, precipitationProbability: null, fetchedAt: null };
+		return cached || memoryCache || { precipitationMm: 0, precipitationProbability: null, temperatureC: null, fetchedAt: null };
 	}
 }
 

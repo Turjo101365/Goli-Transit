@@ -26,6 +26,7 @@ export async function conditionController(req, res, next) {
 				condition,
 				precipitationMm: snapshot.precipitationMm,
 				precipitationProbability: snapshot.precipitationProbability,
+				temperatureC: snapshot.temperatureC,
 				observedAt: snapshot.fetchedAt,
 				waterloggedAreas,
 				// Real-time traffic condition — live weather combined with the

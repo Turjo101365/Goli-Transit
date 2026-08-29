@@ -15,12 +15,13 @@ export function Footer() {
           <div className="footer-col footer-col--brand">
             <div className="footer-brand">
               <div className="footer-logo-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <rect x="3" y="3" width="18" height="18" rx="4" />
-                  <path d="M7 15h10M7 9h10M9 3v18M15 3v18" />
+                <svg width="32" height="32" viewBox="0 0 36 36" aria-hidden="true">
+                  <rect width="36" height="36" rx="9" fill="#F2A878" />
+                  <text x="17" y="25" textAnchor="middle" fontFamily="var(--head)" fontSize="19" fontWeight="800" fill="#221F1C">ফ</text>
+                  <circle cx="31" cy="6" r="4.5" fill="#C3E2A6" />
                 </svg>
               </div>
-              <span className="footer-brand-name">Goli Transit · ফুরুৎ</span>
+              <span className="footer-brand-name">ফুরুৎ</span>
             </div>
             <p className="footer-about">
               {isEn
@@ -35,11 +36,8 @@ export function Footer() {
 
           {/* Navigation Links Column */}
           <div className="footer-col">
-            <h4 className="footer-heading">{isEn ? 'Transit Services' : 'সেবাসমূহ'}</h4>
+            <h4 className="footer-heading">{isEn ? 'Services' : 'সেবাসমূহ'}</h4>
             <ul className="footer-links">
-              <li>
-                <Link to="/">{isEn ? 'Home Overview' : 'হোম পেইজ'}</Link>
-              </li>
               <li>
                 <Link to="/map">{isEn ? 'Interactive Transit Map' : 'ইন্টারেক্টিভ মানচিত্র'}</Link>
               </li>
@@ -106,7 +104,7 @@ export function Footer() {
         {/* Bottom copyright & attribution */}
         <div className="footer-bottom">
           <p className="footer-copy">
-            © {new Date().getFullYear()} Goli Transit (ফুরুৎ). {isEn ? 'All rights reserved. Designed for Dhaka commuters.' : 'সর্বস্বত্ব সংরক্ষিত। ঢাকা শহরের যাত্রীদের জন্য নির্মিত।'}
+            © {new Date().getFullYear()} ফুরুৎ. {isEn ? 'All rights reserved. Designed for Dhaka commuters.' : 'সর্বস্বত্ব সংরক্ষিত। ঢাকা শহরের যাত্রীদের জন্য নির্মিত।'}
           </p>
           <div className="footer-bottom-links">
             <span className="footer-meta-item">{isEn ? 'Dhaka Urban Mobility' : 'ঢাকা নগর পরিবহন'}</span>
