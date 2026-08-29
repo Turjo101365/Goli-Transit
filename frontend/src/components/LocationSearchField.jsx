@@ -91,7 +91,7 @@ export function LocationSearchField({ label, placeholder, stations = [], restric
 
 	return (
 		<div style={{ position: 'relative' }}>
-			{label ? <span className="t-label" style={{ display: 'block', marginBottom: 4 }}>{label}</span> : null}
+			{label ? <span className="t-label" style={{ display: 'block', marginBottom: 6, color: 'var(--cream)', fontSize: 12 }}>{label}</span> : null}
 			<input
 				type="text"
 				value={query}
@@ -106,16 +106,31 @@ export function LocationSearchField({ label, placeholder, stations = [], restric
 					width: '100%',
 					background: 'var(--ground2)',
 					border: '1px solid var(--line)',
-					padding: '8px 10px',
+					borderRadius: 6,
+					padding: '10px 14px',
 					font: 'inherit',
-					color: 'var(--cream)'
+					fontSize: 14,
+					color: 'var(--cream)',
+					boxShadow: 'var(--card-shadow)',
+					outline: 'none'
 				}}
 			/>
 
 			{open ? (
 				<div
 					className="panel"
-					style={{ position: 'absolute', zIndex: 20, top: '100%', left: 0, right: 0, marginTop: 4, maxHeight: 220, overflowY: 'auto', padding: '6px 10px' }}
+					style={{
+						position: 'absolute',
+						zIndex: 30,
+						top: '100%',
+						left: 0,
+						right: 0,
+						marginTop: 6,
+						maxHeight: 240,
+						overflowY: 'auto',
+						padding: '8px 12px',
+						boxShadow: 'var(--card-shadow-hover)'
+					}}
 				>
 					{loading ? <p className="t-body">…</p> : null}
 					{!loading && query.trim().length >= 2 && results.length === 0 ? (
