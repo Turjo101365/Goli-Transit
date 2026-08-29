@@ -59,42 +59,44 @@
   --sev-5: #8E2130;
 }
 
-/* Dark theme (Sleek slate-dark palette) */
+/* Dark theme — Warm charcoal + transit accent palette.
+   Inspired by night-shift transit ops: dark ink paper, amber signal,
+   MRT-6 green on black. NOT slate-blue defaults. */
 :root[data-theme="dark"] {
-  --ground: #0F172A;        /* Slate-900 dark background */
-  --ground2: #1E293B;       /* Slate-800 card/panel fill */
-  --ground-card: #1E293B;
-  --cream: #F8FAFC;         /* Slate-50 primary text */
-  --c70: #CBD5E1;           /* Slate-300 secondary text */
-  --c45: #94A3B8;           /* Slate-400 muted text */
-  --c20: #475569;           /* Slate-600 subtle borders */
-  --c10: #1E293B;           /* Slate-800 soft fill */
-  --line: #334155;          /* Slate-700 structural borders */
+  --ground: #16181C;        /* Near-black with warm undertone, not blue-slate */
+  --ground2: #1F2228;       /* Slightly elevated surface, warm charcoal */
+  --ground-card: #252830;   /* Card surface — distinct from page bg */
+  --cream: #E8E6E1;         /* Warm off-white — easier on the eyes than pure white */
+  --c70: #A8A49C;           /* Muted warm grey, readable secondary text */
+  --c45: #6B6760;           /* Subtle tertiary text */
+  --c20: #3A3830;           /* Faint dividers / tinted backgrounds */
+  --c10: #1F2228;           /* Very subtle fills */
+  --line: #2E2C28;          /* Structural borders — warm not blue */
 
-  --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.35);
-  --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.45);
-  --nav-bg: rgba(15, 23, 42, 0.88);
-  --footer-bg: #0B1120;
-  --footer-border: #1E293B;
+  --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.45), 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --card-shadow-hover: 0 8px 24px -4px rgba(0, 0, 0, 0.55), 0 4px 8px -4px rgba(0, 0, 0, 0.35);
+  --nav-bg: rgba(22, 24, 28, 0.92);
+  --footer-bg: #111215;
+  --footer-border: #2E2C28;
 
-  --stamp: #EF4444;
-  --metro: #10B981;
+  --stamp: #E05A3A;         /* Warm terracotta red — not neon */
+  --metro: #27B97A;         /* MRT-6 green, slightly brighter for dark bg legibility */
 
-  /* Mode colours */
-  --mode-walk: #94A3B8;
-  --mode-metro: #10B981;
-  --mode-bus: #EF4444;
-  --mode-rickshaw: #F59E0B;
-  --mode-bike: #3B82F6;
-  --mode-cng: #84CC16;
+  /* Mode colours — warm-shifted for dark backgrounds */
+  --mode-walk: #8A8480;
+  --mode-metro: #27B97A;
+  --mode-bus: #D95F40;
+  --mode-rickshaw: #D4913A;
+  --mode-bike: #5B8ECC;
+  --mode-cng: #7DB542;
 
-  /* Jam-severity ramp */
-  --sev-0: #10B981;
-  --sev-1: #84CC16;
-  --sev-2: #F59E0B;
-  --sev-3: #F97316;
-  --sev-4: #EF4444;
-  --sev-5: #B91C1C;
+  /* Jam-severity ramp — warm, not neon */
+  --sev-0: #27B97A;
+  --sev-1: #7DB542;
+  --sev-2: #D4913A;
+  --sev-3: #D97240;
+  --sev-4: #D95040;
+  --sev-5: #B03030;
 }
 
 :focus-visible {
@@ -289,8 +291,8 @@ body {
 }
 
 :root[data-theme="dark"] .header-nav-link--active {
-  color: #34D399;
-  background: rgba(16, 185, 129, 0.15);
+  color: #27B97A;
+  background: rgba(39, 185, 122, 0.12);
 }
 
 .header-actions {
@@ -662,9 +664,15 @@ body {
   box-shadow: var(--card-shadow);
 }
 
+/* Dark mode panels get slightly elevated warm card surface */
+:root[data-theme="dark"] .panel {
+  background: var(--ground-card);
+  border-color: #333028;
+}
+
 .chip {
   font-family: var(--data);
-  font-weight: 600;
+  font-weight: 500;
   font-size: 13px;
   color: var(--cream);
   background: var(--ground2);
@@ -690,6 +698,14 @@ body {
   background: var(--metro);
   color: #ffffff;
   border-color: var(--metro);
+}
+
+/* Dark mode: active chip uses a softer glow instead of flat fill */
+:root[data-theme="dark"] .chip[aria-pressed="true"] {
+  background: rgba(39, 185, 122, 0.18);
+  color: #27B97A;
+  border-color: rgba(39, 185, 122, 0.4);
+  box-shadow: 0 0 0 1px rgba(39, 185, 122, 0.15);
 }
 
 .rule-hair {
@@ -802,4 +818,158 @@ body {
     position: sticky;
     top: 84px;
   }
+}
+/* =========================================================================
+   RIGHT SIDE RAIL — decorative scrolling icon track, wide screens only
+   ========================================================================= */
+
+@keyframes rail-scroll-up {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-50%); }
+}
+
+/* Container: fixed to viewport right edge, full height, hidden on narrow screens */
+.side-rail {
+  display: none;
+}
+
+@media (min-width: 1380px) {
+  .side-rail {
+    display: block;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 44px;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .side-rail--right {
+    right: 0;
+    /* Subtle fade at top and bottom */
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
+  }
+}
+
+/* The scrolling track itself */
+.side-rail-track {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 0;
+  animation: rail-scroll-up 28s linear infinite;
+  will-change: transform;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .side-rail-track {
+    animation: none;
+  }
+}
+
+/* =========================================================================
+   DARK MODE POLISH — granular overrides for a premium warm-dark feel
+   ========================================================================= */
+
+/* Inputs in dark mode: warm charcoal instead of blue-slate */
+:root[data-theme="dark"] input[type="text"],
+:root[data-theme="dark"] input[type="email"],
+:root[data-theme="dark"] input[type="password"] {
+  background: #1F2228;
+  border-color: #333028;
+  color: #E8E6E1;
+}
+
+:root[data-theme="dark"] input[type="text"]::placeholder,
+:root[data-theme="dark"] input[type="email"]::placeholder,
+:root[data-theme="dark"] input[type="password"]::placeholder {
+  color: #6B6760;
+}
+
+:root[data-theme="dark"] input[type="text"]:focus,
+:root[data-theme="dark"] input[type="email"]:focus,
+:root[data-theme="dark"] input[type="password"]:focus {
+  border-color: #27B97A;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(39, 185, 122, 0.15);
+}
+
+/* Header in dark mode: warmer background blur */
+:root[data-theme="dark"] .main-header {
+  border-bottom-color: #2E2C28;
+  box-shadow: 0 1px 0 0 #2E2C28;
+}
+
+/* Action chips (login / register buttons in header) */
+:root[data-theme="dark"] .action-chip {
+  background: #252830;
+  border-color: #333028;
+  color: #E8E6E1;
+}
+
+:root[data-theme="dark"] .action-chip:hover {
+  background: #2E3040;
+  border-color: #6B6760;
+}
+
+/* Register / primary CTA button in dark */
+:root[data-theme="dark"] .btn-header-register {
+  background: #27B97A;
+  border-color: #27B97A;
+}
+
+:root[data-theme="dark"] .btn-header-register:hover {
+  background: #1FA06A;
+  border-color: #1FA06A;
+}
+
+/* Footer in dark mode: slightly darker base for separation */
+:root[data-theme="dark"] .main-footer {
+  background: var(--footer-bg);
+  border-top-color: #2E2C28;
+}
+
+:root[data-theme="dark"] .footer-top-accent {
+  background: repeating-linear-gradient(
+    115deg,
+    #27B97A 0 20px,
+    #D4913A 20px 32px,
+    #3A3830 32px 36px,
+    #27B97A 36px 40px
+  );
+}
+
+/* Status pill in dark gets a warm border */
+:root[data-theme="dark"] .footer-status-pill {
+  background: #252830;
+  border-color: #333028;
+}
+
+/* Scrollbar — warm dark, not system default chrome blue */
+:root[data-theme="dark"] ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+:root[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: #16181C;
+}
+
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #3A3830;
+  border-radius: 3px;
+}
+
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: #6B6760;
+}
+
+/* Text selection colour in dark */
+:root[data-theme="dark"] ::selection {
+  background: rgba(39, 185, 122, 0.28);
+  color: #E8E6E1;
 }
