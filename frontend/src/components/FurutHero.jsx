@@ -71,27 +71,9 @@ export function FurutHero({ authUser, onGuestLogin }) {
   }, []);
 
   return (
-    <section style={{ background: 'var(--ground)', color: 'var(--cream)', minHeight: '100vh', paddingBottom: 48 }}>
-      <div
-        style={{
-          height: 7,
-          background: 'repeating-linear-gradient(115deg, var(--metro) 0 16px, var(--stamp) 16px 26px, var(--cream) 26px 30px, var(--metro) 30px 34px)'
-        }}
-      />
-
-      <div className="page-wrap" style={{ '--wrap-max': '760px' }}>
-        <header style={{ display: 'flex', alignItems: 'baseline', gap: 12, padding: '18px 0 8px' }}>
-          <h1 className="t-brand">{BRAND}</h1>
-          <p className="t-label" lang={lang} style={{ margin: 0 }}>{t.tag}</p>
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-            <ThemeToggle />
-            <button type="button" className="chip" onClick={toggleLang}>
-              {lang === 'bn' ? 'English' : 'বাংলা'}
-            </button>
-          </div>
-        </header>
-
-        <div className="hero-split" style={{ marginTop: 20 }}>
+    <section style={{ background: 'var(--ground)', color: 'var(--cream)', paddingBottom: 48 }}>
+      <div className="page-wrap" style={{ '--wrap-max': '860px', paddingTop: 24 }}>
+        <div className="hero-split" style={{ marginTop: 8 }}>
           <div>
             <p className="t-body" style={{ color: 'var(--stamp)', fontWeight: 700 }}>{t.kicker}</p>
             <h2 className="t-brand" style={{ fontSize: 'clamp(28px,4vw,40px)', margin: '4px 0 6px', maxWidth: '16ch' }}>

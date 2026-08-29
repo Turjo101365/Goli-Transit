@@ -5,7 +5,7 @@ const STORAGE_KEY = 'furut-theme';
 
 function getInitialTheme() {
 	if (typeof window === 'undefined') {
-		return 'dark';
+		return 'light';
 	}
 
 	try {
@@ -14,10 +14,10 @@ function getInitialTheme() {
 			return stored;
 		}
 	} catch {
-		// localStorage unavailable — fall through to system preference
+		// localStorage unavailable
 	}
 
-	return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+	return 'light';
 }
 
 export function ThemeProvider({ children }) {

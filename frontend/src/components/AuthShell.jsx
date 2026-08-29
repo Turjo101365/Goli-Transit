@@ -30,31 +30,13 @@ const TEXT = {
 };
 
 export function AuthShell({ title, subtitle, children, footer }) {
-  const { lang, toggleLang } = useLanguage();
+  const { lang } = useLanguage();
   const t = TEXT[lang];
 
   return (
-    <section style={{ background: 'var(--ground)', color: 'var(--cream)', minHeight: '100vh', paddingBottom: 40 }}>
-      <div
-        style={{
-          height: 7,
-          background: 'repeating-linear-gradient(115deg, var(--metro) 0 16px, var(--stamp) 16px 26px, var(--cream) 26px 30px, var(--metro) 30px 34px)'
-        }}
-      />
-
+    <section style={{ background: 'var(--ground)', color: 'var(--cream)', paddingBottom: 40, paddingTop: 20 }}>
       <div className="page-wrap" style={{ '--wrap-max': '440px' }}>
-        <header style={{ display: 'flex', alignItems: 'baseline', gap: 12, padding: '18px 0 6px' }}>
-          <Link to="/" className="t-brand" style={{ color: 'var(--cream)', textDecoration: 'none' }}>{BRAND}</Link>
-          <p className="t-label" lang={lang} style={{ margin: 0 }}>{t.tag}</p>
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-            <ThemeToggle />
-            <button type="button" className="chip" onClick={toggleLang}>
-              {lang === 'bn' ? 'English' : 'বাংলা'}
-            </button>
-          </div>
-        </header>
-
-        <div className="panel" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', margin: '14px 0 22px' }}>
+        <div className="panel" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', margin: '8px 0 18px' }}>
           <div>
             <span className="t-label">{t.pitch}</span>
             <div className="t-big" style={{ fontSize: 24, marginTop: 2 }}>
