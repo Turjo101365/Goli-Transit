@@ -127,36 +127,37 @@ body {
 /* Typography scale */
 .t-brand {
   font-family: var(--head);
-  font-size: 28px;
+  font-size: 26px;
   line-height: 1.1;
+  font-weight: 500;
   color: var(--cream);
 }
 
 .t-section {
-  font-family: var(--head);
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--cream);
-}
-
-.t-place {
   font-family: var(--head);
   font-size: 17px;
   font-weight: 500;
   color: var(--cream);
 }
 
+.t-place {
+  font-family: var(--head);
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--cream);
+}
+
 .t-big {
   font-family: var(--data);
-  font-weight: 800;
-  font-size: 32px;
+  font-weight: 600;
+  font-size: 28px;
   color: var(--cream);
 }
 
 .t-num {
   font-family: var(--data);
-  font-weight: 700;
-  font-size: 17px;
+  font-weight: 600;
+  font-size: 16px;
   font-variant-numeric: tabular-nums;
   color: var(--cream);
 }
@@ -170,7 +171,7 @@ body {
 
 .t-label {
   font-family: var(--data);
-  font-weight: 700;
+  font-weight: 500;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: normal;

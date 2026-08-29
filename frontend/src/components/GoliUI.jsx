@@ -8,16 +8,18 @@ import { modeLabel } from '../utils/modes.js';
 import { LocationSearchField } from './LocationSearchField.jsx';
 import { useTrip } from '../state/TripContext.jsx';
 
+const BRAND = 'ফুরুৎ';
+
 const CONDITIONS = [
-  { id: 'clear', bn: 'স্বাভাবিক চলাচল', en: 'Normal Flow' },
-  { id: 'jam', bn: 'যানজটের চাপ', en: 'Congested Traffic' },
-  { id: 'rain', bn: 'বৃষ্টি ও জলাবদ্ধতা', en: 'Rain & Waterlogging' }
+  { id: 'clear', bn: 'পরিষ্কার', en: 'Clear' },
+  { id: 'jam', bn: 'সামনে জ্যাম', en: 'Jam ahead' },
+  { id: 'rain', bn: 'বৃষ্টি শুরু', en: 'Rain starting' }
 ];
 
 const OPTION_LABELS = {
-  metro: { bn: 'মেট্রোরেল', en: 'Metro' },
-  bike: { bn: 'মোটরবাইক', en: 'Bike' },
-  bus: { bn: 'পাবলিক বাস', en: 'Bus' },
+  metro: { bn: 'মেট্রো', en: 'Metro' },
+  bike: { bn: 'বাইক', en: 'Bike' },
+  bus: { bn: 'বাস', en: 'Bus' },
   cng: { bn: 'সিএনজি', en: 'CNG' },
   rickshaw: { bn: 'রিকশা', en: 'Rickshaw' },
   walk: { bn: 'হাঁটা', en: 'Walk' }
@@ -25,22 +27,26 @@ const OPTION_LABELS = {
 
 function slotColour(mode, state) {
   if (mode === 'walk') {
-    return 'var(--c45)';
+    return 'var(--c20)';
   }
+
   return state === 0 ? 'var(--sev-0)' : state === 1 ? 'var(--sev-3)' : 'var(--sev-5)';
 }
 
-function slotStatusName(mode, state, lang) {
-  if (mode === 'walk') {
-    return lang === 'bn' ? 'হাঁটার সংযোগ' : 'Walking Link';
-  }
-  if (state === 0) {
-    return lang === 'bn' ? 'স্বাভাবিক ও দ্রুত' : 'Smooth & Fast';
-  }
-  if (state === 1) {
-    return lang === 'bn' ? 'মাঝারি জ্যাম' : 'Moderate Congestion';
-  }
-  return lang === 'bn' ? 'তীব্র যানজট' : 'Severe Jam';
+const ORIGIN_AREA = {
+  bn: 'মিরপুর ১০', en: 'Mirpur 10',
+  noteBn: 'স্টেডিয়াম ও বেনারসি পল্লি', noteEn: 'The stadium and the Benarasi looms',
+  a: '#1F7A4E', b: '#D9A441'
+};
+
+function StadiumMotif() {
+  const p = { fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  return (
+    <svg viewBox="0 0 84 92" aria-hidden="true" style={{ width: '100%', height: 'auto' }}>
+      <path {...p} d="M28 74V30M42 74V30M56 74V30M24 30h36" />
+      <circle {...p} cx="66" cy="66" r="9" />
+    </svg>
+  );
 }
 
 const DEFAULT_ORIGIN = { lat: 23.8084, lng: 90.3682, label: 'মিরপুর ১০ / Mirpur 10' };
@@ -48,7 +54,7 @@ const DEFAULT_DESTINATION = { lat: 23.7281, lng: 90.4191, label: 'মতিঝ�
 
 export function GoliUI() {
   const { lang } = useLanguage();
-  const isEn = lang === 'en';
+  const t = TEXT[lang];
 
   const [condition, setCondition] = useState('clear');
   const [options, setOptions] = useState([]);
@@ -123,7 +129,7 @@ export function GoliUI() {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err.message || 'Error computing route segments.');
+          setError(err.message);
         }
       })
       .finally(() => {
@@ -147,274 +153,207 @@ export function GoliUI() {
   const selectedLegState = selectedLeg ? modeStates[selectedLeg.mode] : null;
 
   return (
-    <section className="belt-section" style={{ background: 'var(--ground)', color: 'var(--cream)', paddingBottom: 56, minHeight: '80vh' }}>
-      <div className="page-wrap" style={{ '--wrap-max': '900px', paddingTop: 28 }}>
-        
-        {/* Page Header */}
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span className="live-dot" />
-            <span className="t-label" style={{ color: 'var(--metro)', fontSize: 12 }}>
-              {isEn ? 'TRAFFIC CONGESTION & SEGMENT ANALYSIS' : 'রিয়েলটাইম ট্র্যাফিক ও সেগমেন্ট বিশ্লেষণ'}
-            </span>
-          </div>
-          <h1 className="t-brand" style={{ fontSize: 'clamp(24px, 4vw, 32px)', margin: '0 0 6px' }}>
-            {isEn ? 'Dhaka Transit Congestion Belt' : 'ঢাকা ট্র্যাফিক জ্যাম বেল্ট'}
-          </h1>
-          <p className="t-body" style={{ color: 'var(--c70)', maxWidth: '65ch', margin: 0 }}>
-            {isEn
-              ? 'Analyze corridor travel times, road congestion severity, and multi-modal segment breakdowns across Dhaka.'
-              : 'ঢাকার প্রধান করিডোরগুলোর ট্র্যাফিক অবস্থা, সেগমেন্ট অনুযায়ী যানজটের তীব্রতা এবং সম্ভাব্য সময় ও ভাড়ার বিস্তারিত বিশ্লেষণ।'}
-          </p>
+    <section style={{ background: 'var(--ground)', color: 'var(--cream)', minHeight: '100vh', paddingBottom: 40 }}>
+      <div
+        style={{
+          height: 6,
+          background: `repeating-linear-gradient(115deg, ${ORIGIN_AREA.a} 0 16px, ${ORIGIN_AREA.b} 16px 26px, var(--line) 26px 30px, ${ORIGIN_AREA.a} 30px 34px)`
+        }}
+      />
+
+      <div className="page-wrap" style={{ paddingTop: 20 }}>
+        <header style={{ display: 'flex', alignItems: 'baseline', gap: 12, padding: '10px 0 16px' }}>
+          <h1 className="t-brand" style={{ fontSize: 24, fontWeight: 500 }}>{BRAND}</h1>
+          <p className="t-label" lang={lang} style={{ margin: 0, fontWeight: 500 }}>{t.screenName}</p>
+        </header>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 14 }}>
+          <LocationSearchField
+            label={t.fromLabel}
+            placeholder={t.searchPlaceholder}
+            stations={stations}
+            value={origin.label ? origin : null}
+            onSelect={(point) => setOrigin(point)}
+            lang={lang}
+          />
+          <LocationSearchField
+            label={t.toLabel}
+            placeholder={t.searchPlaceholder}
+            stations={stations}
+            value={destination.label ? destination : null}
+            onSelect={(point) => setDestination(point)}
+            lang={lang}
+          />
         </div>
 
-        {/* Route Endpoint Picker Card */}
-        <div className="panel" style={{ padding: '20px 22px', marginBottom: 20 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-            <LocationSearchField
-              label={isEn ? 'Starting Location (Origin)' : 'যাত্রার শুরুর স্থান (কোথা থেকে)'}
-              placeholder={isEn ? 'e.g. Mirpur 10, Farmgate, Uttara...' : 'যেমন: মিরপুর ১০, ফার্মগেট, উত্তরা...'}
-              stations={stations}
-              value={origin.label ? origin : null}
-              onSelect={(point) => setOrigin(point)}
-              lang={lang}
-            />
-            <LocationSearchField
-              label={isEn ? 'Destination (To)' : 'গন্তব্যস্থল (কোথায় যাবেন)'}
-              placeholder={isEn ? 'e.g. Motijheel, Gulshan 2, Dhanmondi...' : 'যেমন: মতিঝিল, গুলশান ২, ধানমন্ডি...'}
-              stations={stations}
-              value={destination.label ? destination : null}
-              onSelect={(point) => setDestination(point)}
-              lang={lang}
-            />
-          </div>
-
-          {/* Condition simulation chips */}
-          <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <span className="t-label" style={{ color: 'var(--c70)', fontSize: 12 }}>
-              {isEn ? 'Traffic Simulation Condition:' : 'ট্র্যাফিক পরিস্থিতির প্রভাব:'}
-            </span>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {CONDITIONS.map((entry) => (
-                <button
-                  key={entry.id}
-                  type="button"
-                  className="chip"
-                  aria-pressed={condition === entry.id}
-                  onClick={() => handleConditionPick(entry.id)}
-                  style={{ fontSize: 12.5, padding: '5px 12px' }}
-                >
-                  {isEn ? entry.en : entry.bn}
-                </button>
-              ))}
-            </div>
-          </div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+          {CONDITIONS.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              className="chip"
+              aria-pressed={condition === entry.id}
+              onClick={() => handleConditionPick(entry.id)}
+              style={{ fontWeight: 500, fontSize: 13 }}
+            >
+              {lang === 'bn' ? entry.bn : entry.en}
+            </button>
+          ))}
         </div>
 
-        {/* Loading / Error / Results */}
         {loading ? (
-          <div className="panel" style={{ padding: 36, textAlign: 'center' }}>
-            <p className="t-body" style={{ color: 'var(--c70)' }}>
-              {isEn ? 'Calculating multi-modal route and congestion segments...' : 'মাল্টি-মোডাল রুট ও যানজটের সেগমেন্ট গণনা করা হচ্ছে...'}
-            </p>
-          </div>
+          <p className="t-body" style={{ fontWeight: 400 }}>…</p>
         ) : error ? (
-          <div className="panel" style={{ padding: 24, borderColor: 'var(--stamp)' }}>
-            <p className="t-body" style={{ color: 'var(--stamp)', margin: 0 }}>{error}</p>
-          </div>
+          <p className="t-body" style={{ color: 'var(--stamp)', fontWeight: 400 }}>{error}</p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            
-            {/* Route Summary & Transport Mode Selector */}
-            <div className="panel" style={{ padding: '22px 24px' }}>
-              {/* Origin to Destination title */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 16, paddingBottom: 14, borderBottom: '1px solid var(--line)' }}>
-                <div>
-                  <span className="t-label" style={{ color: 'var(--c45)', display: 'block', marginBottom: 2 }}>
-                    {isEn ? 'SELECTED ROUTE CORRIDOR' : 'নির্বাচিত করিডোর'}
-                  </span>
-                  <h2 className="t-place" style={{ fontSize: 18, margin: 0, fontWeight: 700 }}>
-                    {origin.label || (isEn ? 'Mirpur 10' : 'মিরপুর ১০')} <span style={{ color: 'var(--metro)', margin: '0 4px' }}>➔</span> {destination.label || (isEn ? 'Motijheel' : 'মতিঝিল')}
-                  </h2>
-                </div>
-
-                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                  <div style={{ textAlign: 'right' }}>
-                    <span className="t-label" style={{ color: 'var(--c45)' }}>{isEn ? 'Total Time' : 'মোট আনুমানিক সময়'}</span>
-                    <div className="t-big" style={{ fontSize: 24, color: 'var(--metro)' }}>
-                      {totalMinutes} <span style={{ fontSize: 14, fontWeight: 600 }}>{isEn ? 'min' : 'মিনিট'}</span>
-                    </div>
-                  </div>
-
-                  <div style={{ width: 1, height: 32, background: 'var(--line)' }} />
-
-                  <div style={{ textAlign: 'right' }}>
-                    <span className="t-label" style={{ color: 'var(--c45)' }}>{isEn ? 'Estimated Fare' : 'আনুমানিক ভাড়া'}</span>
-                    <div className="t-big" style={{ fontSize: 24 }}>
-                      {totalFare === null ? (isEn ? 'Varies' : 'পরিবর্তনশীল') : `৳${totalFare}`}
-                    </div>
-                  </div>
-                </div>
+          <>
+            {/* Hero plate with original styling & high-contrast clean text */}
+            <section style={{ position: 'relative', overflow: 'hidden', background: ORIGIN_AREA.a, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 10, padding: '20px 22px 0', color: '#F4EFE3' }}>
+              <div style={{ position: 'absolute', right: -10, top: -4, width: 140, color: '#F4EFE3', opacity: 0.16, pointerEvents: 'none' }}>
+                <StadiumMotif />
               </div>
-
-              {/* Mode Selector Tabs */}
-              <div style={{ marginBottom: 18 }}>
-                <span className="t-label" style={{ display: 'block', marginBottom: 8 }}>
-                  {isEn ? 'Choose Transport Option:' : 'পরিবহন মাধ্যম পরিবর্তন করুন:'}
-                </span>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {options.map((option) => {
-                    const label = OPTION_LABELS[option.id] || { bn: option.id, en: option.id };
-                    const isSelected = option.id === selectedOptionId;
-                    const optMinutes = option.segments.reduce((sum, seg) => sum + seg.min, 0);
-
-                    return (
-                      <button
-                        key={option.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedOptionId(option.id);
-                          setSelectedLegIndex(0);
-                        }}
-                        className="chip"
-                        aria-pressed={isSelected}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          padding: '8px 14px',
-                          fontSize: 13.5
-                        }}
-                      >
-                        <span>{isEn ? label.en : label.bn}</span>
-                        <span style={{ opacity: 0.75, fontSize: 12 }}>({optMinutes} {isEn ? 'min' : 'মি.'})</span>
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="t-label" style={{ color: '#F4EFE3', opacity: 0.8, fontWeight: 500, fontSize: 11 }}>{t.onRoute}</div>
+              <div className="t-brand" style={{ fontSize: 'clamp(24px,5vw,34px)', margin: '3px 0 2px', position: 'relative', fontWeight: 500, color: '#F4EFE3' }}>
+                {origin.label || (lang === 'bn' ? ORIGIN_AREA.bn : ORIGIN_AREA.en)}
               </div>
+              <p className="t-body" style={{ color: '#F4EFE3', opacity: 0.85, marginBottom: 14, fontWeight: 400 }}>
+                {origin.label
+                  ? `${t.toWord} ${destination.label || '…'}`
+                  : (lang === 'bn' ? ORIGIN_AREA.noteBn : ORIGIN_AREA.noteEn)}
+              </p>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+                {options.map((option) => {
+                  const label = OPTION_LABELS[option.id] || { bn: option.id, en: option.id };
+                  const isSelected = option.id === selectedOptionId;
 
-              {/* Congestion Belt Visualization */}
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedOptionId(option.id);
+                        setSelectedLegIndex(0);
+                      }}
+                      style={{
+                        background: isSelected ? '#F4EFE3' : 'rgba(255,255,255,0.1)',
+                        color: isSelected ? ORIGIN_AREA.a : '#F4EFE3',
+                        border: '1px solid rgba(255,255,255,0.35)',
+                        borderRadius: 5,
+                        padding: '5px 12px',
+                        cursor: 'pointer',
+                        font: 'inherit',
+                        fontWeight: 500,
+                        fontSize: 13
+                      }}
+                    >
+                      {lang === 'bn' ? label.bn : label.en}
+                    </button>
+                  );
+                })}
+              </div>
               {selectedOption && (
-                <div style={{ marginTop: 20 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <span className="t-label" style={{ fontSize: 11.5, color: 'var(--cream)' }}>
-                      {isEn ? 'SEGMENT CONGESTION BELT (CLICK TO INSPECT):' : 'ধাপভিত্তিক ট্র্যাফিক বেল্ট (বিস্তারিত দেখতে ক্লিক করুন):'}
-                    </span>
-                    <span className="t-label" style={{ color: 'var(--c45)' }}>
-                      {selectedOption.segments.length} {isEn ? 'Segments' : 'টি সেগমেন্ট'}
-                    </span>
+                <div style={{ display: 'flex', gap: 24, paddingBottom: 16 }}>
+                  <div>
+                    <span className="t-label" style={{ color: '#F4EFE3', opacity: 0.8, display: 'block', fontWeight: 500, fontSize: 11 }}>{t.total}</span>
+                    <span className="t-big" style={{ fontSize: 24, fontWeight: 600, color: '#F4EFE3' }}>{totalMinutes} {t.min}</span>
                   </div>
-
-                  {/* Multi-Segment Congestion Bar */}
-                  <div style={{ display: 'flex', height: 40, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--line)', marginBottom: 12 }}>
-                    {selectedOption.segments.map((segment, index) => {
-                      const state = modeStates[segment.mode]?.state ?? 0;
-                      const widthPercent = totalMinutes > 0 ? (segment.min / totalMinutes) * 100 : 100 / selectedOption.segments.length;
-                      const isSelected = index === selectedLegIndex;
-
-                      return (
-                        <button
-                          key={`${segment.mode}-${index}`}
-                          type="button"
-                          onClick={() => setSelectedLegIndex(index)}
-                          aria-label={`${segment.label.en} — ${segment.min} min`}
-                          title={`${isEn ? segment.label.en : segment.label.bn} (${segment.min} ${isEn ? 'min' : 'মিনিট'})`}
-                          style={{
-                            width: `${Math.max(widthPercent, 8)}%`,
-                            height: '100%',
-                            background: slotColour(segment.mode, state),
-                            border: 'none',
-                            borderRight: index < selectedOption.segments.length - 1 ? '2px solid var(--ground)' : 'none',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#ffffff',
-                            fontWeight: 700,
-                            fontSize: 12,
-                            padding: '0 4px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            outline: isSelected ? '3px solid var(--cream)' : 'none',
-                            outlineOffset: -3,
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          {segment.min}m
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Congestion Legend */}
-                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', paddingTop: 6 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--c70)' }}>
-                      <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--sev-0)' }} />
-                      <span>{isEn ? 'Normal Flow' : 'স্বাভাবিক চলাচল'}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--c70)' }}>
-                      <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--sev-3)' }} />
-                      <span>{isEn ? 'Moderate Traffic' : 'মাঝারি যানজট'}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--c70)' }}>
-                      <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--sev-5)' }} />
-                      <span>{isEn ? 'Severe Congestion' : 'তীব্র যানজট'}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--c70)' }}>
-                      <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--c45)' }} />
-                      <span>{isEn ? 'Pedestrian Walkway' : 'হাঁটার পথ'}</span>
-                    </div>
+                  <div>
+                    <span className="t-label" style={{ color: '#F4EFE3', opacity: 0.8, display: 'block', fontWeight: 500, fontSize: 11 }}>{t.fare}</span>
+                    <span className="t-big" style={{ fontSize: totalFare === null ? 15 : 24, fontWeight: 600, color: '#F4EFE3' }}>
+                      {totalFare === null ? t.fareVaries : `৳${totalFare}`}
+                    </span>
                   </div>
                 </div>
               )}
-            </div>
+            </section>
 
-            {/* Selected Segment Detailed Inspector Card */}
-            {selectedLeg && (
-              <div className="panel" style={{ padding: '18px 22px', borderLeft: `4px solid ${slotColour(selectedLeg.mode, selectedLegState?.state ?? 0)}` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-                  <div>
-                    <span className="t-label" style={{ color: 'var(--c45)', fontSize: 11 }}>
-                      {isEn ? `SEGMENT ${selectedLegIndex + 1} OF ${selectedOption.segments.length}` : `ধাপ ${selectedLegIndex + 1} / ${selectedOption.segments.length}`}
-                    </span>
-                    <h3 className="t-place" style={{ fontSize: 17, margin: '2px 0 0', fontWeight: 700 }}>
-                      {isEn ? selectedLeg.label.en : selectedLeg.label.bn}
-                    </h3>
-                  </div>
+            {selectedOption ? (
+              <>
+                <h2 className="t-section" style={{ margin: '22px 0 10px', fontWeight: 500, fontSize: 16 }}>{t.belt}</h2>
+                <div style={{ display: 'flex', height: 40, marginBottom: 12, borderRadius: 6, overflow: 'hidden' }}>
+                  {selectedOption.segments.map((segment, index) => {
+                    const state = modeStates[segment.mode]?.state ?? 0;
+                    const widthPercent = totalMinutes > 0 ? (segment.min / totalMinutes) * 100 : 0;
+                    const isSelected = index === selectedLegIndex;
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span className="t-label" style={{
-                      padding: '4px 10px',
-                      borderRadius: 4,
-                      background: 'var(--ground)',
-                      color: slotColour(selectedLeg.mode, selectedLegState?.state ?? 0),
-                      fontSize: 12,
-                      fontWeight: 700
-                    }}>
-                      {slotStatusName(selectedLeg.mode, selectedLegState?.state ?? 0, lang)}
-                    </span>
-                  </div>
+                    return (
+                      <div key={`${segment.mode}-${index}`} style={{ position: 'relative', width: `${widthPercent}%` }}>
+                        {isSelected ? (
+                          <span
+                            className="punch punch--selected"
+                            style={{ position: 'absolute', top: -22, left: '50%', transform: 'translateX(-50%)' }}
+                          />
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedLegIndex(index)}
+                          aria-label={`${segment.label.en} — ${segment.min} min`}
+                          style={{
+                            width: '100%',
+                            height: 40,
+                            background: slotColour(segment.mode, state),
+                            border: 'none',
+                            borderLeft: index === 0 ? 'none' : '2px solid var(--ground)',
+                            cursor: 'pointer',
+                            padding: 0
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
 
-                <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
-                  <div className="t-body" style={{ color: 'var(--cream)', fontWeight: 600 }}>
-                    {modeLabel(selectedLeg.mode, lang)} · {selectedLeg.min} {isEn ? 'min' : 'মিনিট'}
-                    {selectedLeg.fare > 0 ? ` · ৳${selectedLeg.fare}` : ''}
-                  </div>
-                  {selectedLegState?.reason && (
-                    <div className="t-body" style={{ color: 'var(--c70)', fontSize: 13, marginLeft: 'auto' }}>
-                      {isEn ? selectedLegState.reason.en : selectedLegState.reason.bn}
+                <div style={{ display: 'flex', gap: 16, marginBottom: 18, flexWrap: 'wrap' }}>
+                  {LEGEND.map((entry) => (
+                    <div key={entry.en} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 9, height: 9, borderRadius: 2, background: entry.colour, display: 'inline-block' }} />
+                      <span className="t-body" style={{ fontSize: 13, fontWeight: 400 }}>{lang === 'bn' ? entry.bn : entry.en}</span>
                     </div>
-                  )}
+                  ))}
                 </div>
-              </div>
-            )}
 
-          </div>
+                {selectedLeg ? (
+                  <div className="panel" style={{ padding: '14px 16px', borderRadius: 8 }}>
+                    <div className="t-place" style={{ fontWeight: 500, fontSize: 16 }}>{lang === 'bn' ? selectedLeg.label.bn : selectedLeg.label.en}</div>
+                    <div className="t-body" style={{ marginTop: 4, fontWeight: 400, fontSize: 13.5 }}>
+                      {modeLabel(selectedLeg.mode, lang)} · {selectedLeg.min} {t.min}
+                      {selectedLeg.fare > 0 ? ` · ৳${selectedLeg.fare}` : ''}
+                    </div>
+                    {selectedLegState ? (
+                      <div className="t-body" style={{ marginTop: 4, color: slotColour(selectedLeg.mode, selectedLegState.state), fontWeight: 500, fontSize: 13 }}>
+                        {lang === 'bn' ? selectedLegState.reason.bn : selectedLegState.reason.en}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <p className="t-body" style={{ fontWeight: 400 }}>No options.</p>
+            )}
+          </>
         )}
       </div>
     </section>
   );
 }
+
+const LEGEND = [
+  { colour: 'var(--sev-0)', bn: 'ঠিক আছে', en: 'Acceptable' },
+  { colour: 'var(--sev-5)', bn: 'খারাপ', en: 'Bad' },
+  { colour: 'var(--c20)', bn: 'শান্ত (হাঁটা)', en: 'Quiet (walking)' }
+];
+
+const TEXT = {
+  bn: {
+    screenName: 'জ্যাম বেল্ট',
+    onRoute: 'রুটের শুরু', total: 'মোট সময়', fare: 'ভাড়া', min: 'মিনিট',
+    belt: 'ধাপের বেল্ট', fareVaries: 'ভাড়া পরিবর্তনশীল',
+    fromLabel: 'কোথা থেকে', toLabel: 'কোথায় যাবেন', searchPlaceholder: 'জায়গার নাম লিখুন', toWord: '→'
+  },
+  en: {
+    screenName: 'Jam Belt',
+    onRoute: 'Route starts at', total: 'Total', fare: 'Fare', min: 'min',
+    belt: 'Leg belt', fareVaries: 'Fare varies',
+    fromLabel: 'From', toLabel: 'To', searchPlaceholder: 'Type a place name', toWord: '→'
+  }
+};
