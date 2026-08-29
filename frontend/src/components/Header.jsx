@@ -18,29 +18,38 @@ export function Header({ authUser, onLogout }) {
   const isAuthPage = ['/login', '/register', '/forgot-password', '/verify-code', '/reset-password'].includes(
     location.pathname
   );
+  // The landing page is marketing copy, not an app screen — Map/Live/Belt
+  // links belong on the actual app screens, not here, even when signed in.
+  const isLandingPage = location.pathname === '/';
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
     <header className="main-header">
       <div className="header-container">
-        {/* Brand Logo & Name */}
-        <NavLink to="/" className="header-brand" onClick={closeMobileMenu}>
-          <div className="header-logo-icon">
-            <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">
-              <rect width="36" height="36" rx="9" fill="#F2A878" />
-              <text x="17" y="25" textAnchor="middle" fontFamily="var(--head)" fontSize="19" fontWeight="800" fill="#221F1C">ফ</text>
-              <circle cx="31" cy="6" r="4.5" fill="#C3E2A6" />
-            </svg>
-          </div>
-          <div className="header-brand-text">
-            <span className="brand-title">ফুরুৎ</span>
-            <span className="brand-sub">ঢাকা</span>
-          </div>
+        {/* Brand logo — the full logo already carries the EZZ GO wordmark, so
+            no separate brand-name text is rendered beside it (desktop); the
+            compact icon (no wordmark) is used below the 860px breakpoint the
+            rest of this header already switches on. */}
+        <NavLink to="/" className="header-brand" onClick={closeMobileMenu} aria-label="EZZ GO home">
+          <img
+            src="/brand/ezz-go-logo.png"
+            alt="EZZ GO — out before the jam"
+            className="header-logo-full"
+            width="176"
+            height="99"
+          />
+          <img
+            src="/brand/ezz-go-icon.png"
+            alt="EZZ GO"
+            className="header-logo-compact"
+            width="40"
+            height="40"
+          />
         </NavLink>
 
-        {/* Desktop Navigation — the app screens only make sense once signed in */}
-        {authUser ? (
+        {/* Desktop Navigation — the app screens only make sense once signed in, and never on the landing page */}
+        {authUser && !isLandingPage ? (
           <nav className="header-nav" aria-label="Main Navigation">
             {NAV_ITEMS.map((item) => (
               <NavLink
@@ -142,7 +151,7 @@ export function Header({ authUser, onLogout }) {
       {/* Mobile Drawer Navigation */}
       {mobileMenuOpen && (
         <div className="mobile-menu-drawer">
-          {authUser ? (
+          {authUser && !isLandingPage ? (
             <div className="mobile-menu-links">
               {NAV_ITEMS.map((item) => (
                 <NavLink

@@ -10,7 +10,7 @@ export const logger = winston.createLogger({
     winston.format.json()
   ),
   defaultMeta: {
-    service: 'goli-transit-backend'
+    service: 'ezz-go-backend'
   },
   transports: [new winston.transports.Console()]
 });

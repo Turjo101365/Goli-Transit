@@ -1,10 +1,10 @@
-# GoliTransit - Multi-Modal Hyper-Local Routing Engine
+# EZZ GO - Multi-Modal Hyper-Local Routing Engine
 
 ## 🚀 Project Overview
 
 Dhaka's urban mobility challenge is not just congestion. It is unpredictability. Daily commuting is affected by dense intersections, sudden road blockages, event-based traffic surges, and frequent travel-time variation across neighborhoods.
 
-GoliTransit is designed to solve this by combining graph-based route optimization with real-time anomaly handling. The platform computes efficient multi-modal routes (walk, bike, bus, metro), updates edge costs when disruptions happen, and enables instant rerouting.
+EZZ GO is designed to solve this by combining graph-based route optimization with real-time anomaly handling. The platform computes efficient multi-modal routes (walk, bike, bus, metro), updates edge costs when disruptions happen, and enables instant rerouting.
 
 In short, this project provides a practical routing engine for hyper-local decision-making in highly dynamic traffic environments.
 
@@ -257,7 +257,7 @@ npm run poll
 For continuous baseline collection, run it every 15 minutes via cron:
 
 ```cron
-*/15 * * * * cd /path/to/Goli-Transit/backend && npm run poll >> /var/log/furut-poll.log 2>&1
+*/15 * * * * cd /path/to/Goli-Transit/backend && npm run poll >> /var/log/ezz-go-poll.log 2>&1
 ```
 
 At 15-minute intervals, stay at or under 20 corridors to keep daily calls

@@ -4,10 +4,10 @@ import { logger } from '../utils/logger.js';
 import { pointInPolygon } from '../utils/point-in-polygon.js';
 import waterlogging from '../data/waterlogging.json' with { type: 'json' };
 
-const { DHAKA_LAT, DHAKA_LNG, CACHE_TTL_SECONDS, RAIN_MM_THRESHOLD, HEAVY_RAIN_MM_THRESHOLD } = config.weather;
-// v2: added temperatureC — bump so a stale v1 cache entry (missing that
-// field) doesn't get served as if it were fresh.
-const WEATHER_CACHE_KEY = 'weather-cache:v2:dhaka';
+const { DHAKA_LAT, DHAKA_LNG, CACHE_TTL_SECONDS, RAIN_MM_THRESHOLD, HEAVY_RAIN_MM_THRESHOLD, HEAT_BAND_MAX_C } = config.weather;
+// v3: added feelsLikeC — bump so a stale cache entry (missing that field)
+// doesn't get served as if it were fresh.
+const WEATHER_CACHE_KEY = 'weather-cache:v3:dhaka';
 
 let memoryCache = null;
 
@@ -24,7 +24,7 @@ async function fetchLiveWeather() {
 	const url = new URL('https://api.open-meteo.com/v1/forecast');
 	url.searchParams.set('latitude', String(DHAKA_LAT));
 	url.searchParams.set('longitude', String(DHAKA_LNG));
-	url.searchParams.set('current', 'precipitation,temperature_2m');
+	url.searchParams.set('current', 'precipitation,temperature_2m,apparent_temperature');
 	url.searchParams.set('minutely_15', 'precipitation_probability');
 	url.searchParams.set('timezone', 'Asia/Dhaka');
 	url.searchParams.set('forecast_days', '1');
@@ -42,11 +42,16 @@ async function fetchLiveWeather() {
 		: null;
 
 	const rawTemperature = payload.current?.temperature_2m;
+	const rawFeelsLike = payload.current?.apparent_temperature;
 
 	return {
 		precipitationMm: Number(payload.current?.precipitation ?? 0),
 		precipitationProbability,
 		temperatureC: rawTemperature === undefined || rawTemperature === null ? null : Number(rawTemperature),
+		// Open-Meteo's own apparent-temperature model (humidity + wind), not
+		// a heat-index formula computed here — same principle as the real
+		// temperature reading: request it from the live source, don't derive it.
+		feelsLikeC: rawFeelsLike === undefined || rawFeelsLike === null ? null : Number(rawFeelsLike),
 		fetchedAt: new Date().toISOString()
 	};
 }
@@ -72,7 +77,7 @@ export async function getWeatherSnapshot() {
 			message: error?.message
 		});
 
-		return cached || memoryCache || { precipitationMm: 0, precipitationProbability: null, temperatureC: null, fetchedAt: null };
+		return cached || memoryCache || { precipitationMm: 0, precipitationProbability: null, temperatureC: null, feelsLikeC: null, fetchedAt: null };
 	}
 }
 
@@ -86,6 +91,30 @@ export function classifyCondition(precipitationMm) {
 	}
 
 	return 'clear';
+}
+
+export function classifyHeat(temperatureC) {
+	if (temperatureC === null || temperatureC === undefined) {
+		return null;
+	}
+
+	if (temperatureC < HEAT_BAND_MAX_C.cold) {
+		return 'cold';
+	}
+
+	if (temperatureC < HEAT_BAND_MAX_C.mild) {
+		return 'mild';
+	}
+
+	if (temperatureC < HEAT_BAND_MAX_C.pleasant) {
+		return 'pleasant';
+	}
+
+	if (temperatureC < HEAT_BAND_MAX_C.hot) {
+		return 'hot';
+	}
+
+	return 'very_hot';
 }
 
 export async function getCondition() {

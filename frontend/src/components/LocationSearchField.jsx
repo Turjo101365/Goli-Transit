@@ -6,7 +6,7 @@ function t(bn, en, lang) {
 	return lang === 'en' ? en : bn;
 }
 
-// Same station-first / Nominatim-fallback search used by FurutMap.jsx,
+// Same station-first / Nominatim-fallback search used by EzzGoMap.jsx,
 // pulled out standalone so Live and Belt can each pick a real point too
 // instead of hardcoding one. When restrictToStations is set (Live's
 // destination — POST /journey/evaluate needs a real destinationNodeId, not

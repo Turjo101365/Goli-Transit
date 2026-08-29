@@ -83,7 +83,7 @@ async function geocodePlace(placeInput) {
   try {
     response = await fetch(url, {
       headers: {
-        'User-Agent': 'goli-transit-hackathon/1.0'
+        'User-Agent': 'ezz-go-hackathon/1.0'
       },
       signal: controller.signal
     });

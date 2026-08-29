@@ -1,4 +1,4 @@
-import { getCondition, getWeatherSnapshot, listWaterloggedAreas } from '../services/weatherService.js';
+import { classifyHeat, getCondition, getWeatherSnapshot, listWaterloggedAreas } from '../services/weatherService.js';
 import { combineCondition, getAutoCondition, dhakaParts } from '../core/modeMatrix.js';
 import { WEEKDAY_PEAK_WINDOWS, FRIDAY_PEAK_WINDOW, HIGH_ALERT_ZONES } from '../constants/trafficSchedule.js';
 
@@ -27,6 +27,8 @@ export async function conditionController(req, res, next) {
 				precipitationMm: snapshot.precipitationMm,
 				precipitationProbability: snapshot.precipitationProbability,
 				temperatureC: snapshot.temperatureC,
+				feelsLikeC: snapshot.feelsLikeC,
+				heatCondition: classifyHeat(snapshot.temperatureC),
 				observedAt: snapshot.fetchedAt,
 				waterloggedAreas,
 				// Real-time traffic condition — live weather combined with the

@@ -1,4 +1,4 @@
-# GoliTransit Project Brain
+# EZZ GO Project Brain
 
 > Living project memory and handoff document. Keep this file factual, update it after meaningful changes, and never place secrets or real credentials here.
 
@@ -9,7 +9,7 @@
 
 ## 1. Executive summary
 
-GoliTransit is a React and Express application for planning routes across a small Dhaka transit graph. A user can enter a known area, coordinates, or an arbitrary Dhaka place name; the backend resolves it to a graph node, calculates a multi-modal route, renders the path on a Leaflet map, and can increase an edge's weight to demonstrate rerouting after congestion.
+EZZ GO is a React and Express application for planning routes across a small Dhaka transit graph. A user can enter a known area, coordinates, or an arbitrary Dhaka place name; the backend resolves it to a graph node, calculates a multi-modal route, renders the path on a Leaflet map, and can increase an edge's weight to demonstrate rerouting after congestion.
 
 The repository already contains substantial working code:
 

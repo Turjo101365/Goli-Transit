@@ -30,11 +30,11 @@ function resolveHost(value, nodeEnv) {
 	return host;
 }
 
-const appName = resolveEnvValue(process.env.APP_NAME, 'Goli-Transit');
+const appName = resolveEnvValue(process.env.APP_NAME, 'EZZ GO');
 const nodeEnv = process.env.NODE_ENV || 'development';
 
 const DEV_JWT_SECRET_PLACEHOLDERS = new Set([
-	'goli-transit-dev-secret',
+	'ezz-go-dev-secret',
 	'change-this-in-production'
 ]);
 
@@ -51,7 +51,7 @@ function resolveAuthSecret(nodeEnvValue) {
 		return configuredSecret;
 	}
 
-	return configuredSecret || 'goli-transit-dev-secret';
+	return configuredSecret || 'ezz-go-dev-secret';
 }
 
 export const env = {
@@ -73,7 +73,7 @@ export const env = {
 	REDIS_ROUTE_TTL_SECONDS: toInt(process.env.REDIS_ROUTE_TTL_SECONDS, 600),
 	AUTH_SECRET: resolveAuthSecret(nodeEnv),
 	AUTH_TOKEN_TTL_HOURS: toInt(process.env.AUTH_TOKEN_TTL_HOURS, 168),
-	AUTH_JWT_ISSUER: process.env.AUTH_JWT_ISSUER || appName || 'goli-transit',
+	AUTH_JWT_ISSUER: process.env.AUTH_JWT_ISSUER || appName || 'ezz-go',
 	// OAuth client ID from Google Cloud Console — required for POST
 	// /auth/google to work. Must match the frontend's VITE_GOOGLE_CLIENT_ID.
 	GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',

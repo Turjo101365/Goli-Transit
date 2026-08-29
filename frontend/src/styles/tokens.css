@@ -231,32 +231,36 @@ body {
   flex-shrink: 0;
 }
 
-.header-logo-icon {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Full EZZ GO logo (wordmark + tagline baked into the artwork) — shown at
+   native aspect ratio, sized fluidly between the tablet and desktop target
+   widths the brand spec calls for, using the header's one existing
+   breakpoint (860px) rather than adding a new one. Hidden below it in
+   favor of the compact icon-only mark, since there isn't room to shrink
+   the full logo without its tagline becoming unreadable. */
+.header-logo-full {
+  display: none;
+  width: clamp(135px, 14vw, 188px);
+  height: auto;
+  object-fit: contain;
   flex-shrink: 0;
 }
 
-.header-brand-text {
-  display: flex;
-  flex-direction: column;
+.header-logo-compact {
+  display: block;
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
-.brand-title {
-  font-family: var(--head);
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.1;
-  color: var(--cream);
-}
+@media (min-width: 860px) {
+  .header-logo-full {
+    display: block;
+  }
 
-.brand-sub {
-  font-size: 11px;
-  color: var(--c45);
-  font-weight: 500;
+  .header-logo-compact {
+    display: none;
+  }
 }
 
 .header-nav {
@@ -508,9 +512,7 @@ body {
 .footer-logo-icon {
   width: 32px;
   height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  object-fit: contain;
   flex-shrink: 0;
 }
 
@@ -716,7 +718,7 @@ body {
 }
 
 /* The conductor's-punch radio selector used by route/option lists
-   (RouteOptionsTable, GoliUI, FurutMap) — same "selected" language as
+   (RouteOptionsTable, EzzGoBelt, EzzGoMap) — same "selected" language as
    .chip[aria-pressed] elsewhere (metro green, soft glow in dark mode),
    so a picked route option and a pressed chip read as the same state
    everywhere in the app. */

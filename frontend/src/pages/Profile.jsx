@@ -262,7 +262,7 @@ export function Profile({ user, onOpenPlanner, onLogout }) {
     }
 
     if (action === 'support') {
-      window.location.href = 'mailto:abcd@golitranist.com?subject=GoliTransit%20Profile%20Support';
+      window.location.href = 'mailto:abcd@golitranist.com?subject=EZZ%20GO%20Profile%20Support';
       setSettingsMessage('Opening your email app for support.');
       return;
     }

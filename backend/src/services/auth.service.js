@@ -24,7 +24,7 @@ let memoryUserSequence = 1;
 // days) so a guest session doesn't linger indefinitely.
 const guestUsersById = new Map();
 const GUEST_SESSION_TTL_HOURS = 6;
-const GUEST_EMAIL_DOMAIN = 'guest.furut.local';
+const GUEST_EMAIL_DOMAIN = 'guest.ezzgo.local';
 
 const googleClient = env.GOOGLE_CLIENT_ID ? new OAuth2Client(env.GOOGLE_CLIENT_ID) : null;
 
@@ -262,7 +262,7 @@ export const authService = {
 	},
 
 	// Emergency access: no email, no password, no rate-limit-by-identity —
-	// just a working session for whoever needs FURUT right now. Never
+	// just a working session for whoever needs EZZ GO right now. Never
 	// touches the real users table; see the guestUsersById comment above.
 	async guest() {
 		const user = createGuestUser();

@@ -13,7 +13,7 @@ export async function getHealthSnapshot() {
 
   return {
     ok: true,
-    service: 'goli-transit-backend',
+    service: 'ezz-go-backend',
     graph: {
       nodeCount: snapshot.nodeCount,
       edgeCount: snapshot.edgeCount,

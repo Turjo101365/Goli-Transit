@@ -7,7 +7,17 @@ export const config = {
 		// Standard hourly rain-intensity bands (light <2.5mm/hr, heavy >7.6mm/hr)
 		// divided by 4 to match our 15-minute observation window.
 		RAIN_MM_THRESHOLD: 0.2,
-		HEAVY_RAIN_MM_THRESHOLD: 1.9
+		HEAVY_RAIN_MM_THRESHOLD: 1.9,
+		// Comfort bands for the "how hot does it feel" label — a UX
+		// classification for a tropical city's range, not a sourced
+		// meteorological standard (unlike the rain bands above).
+		HEAT_BAND_MAX_C: {
+			cold: 15,
+			mild: 22,
+			pleasant: 29,
+			hot: 34
+			// >= 34: very_hot
+		}
 	},
 	journey: {
 		SWITCH_SEARCH_RADIUS_KM: 1.5,
