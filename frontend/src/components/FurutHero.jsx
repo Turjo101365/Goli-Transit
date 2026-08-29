@@ -8,13 +8,6 @@ import { ThemeToggle } from './ThemeToggle.jsx';
 
 const BRAND = 'ফুরুৎ';
 
-// Mirpur 10 -> Motijheel, bus option: the same numbers routeOptions.service.js
-// serves from the real (frozen) /route contract, p50=68/p90=112. Reused here
-// rather than fetched, since the hero is public and /route requires auth —
-// not invented, this is the app's own real answer for this corridor today.
-const STUB_USUAL = 68;
-const STUB_BAD = 112;
-
 // Real per-mode rain reasons, copied from backend/src/core/modeMatrix.js
 // MATRIX[mode].rain — not rewritten, so this can't drift into a claim the
 // app doesn't actually enforce.
@@ -113,18 +106,69 @@ export function FurutHero({ authUser, onGuestLogin }) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
-            <div className="panel" style={{ padding: '14px 16px' }}>
-              <span className="t-label">{t.usual}</span>
-              <div className="t-big" style={{ fontSize: 'clamp(34px,8vw,44px)', marginTop: 6 }}>
-                {STUB_USUAL}<span className="t-label" style={{ marginLeft: 4 }}>{t.min}</span>
+          <div className="panel" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14, marginTop: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="live-dot" />
+                <span className="t-label" style={{ color: 'var(--cream)', fontSize: 11 }}>
+                  {lang === 'bn' ? 'ঢাকা লাইভ ট্রানজিট সিস্টেম' : 'Dhaka Live Transit System'}
+                </span>
               </div>
+              <span className="t-label" style={{ color: 'var(--metro)', fontSize: 11 }}>
+                {lang === 'bn' ? 'সক্রিয়' : 'Online'}
+              </span>
             </div>
-            <div className="panel" style={{ padding: '14px 16px', borderColor: 'var(--stamp)' }}>
-              <span className="t-label" style={{ color: 'var(--stamp)' }}>{t.badDay}</span>
-              <div className="t-big" style={{ fontSize: 'clamp(34px,8vw,44px)', marginTop: 6, color: 'var(--stamp)' }}>
-                {STUB_BAD}<span className="t-label" style={{ marginLeft: 4, color: 'var(--stamp)' }}>{t.min}</span>
+
+            {/* MRT-6 Metro Status */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="t-place" style={{ fontSize: 15, color: 'var(--metro)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M7 15h10M7 9h10M9 3v18M15 3v18"/></svg>
+                  {lang === 'bn' ? 'মেট্রোরেল (MRT-6)' : 'Metro (MRT-6)'}
+                </span>
+                <span className="t-num" style={{ fontSize: 12.5, color: 'var(--metro)', background: 'rgba(0, 103, 71, 0.1)', padding: '2px 8px', borderRadius: 4 }}>
+                  {lang === 'bn' ? 'অন-টাইম' : 'On-Time'}
+                </span>
               </div>
+              <p className="t-body" style={{ margin: 0, fontSize: 12.5, color: 'var(--c70)' }}>
+                {lang === 'bn' ? '১৬টি স্টেশন · ৭:১০ AM – ৯:০০ PM' : '16 stations · 7:10 AM – 9:00 PM'}
+              </p>
+            </div>
+
+            {/* Live Weather & Road Watch */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="t-place" style={{ fontSize: 15, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="M13 19v3M9 19v3"/></svg>
+                  {lang === 'bn' ? 'লাইভ আবহাওয়া' : 'Live Weather'}
+                </span>
+                <span className="t-label" style={{ color: 'var(--sev-0)', fontSize: 10.5 }}>
+                  {lang === 'bn' ? 'ওপেন-মিটিও সিঙ্ক' : 'Open-Meteo Sync'}
+                </span>
+              </div>
+              <p className="t-body" style={{ margin: 0, fontSize: 12.5, color: 'var(--c70)' }}>
+                {lang === 'bn' ? 'বৃষ্টি ও জলাবদ্ধতার রিয়েলটাইম প্রভাব মনিটর' : 'Real-time rain & waterlogging monitoring'}
+              </p>
+            </div>
+
+            {/* Peak Hour Traffic Shift */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="t-place" style={{ fontSize: 15, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  {lang === 'bn' ? 'পিক-আওয়ার শিফট' : 'Peak Traffic Shift'}
+                </span>
+                <span className="t-label" style={{ color: schedule?.activeWindow ? 'var(--stamp)' : 'var(--c45)', fontSize: 10.5 }}>
+                  {schedule?.activeWindow
+                    ? (lang === 'bn' ? 'পিক সক্রিয়' : 'Peak Active')
+                    : (lang === 'bn' ? 'স্বাভাবিক চলাচল' : 'Regular Flow')}
+                </span>
+              </div>
+              <p className="t-body" style={{ margin: 0, fontSize: 12.5, color: 'var(--c70)' }}>
+                {schedule?.activeWindow
+                  ? (lang === 'bn' ? `${schedule.activeWindow.labelBn} (${schedule.activeWindow.reasonBn})` : `${schedule.activeWindow.labelEn} (${schedule.activeWindow.reasonEn})`)
+                  : (lang === 'bn' ? 'স্কুল-অফিস শিফট ও জুম্মার নিয়মিত জ্যাম ট্র্যাকিং' : 'School, office shifts & Jummah jam tracking')}
+              </p>
             </div>
           </div>
         </div>

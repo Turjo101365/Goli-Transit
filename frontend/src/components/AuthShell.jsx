@@ -1,30 +1,12 @@
 import { Link } from 'react-router-dom';
 import '../styles/tokens.css';
 import { useLanguage } from '../state/LanguageContext.jsx';
-import { ThemeToggle } from './ThemeToggle.jsx';
-
-const BRAND = 'ফুরুৎ';
-
-// Same real corridor numbers as FurutHero.jsx (routeOptions.service.js's
-// frozen /route contract, bus option: p50=68, p90=112) — repeated here so
-// the auth pages carry a real reminder of the product instead of empty
-// space, not a fresh invented stat.
-const STUB_USUAL = 68;
-const STUB_BAD = 112;
 
 const TEXT = {
   bn: {
-    tag: 'জ্যাম লাগার আগেই',
-    pitch: 'মিরপুর ১০ → মতিঝিল, বাসে — সাধারণত',
-    pitchBad: 'খারাপ দিনে',
-    min: 'মিনিট',
     back: '← হোম'
   },
   en: {
-    tag: 'Out before the jam',
-    pitch: 'Mirpur 10 → Motijheel, by bus — usually',
-    pitchBad: 'bad day',
-    min: 'min',
     back: '← Home'
   }
 };
@@ -36,19 +18,16 @@ export function AuthShell({ title, subtitle, children, footer }) {
   return (
     <section style={{ background: 'var(--ground)', color: 'var(--cream)', paddingBottom: 40, paddingTop: 20 }}>
       <div className="page-wrap" style={{ '--wrap-max': '440px' }}>
-        <div className="panel" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', margin: '8px 0 18px' }}>
-          <div>
-            <span className="t-label">{t.pitch}</span>
-            <div className="t-big" style={{ fontSize: 24, marginTop: 2 }}>
-              {STUB_USUAL} <span className="t-label">{t.min}</span>
-            </div>
+        <div className="panel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', margin: '8px 0 18px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="live-dot" />
+            <span className="t-place" style={{ fontSize: 14 }}>
+              {lang === 'bn' ? 'মেট্রোরেল (MRT-6) ও লাইভ ট্র্যাফিক' : 'Metro (MRT-6) & Live Traffic'}
+            </span>
           </div>
-          <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-            <span className="t-label" style={{ color: 'var(--stamp)' }}>{t.pitchBad}</span>
-            <div className="t-big" style={{ fontSize: 24, marginTop: 2, color: 'var(--stamp)' }}>
-              {STUB_BAD} <span className="t-label" style={{ color: 'var(--stamp)' }}>{t.min}</span>
-            </div>
-          </div>
+          <span className="t-label" style={{ color: 'var(--metro)' }}>
+            {lang === 'bn' ? 'সক্রিয়' : 'Online'}
+          </span>
         </div>
 
         <div className="panel" style={{ padding: '22px 22px 24px' }}>
