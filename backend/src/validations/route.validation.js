@@ -9,5 +9,7 @@ export const routeValidation = z.object({
 	destinationLat: z.number().min(-90).max(90),
 	destinationLng: z.number().min(-180).max(180),
 	originLabel: z.string().optional(),
-	destinationLabel: z.string().optional()
+	destinationLabel: z.string().optional(),
+	preference: z.enum(['fastest', 'comfortable', 'family', 'fast_comfortable', 'cheapest']).optional().default('fastest'),
+	allowedModes: z.array(z.enum(['walk', 'metro', 'bus', 'rickshaw', 'bike', 'cng'])).optional()
 });
