@@ -17,11 +17,17 @@ function isLocalBrowserHost() {
 }
 
 function resolveApiBaseConfig() {
-	const configuredBaseUrl = (import.meta.env.VITE_BACKEND_ENDPOINT || '').trim();
+	const configuredBaseUrl = (
+		import.meta.env.VITE_BACKEND_ENDPOINT ||
+		import.meta.env.VITE_API_URL ||
+		import.meta.env.VITE_API_BASE_URL ||
+		import.meta.env.VITE_BACKEND_URL ||
+		''
+	).trim();
 	const localBrowserHost = isLocalBrowserHost();
 
 	if (configuredBaseUrl) {
-		const baseUrl = configuredBaseUrl.replace(/\/$/, '');
+		const baseUrl = configuredBaseUrl.replace(/\/+$/, '');
 
 		if (LOCAL_BACKEND_PATTERN.test(baseUrl) && !localBrowserHost) {
 			return {
@@ -36,14 +42,6 @@ function resolveApiBaseConfig() {
 
 	if (typeof window === 'undefined') {
 		return { baseUrl: '', error: null };
-	}
-
-	if (!import.meta.env.DEV && !localBrowserHost) {
-		return {
-			baseUrl: '',
-			error:
-				'Missing VITE_BACKEND_ENDPOINT for deployed frontend. Set it to your public backend URL (for example https://your-service.onrender.com).'
-		};
 	}
 
 	return {

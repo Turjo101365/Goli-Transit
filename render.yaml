@@ -6,15 +6,16 @@ services:
     plan: free
     buildCommand: npm install
     startCommand: npm start
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 8080
       - key: DB_ENABLED
         value: "true"
       - key: DATABASE_URL
         sync: false
+      - key: DB_SSL
+        value: "false"
       - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_URL
@@ -23,3 +24,19 @@ services:
         sync: false
       - key: REDIS_ENABLED
         value: "false"
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+
+  - type: static
+    name: goli-transit-frontend
+    rootDir: frontend
+    plan: free
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_BACKEND_ENDPOINT
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

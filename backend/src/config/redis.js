@@ -79,3 +79,17 @@ export function getRedisClient() {
 export function getRedisStatus() {
 	return { ...status };
 }
+
+export async function closeRedis() {
+	if (client) {
+		try {
+			if (client.isOpen) {
+				await client.quit();
+			}
+		} catch {
+			// ignore
+		} finally {
+			client = null;
+		}
+	}
+}

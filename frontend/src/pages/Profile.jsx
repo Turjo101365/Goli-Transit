@@ -14,18 +14,17 @@ import { useTheme } from '../state/ThemeContext.jsx';
 import { useTrip } from '../state/TripContext.jsx';
 import { toBanglaDigits } from '../utils/format.js';
 import { ModeIcon } from '../components/ModeIcon.jsx';
-import { MODE_META } from '../utils/modes.js';
 import { Loader } from '../components/UI/Loader.jsx';
 import '../styles/tokens.css';
 
 function num(val, lang) {
-  return lang === 'bn' ? toBanglaDigits(val) : val;
+  return lang === 'bn' ? toBanglaDigits(val) : String(val);
 }
 
 function formatDate(value, lang) {
   if (!value) return lang === 'bn' ? 'তথ্য নেই' : 'Not available';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  if (Number.isNaN(date.getTime())) return String(value);
 
   const day = date.getDate();
   const year = date.getFullYear();
@@ -60,14 +59,38 @@ function formatTimeAgo(dateString, lang) {
   return formatDate(dateString, lang);
 }
 
-const METRO_STATION_PRESETS = [
-  { nameBn: 'উত্তরা উত্তর', nameEn: 'Uttara North', nodeId: 'MRT6_UTTARA_NORTH' },
-  { nameBn: 'মিরপুর ১০', nameEn: 'Mirpur 10', nodeId: 'MRT6_MIRPUR_10' },
-  { nameBn: 'ফার্মগেট', nameEn: 'Farmgate', nodeId: 'MRT6_FARMGATE' },
-  { nameBn: 'কারওয়ান বাজার', nameEn: 'Karwan Bazar', nodeId: 'MRT6_KARWAN_BAZAR' },
-  { nameBn: 'শাহবাগ', nameEn: 'Shahbagh', nodeId: 'MRT6_SHAHBAGH' },
-  { nameBn: 'মতিঝিল', nameEn: 'Motijheel', nodeId: 'MRT6_MOTIJHEEL' }
+// All 16 authentic MRT-6 stations in Dhaka
+const MRT6_STATIONS = [
+  { id: 'mrt_uttara_north', nameBn: 'উত্তরা উত্তর', nameEn: 'Uttara North', lat: 23.8694, lng: 90.3675 },
+  { id: 'mrt_uttara_center', nameBn: 'উত্তরা সেন্টার', nameEn: 'Uttara Center', lat: 23.8598, lng: 90.3651 },
+  { id: 'mrt_uttara_south', nameBn: 'উত্তরা দক্ষিণ', nameEn: 'Uttara South', lat: 23.8456, lng: 90.3631 },
+  { id: 'mrt_pallabi', nameBn: 'পল্লবী', nameEn: 'Pallabi', lat: 23.8262, lng: 90.3642 },
+  { id: 'mrt_mirpur_11', nameBn: 'মিরপুর ১১', nameEn: 'Mirpur 11', lat: 23.8191, lng: 90.3653 },
+  { id: 'mrt_mirpur_10', nameBn: 'মিরপুর ১০', nameEn: 'Mirpur 10', lat: 23.8084, lng: 90.3682 },
+  { id: 'mrt_kazipara', nameBn: 'কাজীপাড়া', nameEn: 'Kazipara', lat: 23.7992, lng: 90.3720 },
+  { id: 'mrt_shewrapara', nameBn: 'শেওড়াপাড়া', nameEn: 'Shewrapara', lat: 23.7909, lng: 90.3755 },
+  { id: 'mrt_agargaon', nameBn: 'আগারগাঁও', nameEn: 'Agargaon', lat: 23.7777, lng: 90.3802 },
+  { id: 'mrt_bijoy_sarani', nameBn: 'বিজয় সরণি', nameEn: 'Bijoy Sarani', lat: 23.7664, lng: 90.3763 },
+  { id: 'mrt_farmgate', nameBn: 'ফার্মগেট', nameEn: 'Farmgate', lat: 23.7602, lng: 90.3865 },
+  { id: 'mrt_karwan_bazar', nameBn: 'কাওরান বাজার', nameEn: 'Karwan Bazar', lat: 23.7513, lng: 90.3927 },
+  { id: 'mrt_shahbagh', nameBn: 'শাহবাগ', nameEn: 'Shahbagh', lat: 23.7395, lng: 90.3960 },
+  { id: 'mrt_dhaka_university', nameBn: 'ঢাকা বিশ্ববিদ্যালয়', nameEn: 'Dhaka University', lat: 23.7319, lng: 90.3965 },
+  { id: 'mrt_secretariat', nameBn: 'বাংলাদেশ সচিবালয়', nameEn: 'Bangladesh Secretariat', lat: 23.7300, lng: 90.4075 },
+  { id: 'mrt_motijheel', nameBn: 'মতিঝিল', nameEn: 'Motijheel', lat: 23.7281, lng: 90.4191 }
 ];
+
+function findStationByNameOrId(query) {
+  if (!query) return null;
+  const q = String(query).trim().toLowerCase();
+  return MRT6_STATIONS.find(
+    (s) =>
+      s.id.toLowerCase() === q ||
+      s.nameBn.toLowerCase() === q ||
+      s.nameEn.toLowerCase() === q ||
+      q.includes(s.nameBn.toLowerCase()) ||
+      q.includes(s.nameEn.toLowerCase())
+  );
+}
 
 export function Profile({ user, onUpdateUser, onLogout }) {
   const { lang, setLang } = useLanguage();
@@ -124,7 +147,9 @@ export function Profile({ user, onUpdateUser, onLogout }) {
       }
     }
     fetchProfileData();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   async function refreshProfile() {
@@ -137,7 +162,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
         name: data?.user?.name || user?.name || '',
         email: data?.user?.email || user?.email || ''
       });
-      setSuccessMessage(lang === 'bn' ? 'প্রোফাইল আপডেট হয়েছে' : 'Profile refreshed');
+      setSuccessMessage(lang === 'bn' ? 'প্রোফাইল আপডেট সম্পন্ন হয়েছে' : 'Profile data synchronized');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       setError(err.message);
@@ -157,7 +182,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
       if (token) saveStoredSession({ token, user: updatedUser });
       if (onUpdateUser) onUpdateUser(updatedUser);
       setIsEditing(false);
-      setSuccessMessage(lang === 'bn' ? 'প্রোফাইল আপডেট হয়েছে' : 'Profile updated');
+      setSuccessMessage(lang === 'bn' ? 'তথ্য সফলভাবে সংরক্ষিত হয়েছে' : 'Profile updated successfully');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       setError(err.message);
@@ -181,7 +206,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
         fromLocation: routeForm.fromLocation,
         toLocation: routeForm.toLocation,
         mode: routeForm.mode,
-        durationMinutes: routeForm.durationMinutes,
+        durationMinutes: routeForm.durationMinutes ? Number(routeForm.durationMinutes) : null,
         createdAt: new Date().toISOString()
       };
       setProfileData((prev) => ({
@@ -190,7 +215,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
       }));
       setRouteForm({ name: '', fromLocation: '', toLocation: '', mode: 'metro', durationMinutes: '' });
       setShowAddRoute(false);
-      setSuccessMessage(lang === 'bn' ? 'রুট সংরক্ষিত হয়েছে' : 'Route saved');
+      setSuccessMessage(lang === 'bn' ? 'রুট সফলভাবে সংরক্ষিত হয়েছে' : 'Route saved successfully');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       setError(err.message);
@@ -206,7 +231,46 @@ export function Profile({ user, onUpdateUser, onLogout }) {
         ...prev,
         savedRoutes: (prev?.savedRoutes || []).filter((r) => r.id !== routeId)
       }));
-    } catch (err) { setError(err.message); }
+      setSuccessMessage(lang === 'bn' ? 'রুট মুছে ফেলা হয়েছে' : 'Route removed');
+      setTimeout(() => setSuccessMessage(null), 2500);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function handleUseRoute(route) {
+    const originStation = findStationByNameOrId(route.fromLocation);
+    const destStation = findStationByNameOrId(route.toLocation);
+
+    const originPoint = originStation
+      ? {
+          lat: originStation.lat,
+          lng: originStation.lng,
+          label: lang === 'bn' ? originStation.nameBn : originStation.nameEn,
+          nodeId: originStation.id
+        }
+      : {
+          label: route.fromLocation,
+          lat: 23.8084,
+          lng: 90.3682
+        };
+
+    const destPoint = destStation
+      ? {
+          lat: destStation.lat,
+          lng: destStation.lng,
+          label: lang === 'bn' ? destStation.nameBn : destStation.nameEn,
+          nodeId: destStation.id
+        }
+      : {
+          label: route.toLocation,
+          lat: 23.7281,
+          lng: 90.4191
+        };
+
+    setOrigin(originPoint);
+    setDestination(destPoint);
+    navigate('/map');
   }
 
   async function handleCreateStop(e) {
@@ -214,11 +278,19 @@ export function Profile({ user, onUpdateUser, onLogout }) {
     if (!stopForm.name) return;
     try {
       setIsAddingStop(true);
-      const result = await addFavoriteStop({ name: stopForm.name, nodeId: stopForm.nodeId || null });
+      const matched = findStationByNameOrId(stopForm.nodeId || stopForm.name);
+      const result = await addFavoriteStop({
+        name: stopForm.name,
+        nodeId: stopForm.nodeId || matched?.id || null,
+        latitude: matched?.lat || null,
+        longitude: matched?.lng || null
+      });
       const newStop = {
         id: result.id || Date.now(),
         name: stopForm.name,
-        nodeId: stopForm.nodeId || null,
+        nodeId: stopForm.nodeId || matched?.id || null,
+        latitude: matched?.lat || null,
+        longitude: matched?.lng || null,
         createdAt: new Date().toISOString()
       };
       setProfileData((prev) => ({
@@ -229,21 +301,39 @@ export function Profile({ user, onUpdateUser, onLogout }) {
       setShowAddStop(false);
       setSuccessMessage(lang === 'bn' ? 'স্টপ পিন করা হয়েছে' : 'Stop pinned to favorites');
       setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (err) { setError(err.message); } finally { setIsAddingStop(false); }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsAddingStop(false);
+    }
   }
 
   async function handleQuickAddStation(station) {
     try {
       const name = lang === 'bn' ? station.nameBn : station.nameEn;
-      const result = await addFavoriteStop({ name, nodeId: station.nodeId });
-      const newStop = { id: result.id || Date.now(), name, nodeId: station.nodeId, createdAt: new Date().toISOString() };
+      const result = await addFavoriteStop({
+        name,
+        nodeId: station.id,
+        latitude: station.lat,
+        longitude: station.lng
+      });
+      const newStop = {
+        id: result.id || Date.now(),
+        name,
+        nodeId: station.id,
+        latitude: station.lat,
+        longitude: station.lng,
+        createdAt: new Date().toISOString()
+      };
       setProfileData((prev) => ({
         ...prev,
-        favoriteStops: [newStop, ...(prev?.favoriteStops || []).filter((s) => s.nodeId !== station.nodeId)]
+        favoriteStops: [newStop, ...(prev?.favoriteStops || []).filter((s) => s.nodeId !== station.id)]
       }));
-      setSuccessMessage(lang === 'bn' ? `${name} যুক্ত হয়েছে` : `${name} added`);
+      setSuccessMessage(lang === 'bn' ? `${name} প্রিয় তালিকায় যুক্ত হয়েছে` : `${name} pinned to favorites`);
       setTimeout(() => setSuccessMessage(null), 2500);
-    } catch (err) { setError(err.message); }
+    } catch (err) {
+      setError(err.message);
+    }
   }
 
   async function handleDeleteStop(stopId) {
@@ -253,7 +343,35 @@ export function Profile({ user, onUpdateUser, onLogout }) {
         ...prev,
         favoriteStops: (prev?.favoriteStops || []).filter((s) => s.id !== stopId)
       }));
-    } catch (err) { setError(err.message); }
+      setSuccessMessage(lang === 'bn' ? 'স্টপ তালিকা থেকে সরানো হয়েছে' : 'Stop unpinned');
+      setTimeout(() => setSuccessMessage(null), 2500);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function handleUseStopAsDestination(stop) {
+    const station = findStationByNameOrId(stop.nodeId || stop.name);
+    const destPoint = {
+      lat: stop.latitude || station?.lat || 23.7281,
+      lng: stop.longitude || station?.lng || 90.4191,
+      label: stop.name,
+      nodeId: stop.nodeId || station?.id || null
+    };
+    setDestination(destPoint);
+    navigate('/map');
+  }
+
+  function handleUseStopAsOrigin(stop) {
+    const station = findStationByNameOrId(stop.nodeId || stop.name);
+    const originPoint = {
+      lat: stop.latitude || station?.lat || 23.8084,
+      lng: stop.longitude || station?.lng || 90.3682,
+      label: stop.name,
+      nodeId: stop.nodeId || station?.id || null
+    };
+    setOrigin(originPoint);
+    navigate('/map');
   }
 
   async function copyUserId() {
@@ -262,14 +380,16 @@ export function Profile({ user, onUpdateUser, onLogout }) {
       await navigator.clipboard.writeText(String(currentUser.id));
       setCopiedId(true);
       setTimeout(() => setCopiedId(false), 2000);
-    } catch { setError('Failed to copy'); }
+    } catch {
+      setError('Failed to copy ID');
+    }
   }
 
   if (loading) {
     return (
       <div className="profile-page-wrapper">
         <div className="profile-container" style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}>
-          <Loader label={lang === 'bn' ? 'প্রোফাইল লোড হচ্ছে...' : 'Loading profile...'} />
+          <Loader label={lang === 'bn' ? 'প্রোফাইল লোড হচ্ছে...' : 'Loading commuter profile...'} />
         </div>
       </div>
     );
@@ -299,10 +419,10 @@ export function Profile({ user, onUpdateUser, onLogout }) {
     <div className="profile-page-wrapper">
       <div className="profile-container">
 
-        {/* Feedback Banners */}
+        {/* Feedback / Alert Banners */}
         {error && (
           <div className="profile-alert-banner profile-alert-banner--error">
-            <span>{error}</span>
+            <span>⚠️ {error}</span>
             <button
               type="button"
               onClick={() => setError(null)}
@@ -326,12 +446,17 @@ export function Profile({ user, onUpdateUser, onLogout }) {
           </div>
         )}
 
-        {/* 1. HERO IDENTITY CARD */}
+        {/* 1. TICKET STUB COMMUTER PASS HERO */}
         <div className="profile-hero-card">
           <div className="profile-hero-left">
             <div className="profile-avatar-wrap">
-              <div className={`profile-avatar ${isGuest ? 'profile-avatar--guest' : ''}`}>{initialLetter}</div>
-              <span className={`profile-avatar-online-dot ${isGuest ? 'profile-avatar-online-dot--guest' : ''}`} title={isGuest ? 'Guest Session' : 'Active Commuter'} />
+              <div className={`profile-avatar ${isGuest ? 'profile-avatar--guest' : ''}`}>
+                {initialLetter}
+              </div>
+              <span
+                className={`profile-avatar-online-dot ${isGuest ? 'profile-avatar-online-dot--guest' : ''}`}
+                title={isGuest ? 'Guest Session' : 'Active Commuter Beacon'}
+              />
             </div>
 
             <div className="profile-hero-info">
@@ -345,7 +470,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                   </span>
                 ) : isGoogle ? (
                   <span className="profile-tag profile-tag--google">
-                    {lang === 'bn' ? 'গুগল লিঙ্কড' : 'Google Connected'}
+                    {lang === 'bn' ? 'গুগল কানেক্টেড' : 'Google Connected'}
                   </span>
                 ) : (
                   <span className="profile-tag profile-tag--verified">
@@ -356,11 +481,11 @@ export function Profile({ user, onUpdateUser, onLogout }) {
 
               <div className="profile-hero-rank">
                 <span>🚇</span>
-                <span>{lang === 'bn' ? 'লেভেল ১ · ঢাকা ট্রানজিট যাত্রী' : 'Level 1 · Dhaka Commuter'}</span>
+                <span>{lang === 'bn' ? 'ঢাকা ট্রানজিট যাত্রী · লেভেল ১' : 'Dhaka Transit Commuter · Level 1'}</span>
               </div>
 
               <p className="profile-hero-email">
-                {currentUser?.email || (lang === 'bn' ? 'কোনো ইমেইল যুক্ত নেই' : 'No email associated')}
+                {currentUser?.email || (lang === 'bn' ? 'কোনো ইমেইল যুক্ত নেই (অস্থায়ী)' : 'No email associated (Temporary)')}
               </p>
 
               <div className="profile-meta-row">
@@ -374,7 +499,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                     type="button"
                     className="profile-id-chip"
                     onClick={copyUserId}
-                    title="Click to copy ID"
+                    title="Click to copy Commuter ID"
                   >
                     <span>ID: #{currentUser.id}</span>
                     <span style={{ fontSize: 11, color: copiedId ? 'var(--metro)' : 'var(--c70)' }}>
@@ -392,7 +517,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                 type="button"
                 className="action-chip action-chip--highlight"
                 onClick={() => navigate('/register')}
-                style={{ padding: '8px 16px', fontWeight: 700 }}
+                style={{ fontWeight: 700 }}
               >
                 ✨ {lang === 'bn' ? 'অ্যাকাউন্ট সেভ করুন' : 'Save Account'}
               </button>
@@ -421,7 +546,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19"/>
               </svg>
-              {isRefreshing ? (lang === 'bn' ? 'রিফ্রেশ...' : 'Refreshing...') : (lang === 'bn' ? 'রিফ্রেশ' : 'Refresh')}
+              {isRefreshing ? (lang === 'bn' ? 'সিঙ্ক হচ্ছে...' : 'Syncing...') : (lang === 'bn' ? 'সিঙ্ক' : 'Sync')}
             </button>
 
             <button
@@ -434,7 +559,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
           </div>
         </div>
 
-        {/* 2. GUEST UPGRADE & PERMANENCE RECOMMENDATION */}
+        {/* 2. GUEST UPGRADE ALERT BANNER */}
         {isGuest && (
           <div className="profile-guest-warning-card">
             <div className="profile-guest-warning-header">
@@ -442,26 +567,26 @@ export function Profile({ user, onUpdateUser, onLogout }) {
               <div>
                 <h2 className="profile-guest-warning-title">
                   {lang === 'bn'
-                    ? 'অ্যাকাউন্টটি এখনও অস্থায়ী — এখনই স্থায়ী অ্যাকাউন্ট তৈরি করুন'
+                    ? 'অস্থায়ী গেস্ট সেশন — এখনই ফ্রি অ্যাকাউন্ট খুলে আপনার ডেটা সুরক্ষিত করুন'
                     : 'Temporary Guest Session — Create an Account to Keep Your Data Permanently'}
                 </h2>
                 <p className="profile-guest-warning-desc">
                   {lang === 'bn'
-                    ? 'আপনি বর্তমানে গেস্ট সেশন ব্যবহার করছেন। আপনার ব্যবহৃত রুট, ভ্রমণ ইতিহাস ও পছন্দের স্টেশনগুলো বর্তমানে ডাটাবেজে সাময়িকভাবে জমা হচ্ছে। সেশন শেষ হলে এগুলি হারিয়ে যেতে পারে। আজীবনের জন্য সব ডেটা সুরক্ষিত রাখতে এখনই ফ্রি অ্যাকাউন্ট খুলুন বা লগইন করুন।'
-                    : 'You are currently using a temporary guest session. Your explored routes, trip history, and favorite stations are temporarily active. To permanently preserve your commuter data across all devices, create a free account or log in now.'}
+                    ? 'আপনি বর্তমানে গেস্ট হিসেবে ট্রানজিট রুট ও স্টেশন ব্রাউজ করছেন। ব্রাউজার ক্যাশ বা সেশন শেষ হলে সংরক্ষিত রুট ও হিস্ট্রি মুছে যেতে পারে। আজীবন সব ডেটা যেকোনো ডিভাইসে সিঙ্ক রাখতে এখনই রেজিস্টার করুন।'
+                    : 'You are currently using a temporary guest session. To permanently sync your saved routes, pinned MRT stations, and journey history across all your devices, sign up for free.'}
                 </p>
               </div>
             </div>
 
             <div className="profile-guest-benefits">
               <span className="profile-guest-benefit-chip">
-                🔒 {lang === 'bn' ? 'স্থায়ী ডাটাবেজ ব্যাকআপ' : 'Permanent Cloud Storage'}
+                🔒 {lang === 'bn' ? 'স্থায়ী ক্লাউড ব্যাকআপ' : 'Permanent Cloud Storage'}
               </span>
               <span className="profile-guest-benefit-chip">
-                📱 {lang === 'bn' ? 'যেকোনো ডিভাইসে সিঙ্ক' : 'Cross-device Sync'}
+                📱 {lang === 'bn' ? 'যেকোনো ডিভাইসে সিঙ্ক' : 'Cross-Device Sync'}
               </span>
               <span className="profile-guest-benefit-chip">
-                ⚡ {lang === 'bn' ? '১-ক্লিকে সংরক্ষিত যাতায়াত রুট' : '1-Click Saved Routes'}
+                ⚡ {lang === 'bn' ? '১-ক্লিকে ম্যাপে রুট চালু' : '1-Click Saved Navigation'}
               </span>
             </div>
 
@@ -481,13 +606,13 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                 style={{ padding: '8px 16px' }}
                 onClick={() => navigate('/login')}
               >
-                🔑 {lang === 'bn' ? 'পূর্ববর্তী অ্যাকাউন্টে লগইন' : 'Log in to Existing Account'}
+                🔑 {lang === 'bn' ? 'পূর্বের অ্যাকাউন্টে লগইন' : 'Log in to Existing Account'}
               </button>
             </div>
           </div>
         )}
 
-        {/* 3. TRAVEL ANALYTICS & STATS GRID */}
+        {/* 3. COMMUTER TRAVEL METRICS GRID */}
         <div className="profile-stats-grid">
           <div className="profile-stat-box profile-stat-box--metro">
             <div className="profile-stat-header">
@@ -506,7 +631,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
             <div className="profile-stat-num">
               {num(stats.totalDistance || 0, lang)} <span style={{ fontSize: 13, color: 'var(--c70)' }}>{lang === 'bn' ? 'কিমি' : 'km'}</span>
             </div>
-            <span className="profile-stat-subtext">{lang === 'bn' ? 'অতিক্রম করা পথ' : 'Traveled across Dhaka'}</span>
+            <span className="profile-stat-subtext">{lang === 'bn' ? 'অতিক্রম করা পথ' : 'Distance in Transit'}</span>
           </div>
 
           <div className="profile-stat-box profile-stat-box--time">
@@ -517,7 +642,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
             <div className="profile-stat-num">
               {num(stats.totalMinutes || 0, lang)} <span style={{ fontSize: 13, color: 'var(--c70)' }}>{lang === 'bn' ? 'মিনিট' : 'mins'}</span>
             </div>
-            <span className="profile-stat-subtext">{lang === 'bn' ? 'রাস্তায় অতিবাহিত' : 'Time in Transit'}</span>
+            <span className="profile-stat-subtext">{lang === 'bn' ? 'রাস্তায় অতিবাহিত' : 'Time Saved & Traveled'}</span>
           </div>
 
           <div className="profile-stat-box profile-stat-box--saved">
@@ -528,11 +653,11 @@ export function Profile({ user, onUpdateUser, onLogout }) {
             <div className="profile-stat-num">
               {num(savedRoutes.length + favoriteStops.length, lang)}
             </div>
-            <span className="profile-stat-subtext">{lang === 'bn' ? 'রুট ও প্রিয় স্টেশন' : 'Routes & Pinned Stops'}</span>
+            <span className="profile-stat-subtext">{lang === 'bn' ? 'রুট ও পিন করা স্টপ' : 'Routes & Pinned Stops'}</span>
           </div>
         </div>
 
-        {/* 4. TABS NAVIGATION */}
+        {/* 4. NAVIGATION TABS */}
         <div className="profile-tabs-nav" role="tablist">
           <button
             type="button"
@@ -552,7 +677,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
             className={`profile-tab-btn ${activeTab === 'stops' ? 'profile-tab-btn--active' : ''}`}
             onClick={() => setActiveTab('stops')}
           >
-            <span>📍 {lang === 'bn' ? 'পছন্দের স্টপ' : 'Favorite Stops'}</span>
+            <span>📍 {lang === 'bn' ? 'পছন্দের স্টেশন' : 'Favorite Stops'}</span>
             <span className="profile-tab-badge">{num(favoriteStops.length, lang)}</span>
           </button>
 
@@ -574,25 +699,25 @@ export function Profile({ user, onUpdateUser, onLogout }) {
             className={`profile-tab-btn ${activeTab === 'settings' ? 'profile-tab-btn--active' : ''}`}
             onClick={() => setActiveTab('settings')}
           >
-            <span>⚙️ {lang === 'bn' ? 'সেটিংস ও তথ্য' : 'Settings & Preferences'}</span>
+            <span>⚙️ {lang === 'bn' ? 'সেটিংস ও পছন্দ' : 'Settings & Preferences'}</span>
           </button>
         </div>
 
-        {/* 5. TAB CONTENT PANELS */}
+        {/* 5. TAB PANELS */}
 
         {/* TAB 1: SAVED ROUTES */}
         {activeTab === 'routes' && (
           <div className="profile-card">
             <div className="profile-card-header">
               <h2 className="profile-card-title">
-                🛣️ {lang === 'bn' ? 'আপনার সংরক্ষিত রুটসমূহ' : 'Your Saved Routes'}
+                🛣️ {lang === 'bn' ? 'আপনার সংরক্ষিত যাতায়াত রুট' : 'Your Saved Commuter Routes'}
               </h2>
               <button
                 type="button"
                 className="action-chip action-chip--highlight"
                 onClick={() => setShowAddRoute((prev) => !prev)}
               >
-                {showAddRoute ? (lang === 'bn' ? '✕ ফর্ম বন্ধ করুন' : '✕ Close Form') : (lang === 'bn' ? '+ নতুন রুট যোগ করুন' : '+ Add New Route')}
+                {showAddRoute ? (lang === 'bn' ? '✕ ফর্ম বন্ধ করুন' : '✕ Close Form') : (lang === 'bn' ? '+ নতুন রুট যোগ করুন' : '+ Save New Route')}
               </button>
             </div>
 
@@ -608,7 +733,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                     <input
                       type="text"
                       className="profile-form-input"
-                      placeholder={lang === 'bn' ? 'যেমন: অফিস টু হোম' : 'e.g. Office to Home'}
+                      placeholder={lang === 'bn' ? 'যেমন: বাসা থেকে অফিস' : 'e.g. Home to Office'}
                       value={routeForm.name}
                       onChange={(e) => setRouteForm({ ...routeForm, name: e.target.value })}
                       required
@@ -620,7 +745,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                     <input
                       type="text"
                       className="profile-form-input"
-                      placeholder={lang === 'bn' ? 'উৎস বা স্টেশন' : 'Origin / Station'}
+                      placeholder={lang === 'bn' ? 'যেমন: মিরপুর ১০' : 'e.g. Mirpur 10'}
                       value={routeForm.fromLocation}
                       onChange={(e) => setRouteForm({ ...routeForm, fromLocation: e.target.value })}
                       required
@@ -632,7 +757,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                     <input
                       type="text"
                       className="profile-form-input"
-                      placeholder={lang === 'bn' ? 'গন্তব্য বা স্টেশন' : 'Destination / Station'}
+                      placeholder={lang === 'bn' ? 'যেমন: মতিঝিল' : 'e.g. Motijheel'}
                       value={routeForm.toLocation}
                       onChange={(e) => setRouteForm({ ...routeForm, toLocation: e.target.value })}
                       required
@@ -649,9 +774,9 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                       <option value="metro">{lang === 'bn' ? 'মেট্রোরেল (Metro MRT-6)' : 'Metro MRT-6'}</option>
                       <option value="bus">{lang === 'bn' ? 'বাস (City Bus)' : 'City Bus'}</option>
                       <option value="rickshaw">{lang === 'bn' ? 'রিকশা (Rickshaw)' : 'Rickshaw'}</option>
-                      <option value="walk">{lang === 'bn' ? 'হাঁটা (Walk)' : 'Walk'}</option>
                       <option value="bike">{lang === 'bn' ? 'বাইক (Ride Share)' : 'Bike'}</option>
                       <option value="cng">{lang === 'bn' ? 'সিএনজি (CNG Auto)' : 'CNG Auto'}</option>
+                      <option value="walk">{lang === 'bn' ? 'হাঁটা (Walk)' : 'Walk'}</option>
                     </select>
                   </div>
 
@@ -697,7 +822,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                 </p>
                 <p style={{ margin: 0, fontSize: 13, color: 'var(--c70)', maxWidth: 420 }}>
                   {lang === 'bn'
-                    ? 'আপনার নিয়মিত যাতায়াতের রুটগুলো এখানে সংরক্ষণ করে রাখুন এবং পরবর্তীতে ১-ক্লিকেই ম্যাপে নেভিগেশন চালু করুন।'
+                    ? 'নিয়মিত যাতায়াতের রুটগুলো এখানে সেভ করে রাখুন এবং পরবর্তীতে ১-ক্লিকেই ম্যাপে নেভিগেশন চালু করুন।'
                     : 'Bookmark your frequent daily routes here and launch navigation on the map with a single tap.'}
                 </p>
               </div>
@@ -706,10 +831,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                 {savedRoutes.map((route) => (
                   <div key={route.id} className="profile-route-card">
                     <div className="profile-route-left">
-                      <div
-                        className="profile-route-mode-icon"
-                        data-mode={route.mode || 'metro'}
-                      >
+                      <div className="profile-route-mode-icon">
                         <ModeIcon mode={route.mode || 'metro'} size={22} />
                       </div>
 
@@ -795,7 +917,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                     <input
                       type="text"
                       className="profile-form-input"
-                      placeholder={lang === 'bn' ? 'যেমন: MRT6_MIRPUR_10' : 'e.g. MRT6_MIRPUR_10'}
+                      placeholder={lang === 'bn' ? 'যেমন: mrt_mirpur_10' : 'e.g. mrt_mirpur_10'}
                       value={stopForm.nodeId}
                       onChange={(e) => setStopForm({ ...stopForm, nodeId: e.target.value })}
                     />
@@ -822,16 +944,16 @@ export function Profile({ user, onUpdateUser, onLogout }) {
               </form>
             )}
 
-            {/* Quick Pick Stations */}
+            {/* Quick Pick Stations (All 16 Real MRT-6 Stations) */}
             <div className="profile-quick-stations-wrap">
               <div className="profile-quick-stations-title">
                 <span>⚡</span>
                 <span>{lang === 'bn' ? '১-ক্লিকে মেট্রো স্টেশন পিন করুন:' : '1-Click Pin Metro Stations:'}</span>
               </div>
               <div className="profile-quick-stations-chips">
-                {METRO_STATION_PRESETS.map((st) => (
+                {MRT6_STATIONS.map((st) => (
                   <button
-                    key={st.nodeId}
+                    key={st.id}
                     type="button"
                     className="profile-quick-station-btn"
                     onClick={() => handleQuickAddStation(st)}
@@ -844,7 +966,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
 
             {/* Favorite Stops List */}
             {favoriteStops.length === 0 ? (
-              <div className="profile-empty-box" style={{ marginTop: 16 }}>
+              <div className="profile-empty-box" style={{ marginTop: 18 }}>
                 <div className="profile-empty-icon">📍</div>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--cream)' }}>
                   {lang === 'bn' ? 'এখনও কোনো স্টেশন পিন করা হয়নি' : 'No favorite stops pinned yet'}
@@ -852,11 +974,11 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                 <p style={{ margin: 0, fontSize: 13, color: 'var(--c70)', maxWidth: 420 }}>
                   {lang === 'bn'
                     ? 'উপরের তালিকা থেকে যেকোনো মেট্রো স্টেশন পিন করুন অথবা আপনার পছন্দের স্টপ যুক্ত করুন।'
-                    : 'Pin your most used MRT stations above or add custom city stops.'}
+                    : 'Pin your most used MRT-6 stations above or add custom stops.'}
                 </p>
               </div>
             ) : (
-              <div style={{ marginTop: 16 }}>
+              <div style={{ marginTop: 18 }}>
                 {favoriteStops.map((stop) => (
                   <div key={stop.id} className="profile-stop-card">
                     <div className="profile-stop-left">
@@ -864,7 +986,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                       <div>
                         <h3 className="profile-stop-name">{stop.name}</h3>
                         {stop.nodeId ? (
-                          <p className="profile-stop-id">Code: #{stop.nodeId}</p>
+                          <p className="profile-stop-id">Node: #{stop.nodeId}</p>
                         ) : null}
                       </div>
                     </div>
@@ -877,7 +999,15 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                         title="Set this stop as destination on the map"
                         style={{ fontWeight: 700 }}
                       >
-                        🧭 {lang === 'bn' ? 'গন্তব্য সেট করুন' : 'Set Destination'}
+                        🧭 {lang === 'bn' ? 'গন্তব্য সেট' : 'Set Destination'}
+                      </button>
+                      <button
+                        type="button"
+                        className="action-chip"
+                        onClick={() => handleUseStopAsOrigin(stop)}
+                        title="Set this stop as origin on the map"
+                      >
+                        🛫 {lang === 'bn' ? 'উৎস সেট' : 'Set Origin'}
                       </button>
                       <button
                         type="button"
@@ -928,10 +1058,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                 {trips.map((trip) => (
                   <div key={trip.id} className="profile-trip-item">
                     <div className="profile-trip-left">
-                      <div
-                        className="profile-trip-mode-icon"
-                        data-mode={trip.mode || 'bus'}
-                      >
+                      <div className="profile-trip-mode-icon">
                         <ModeIcon mode={trip.mode || 'bus'} size={20} />
                       </div>
 
@@ -1036,7 +1163,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                     </div>
                     <div className="profile-info-row">
                       <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'ইমেইল:' : 'Email:'}</span>
-                      <span style={{ fontFamily: 'var(--data)', color: 'var(--cream)' }}>{currentUser?.email || 'N/A'}</span>
+                      <span style={{ fontFamily: 'var(--data)', color: 'var(--cream)' }}>{currentUser?.email || (lang === 'bn' ? 'যুক্ত নেই' : 'N/A')}</span>
                     </div>
 
                     <button
@@ -1118,12 +1245,12 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                   <div>
                     <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--cream)' }}>
                       {isGuest
-                        ? (lang === 'bn' ? 'গেস্ট সেশনকে পূর্ণাঙ্গ অ্যাকাউন্টে রূপান্তর করুন' : 'Upgrade Guest Session to Permanent Account')
+                        ? (lang === 'bn' ? 'গেস্ট সেশনকে স্থায়ী অ্যাকাউন্টে রূপান্তর করুন' : 'Upgrade Guest Session to Permanent Account')
                         : (lang === 'bn' ? 'পাসওয়ার্ড পরিবর্তন বা রিসেট করুন' : 'Change or Reset Account Password')}
                     </p>
                     <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--c70)' }}>
                       {isGuest
-                        ? (lang === 'bn' ? 'আপনার ডেটা আজীবন সংরক্ষণ করতে একটি ইমেইল ও পাসওয়ার্ড সেট করুন।' : 'Secure your data across all devices by registering with email and password.')
+                        ? (lang === 'bn' ? 'আপনার ডেটা আজীবন সংরক্ষণ করতে একটি ইমেইল ও পাসওয়ার্ড দিয়ে নিবন্ধন করুন।' : 'Secure your commuter data across all devices by registering with email and password.')
                         : (lang === 'bn' ? 'ইমেইল ভেরিফিকেশন কোডের মাধ্যমে নিরাপদে নতুন পাসওয়ার্ড তৈরি করুন।' : 'Reset your password securely via OTP email verification.')}
                     </p>
                   </div>

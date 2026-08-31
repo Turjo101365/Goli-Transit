@@ -53,31 +53,42 @@ async function persistSnapshot(snapshot) {
 	await redisClient.setJson(GRAPH_CACHE_KEY, snapshot, redisConfig.graphTtlSeconds);
 }
 
+let initPromise = null;
+
 export async function ensureGraphCache() {
-	if (!graphCache.graph) {
-		const redisSnapshot = await redisClient.getJson(GRAPH_CACHE_KEY);
-		if (redisSnapshot) {
-			graphCache.graph = graphFromSnapshot(redisSnapshot);
-			graphCache.snapshot = redisSnapshot;
-			graphCache.lastUpdatedAt = timestamp();
-			graphCache.source = 'redis';
-			return graphCache.graph;
-		}
-
-		graphCache.graph = await graphLoader();
-		if (!graphCache.graph) {
-			graphCache.graph = graphBuilder();
-			graphCache.source = 'seed';
-		} else {
-			graphCache.source = 'database';
-		}
-
-		graphCache.snapshot = graphCache.graph.snapshot();
-		graphCache.lastUpdatedAt = timestamp();
-		await persistSnapshot(graphCache.snapshot);
+	if (graphCache.graph) {
+		return graphCache.graph;
 	}
 
-	return graphCache.graph;
+	if (!initPromise) {
+		initPromise = (async () => {
+			const redisSnapshot = await redisClient.getJson(GRAPH_CACHE_KEY);
+			if (redisSnapshot) {
+				graphCache.graph = graphFromSnapshot(redisSnapshot);
+				graphCache.snapshot = redisSnapshot;
+				graphCache.lastUpdatedAt = timestamp();
+				graphCache.source = 'redis';
+				return graphCache.graph;
+			}
+
+			graphCache.graph = await graphLoader();
+			if (!graphCache.graph) {
+				graphCache.graph = graphBuilder();
+				graphCache.source = 'seed';
+			} else {
+				graphCache.source = 'database';
+			}
+
+			graphCache.snapshot = graphCache.graph.snapshot();
+			graphCache.lastUpdatedAt = timestamp();
+			await persistSnapshot(graphCache.snapshot);
+			return graphCache.graph;
+		})().finally(() => {
+			initPromise = null;
+		});
+	}
+
+	return initPromise;
 }
 
 export async function refreshGraphSnapshot() {
@@ -130,8 +141,6 @@ export function updateGraphCacheForAnomaly(appliedEdges, anomalyPayload) {
 	void persistSnapshot(graphCache.snapshot);
 	return graphCache.snapshot;
 }
-
-void ensureGraphCache();
 
 eventEmitter.on(anomalyEvent, ({ anomaly, applied }) => {
 	updateGraphCacheForAnomaly(applied, anomaly);
