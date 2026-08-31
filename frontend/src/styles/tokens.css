@@ -1461,21 +1461,30 @@ button:hover .punch {
 
 /* 2. GUEST UPGRADE WARNING CARD */
 .profile-guest-warning-card {
-  background: linear-gradient(135deg, #FFF9F3 0%, #FEF3E8 100%);
-  border: 1px solid rgba(224, 101, 31, 0.30);
-  border-left: 5px solid var(--mode-rickshaw);
+  background: var(--ground2);
+  border: 1.5px solid var(--line);
+  border-left: 5px solid var(--stamp);
   border-radius: 12px;
   padding: 20px 24px;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  box-shadow: 0 4px 16px rgba(224, 101, 31, 0.06);
+  box-shadow: var(--card-shadow);
+  color: var(--cream);
+}
+
+:root[data-theme="light"] .profile-guest-warning-card {
+  background: #EAE5D6;
+  border-color: rgba(168, 56, 42, 0.25);
+  border-left-color: var(--stamp);
+  box-shadow: 0 4px 16px rgba(34, 38, 27, 0.05);
 }
 
 :root[data-theme="dark"] .profile-guest-warning-card {
-  background: linear-gradient(135deg, rgba(212, 145, 58, 0.14) 0%, rgba(212, 145, 58, 0.05) 100%);
-  border-color: rgba(212, 145, 58, 0.40);
+  background: rgba(168, 56, 42, 0.12);
+  border-color: rgba(168, 56, 42, 0.35);
   border-left-color: var(--stamp);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.30);
 }
 
 .profile-guest-warning-header {
@@ -1485,10 +1494,10 @@ button:hover .punch {
 }
 
 .profile-guest-warning-icon {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: 8px;
-  background: rgba(224, 101, 31, 0.16);
+  background: rgba(168, 56, 42, 0.14);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1496,16 +1505,20 @@ button:hover .punch {
   flex-shrink: 0;
 }
 
+:root[data-theme="dark"] .profile-guest-warning-icon {
+  background: rgba(168, 56, 42, 0.25);
+}
+
 .profile-guest-warning-title {
   font-family: var(--head);
   font-size: 16.5px;
   font-weight: 700;
-  color: var(--mode-rickshaw);
+  color: var(--stamp);
   margin: 0 0 4px;
 }
 
 :root[data-theme="dark"] .profile-guest-warning-title {
-  color: #e59344;
+  color: #E57368;
 }
 
 .profile-guest-warning-desc {
@@ -1527,17 +1540,24 @@ button:hover .punch {
   gap: 6px;
   font-size: 12px;
   font-weight: 600;
-  padding: 5px 12px;
+  padding: 6px 12px;
   border-radius: 6px;
-  background: #FFFFFF;
-  border: 1px solid rgba(224, 101, 31, 0.22);
+  background: var(--ground);
+  border: 1px solid var(--line);
   color: var(--cream);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
+:root[data-theme="light"] .profile-guest-benefit-chip {
+  background: #F4EFE3;
+  border-color: rgba(34, 38, 27, 0.15);
+  color: var(--cream);
+}
+
 :root[data-theme="dark"] .profile-guest-benefit-chip {
-  background: #1F2228;
-  border-color: rgba(255, 255, 255, 0.10);
+  background: #222933;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--cream);
 }
 
 .profile-guest-warning-actions {
