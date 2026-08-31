@@ -1315,17 +1315,17 @@ button:hover .punch {
 }
 
 .profile-avatar--guest {
-  background: linear-gradient(135deg, #475569 0%, #334155 100%) !important;
-  color: #F8FAFC !important;
+  background: linear-gradient(135deg, #E0651F 0%, #B84807 100%) !important;
+  color: #FFFFFF !important;
   border-color: #FFFFFF !important;
-  box-shadow: 0 2px 8px rgba(51, 65, 85, 0.15) !important;
+  box-shadow: 0 3px 10px rgba(224, 101, 31, 0.22) !important;
 }
 
 :root[data-theme="dark"] .profile-avatar--guest {
-  background: linear-gradient(135deg, #334155 0%, #1E293B 100%) !important;
-  color: #E2E8F0 !important;
+  background: linear-gradient(135deg, #D97706 0%, #9A3412 100%) !important;
+  color: #FFF7ED !important;
   border-color: #242A33 !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35) !important;
 }
 
 .profile-avatar-online-dot {
