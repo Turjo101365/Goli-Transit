@@ -10,6 +10,7 @@ import { Register } from './pages/Register.jsx';
 import { ForgotPassword } from './pages/ForgotPassword.jsx';
 import { VerifyCode } from './pages/VerifyCode.jsx';
 import { ResetPassword } from './pages/ResetPassword.jsx';
+import { Profile } from './pages/Profile.jsx';
 import { LanguageProvider } from './state/LanguageContext.jsx';
 import { ThemeProvider } from './state/ThemeContext.jsx';
 import { TripProvider } from './state/TripContext.jsx';
@@ -59,6 +60,7 @@ function LoginRoute({ onLogin, onGuestLogin, onGoogleLogin }) {
 
   return (
     <Login
+      initialEmail={location.state?.email || ''}
       onLogin={handleLogin}
       onGuestLogin={handleGuestLogin}
       onGoogleLogin={handleGoogleLogin}
@@ -79,6 +81,77 @@ function RegisterRoute({ onRegister }) {
   return <Register onRegister={handleRegister} onSwitchToLogin={() => navigate('/login')} />;
 }
 
+function ForgotPasswordRoute({ onForgotPassword }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  async function handleForgotPassword(payload) {
+    const result = await onForgotPassword(payload);
+    navigate('/verify-code', { state: { email: payload.email } });
+    return result;
+  }
+
+  return (
+    <ForgotPassword
+      initialEmail={location.state?.email || ''}
+      onForgotPassword={handleForgotPassword}
+      onSwitchToLogin={() => navigate('/login')}
+      onSwitchToVerify={(email) => navigate('/verify-code', { state: { email } })}
+    />
+  );
+}
+
+function VerifyCodeRoute({ onVerifyCode, onResendCode }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  async function handleVerifyCode(payload) {
+    const result = await onVerifyCode(payload);
+    const resetToken = result?.resetToken || result?.data?.resetToken || '';
+    navigate('/reset-password', {
+      state: {
+        email: payload.email,
+        resetToken
+      }
+    });
+    return result;
+  }
+
+  return (
+    <VerifyCode
+      initialEmail={location.state?.email || ''}
+      initialCode={location.state?.code || ''}
+      onVerifyCode={handleVerifyCode}
+      onResendCode={onResendCode}
+      onSwitchToLogin={() => navigate('/login')}
+      onSwitchToForgotPassword={() =>
+        navigate('/forgot-password', { state: { email: location.state?.email } })
+      }
+    />
+  );
+}
+
+function ResetPasswordRoute({ onResetPassword }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  async function handleResetPassword(payload) {
+    const result = await onResetPassword(payload);
+    navigate('/login', { state: { email: payload.email } });
+    return result;
+  }
+
+  return (
+    <ResetPassword
+      initialEmail={location.state?.email || ''}
+      initialToken={location.state?.resetToken || ''}
+      onResetPassword={handleResetPassword}
+      onSwitchToLogin={() => navigate('/login')}
+      onSwitchToForgotPassword={() => navigate('/forgot-password')}
+    />
+  );
+}
+
 function AppRoutes({
   authUser,
   onLogin,
@@ -89,6 +162,7 @@ function AppRoutes({
   onResendCode,
   onVerifyCode,
   onResetPassword,
+  onUpdateUser,
   onLogout
 }) {
   const navigate = useNavigate();
@@ -99,41 +173,15 @@ function AppRoutes({
       <Route path="/register" element={<RegisterRoute onRegister={onRegister} />} />
       <Route
         path="/forgot-password"
-        element={
-          <ForgotPassword
-            initialEmail=""
-            onForgotPassword={onForgotPassword}
-            onSwitchToLogin={() => navigate('/login')}
-            onShowToast={() => {}}
-          />
-        }
+        element={<ForgotPasswordRoute onForgotPassword={onForgotPassword} />}
       />
       <Route
         path="/verify-code"
-        element={
-          <VerifyCode
-            initialEmail=""
-            initialCode=""
-            onVerifyCode={onVerifyCode}
-            onResendCode={onResendCode}
-            onSwitchToLogin={() => navigate('/login')}
-            onSwitchToForgotPassword={() => navigate('/forgot-password')}
-            onShowToast={() => {}}
-          />
-        }
+        element={<VerifyCodeRoute onVerifyCode={onVerifyCode} onResendCode={onResendCode} />}
       />
       <Route
         path="/reset-password"
-        element={
-          <ResetPassword
-            initialEmail=""
-            initialToken=""
-            onResetPassword={onResetPassword}
-            onSwitchToLogin={() => navigate('/login')}
-            onSwitchToForgotPassword={() => navigate('/forgot-password')}
-            onShowToast={() => {}}
-          />
-        }
+        element={<ResetPasswordRoute onResetPassword={onResetPassword} />}
       />
 
       <Route
@@ -169,6 +217,18 @@ function AppRoutes({
         element={
           <RequireAuth authUser={authUser}>
             <EzzGoBelt />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <RequireAuth authUser={authUser}>
+            <Profile
+              user={authUser}
+              onUpdateUser={onUpdateUser}
+              onLogout={onLogout}
+            />
           </RequireAuth>
         }
       />
@@ -233,6 +293,10 @@ function AppShell() {
     setAuthUser(user);
   }
 
+  function handleUpdateUser(updatedUser) {
+    setAuthUser(updatedUser);
+  }
+
   function handleLogout() {
     logoutUser();
     setAuthUser(null);
@@ -269,6 +333,7 @@ function AppShell() {
         onResendCode={sendResetCode}
         onVerifyCode={verifyResetCode}
         onResetPassword={resetUserPassword}
+        onUpdateUser={handleUpdateUser}
         onLogout={handleLogout}
       />
     </Layout>
