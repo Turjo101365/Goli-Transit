@@ -1263,17 +1263,23 @@ button:hover .punch {
 /* 1. HERO IDENTITY CARD */
 .profile-hero-card {
   position: relative;
-  background: #FFFFFF;
-  border: 1px solid rgba(34, 38, 27, 0.12);
+  background: var(--ground2);
+  border: 1px solid var(--line);
   border-radius: 14px;
   padding: 26px 30px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  box-shadow: 0 4px 20px rgba(34, 38, 27, 0.05);
+  box-shadow: var(--card-shadow);
   overflow: hidden;
   transition: all 0.2s ease;
+}
+
+:root[data-theme="light"] .profile-hero-card {
+  background: #EAE5D6;
+  border-color: rgba(34, 38, 27, 0.15);
+  box-shadow: 0 4px 20px rgba(34, 38, 27, 0.05);
 }
 
 :root[data-theme="dark"] .profile-hero-card {
@@ -1305,7 +1311,7 @@ button:hover .punch {
   font-size: 28px;
   font-weight: 700;
   box-shadow: 0 4px 14px rgba(0, 103, 71, 0.30);
-  border: 3px solid #FFFFFF;
+  border: 3px solid var(--ground2);
 }
 
 :root[data-theme="dark"] .profile-avatar {
@@ -1321,7 +1327,7 @@ button:hover .punch {
   height: 14px;
   border-radius: 50%;
   background: #10b981;
-  border: 2.5px solid #FFFFFF;
+  border: 2.5px solid var(--ground2);
   box-shadow: 0 0 8px rgba(16, 185, 122, 0.6);
 }
 
@@ -1392,8 +1398,8 @@ button:hover .punch {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: #F8FAF3;
-  border: 1px solid rgba(34, 38, 27, 0.14);
+  background: var(--ground);
+  border: 1px solid var(--line);
   padding: 2px 9px;
   border-radius: 6px;
   font-family: var(--data);
@@ -1403,9 +1409,14 @@ button:hover .punch {
   transition: all 0.15s ease;
 }
 
+:root[data-theme="light"] .profile-id-chip {
+  background: #F4EFE3;
+  border-color: rgba(34, 38, 27, 0.15);
+}
+
 .profile-id-chip:hover {
   border-color: var(--metro);
-  background: #FFFFFF;
+  background: rgba(0, 103, 71, 0.08);
 }
 
 :root[data-theme="dark"] .profile-id-chip {
@@ -1576,8 +1587,8 @@ button:hover .punch {
 }
 
 .profile-stat-box {
-  background: #FFFFFF;
-  border: 1px solid rgba(34, 38, 27, 0.12);
+  background: var(--ground2);
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 18px 20px;
   display: flex;
@@ -1585,8 +1596,14 @@ button:hover .punch {
   gap: 6px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(34, 38, 27, 0.03);
+  box-shadow: var(--card-shadow);
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+:root[data-theme="light"] .profile-stat-box {
+  background: #EAE5D6;
+  border-color: rgba(34, 38, 27, 0.15);
+  box-shadow: 0 2px 10px rgba(34, 38, 27, 0.03);
 }
 
 :root[data-theme="dark"] .profile-stat-box {
@@ -1638,8 +1655,13 @@ button:hover .punch {
   align-items: center;
   justify-content: center;
   font-size: 15px;
-  background: #F8FAF3;
-  border: 1px solid rgba(34, 38, 27, 0.10);
+  background: var(--ground);
+  border: 1px solid var(--line);
+}
+
+:root[data-theme="light"] .profile-stat-icon-wrap {
+  background: #F4EFE3;
+  border-color: rgba(34, 38, 27, 0.12);
 }
 
 :root[data-theme="dark"] .profile-stat-icon-wrap {
@@ -1648,84 +1670,66 @@ button:hover .punch {
 }
 
 .profile-stat-num {
-  font-family: var(--head);
-  font-size: 28px;
+  font-family: var(--data);
+  font-size: 26px;
   font-weight: 700;
   color: var(--cream);
-  margin: 2px 0 0;
   line-height: 1.1;
+  margin: 4px 0 0;
 }
 
-.profile-stat-subtext {
-  font-size: 11.5px;
-  color: var(--c45);
+.profile-stat-sub {
+  font-size: 12px;
+  color: var(--c70);
+  margin: 0;
 }
 
-/* 4. TABS NAVIGATION */
-.profile-tabs-nav {
+/* 4. NAVIGATION TABS */
+.profile-tabs-bar {
   display: flex;
+  align-items: center;
   gap: 8px;
-  border-bottom: 2px solid rgba(34, 38, 27, 0.12);
+  border-bottom: 2px solid var(--line);
+  padding-bottom: 0;
   overflow-x: auto;
-  padding-bottom: 2px;
-  margin-top: 6px;
-}
-
-:root[data-theme="dark"] .profile-tabs-nav {
-  border-bottom-color: rgba(255, 255, 255, 0.10);
 }
 
 .profile-tab-btn {
-  background: none;
+  background: transparent;
   border: none;
-  padding: 10px 18px;
-  font-family: var(--data);
-  font-size: 14px;
+  border-bottom: 3px solid transparent;
+  padding: 12px 18px;
+  font-family: inherit;
+  font-size: 14.5px;
   font-weight: 600;
   color: var(--c70);
-  border-radius: 8px 8px 0 0;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  transition: all 0.16s ease;
   white-space: nowrap;
-  position: relative;
-  transition: all 0.15s ease;
+  margin-bottom: -2px;
 }
 
 .profile-tab-btn:hover {
   color: var(--cream);
-  background: rgba(34, 38, 27, 0.05);
+  background: rgba(0, 103, 71, 0.04);
 }
 
 :root[data-theme="dark"] .profile-tab-btn:hover {
-  color: var(--cream);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .profile-tab-btn--active {
   color: var(--metro);
-  background: rgba(0, 103, 71, 0.08);
-}
-
-.profile-tab-btn--active::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: var(--metro);
-  border-radius: 3px 3px 0 0;
+  border-bottom-color: var(--metro);
+  font-weight: 700;
 }
 
 :root[data-theme="dark"] .profile-tab-btn--active {
   color: #27B97A;
-  background: rgba(39, 185, 122, 0.10);
-}
-
-:root[data-theme="dark"] .profile-tab-btn--active::after {
-  background: #27B97A;
+  border-bottom-color: #27B97A;
 }
 
 .profile-tab-badge {
@@ -1753,10 +1757,16 @@ button:hover .punch {
 
 /* 5. CONTENT PANELS & CARDS (LIGHT & DARK HARMONY) */
 .profile-card {
-  background: #FFFFFF;
-  border: 1px solid rgba(34, 38, 27, 0.12);
+  background: var(--ground2);
+  border: 1px solid var(--line);
   border-radius: 14px;
   padding: 26px 30px;
+  box-shadow: var(--card-shadow);
+}
+
+:root[data-theme="light"] .profile-card {
+  background: #EAE5D6;
+  border-color: rgba(34, 38, 27, 0.15);
   box-shadow: 0 4px 18px rgba(34, 38, 27, 0.04);
 }
 
@@ -1788,8 +1798,8 @@ button:hover .punch {
 
 /* Route Cards (Saved Routes Tab) */
 .profile-route-card {
-  background: #F8FAF3;
-  border: 1px solid rgba(34, 38, 27, 0.10);
+  background: var(--ground);
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 18px 20px;
   margin-bottom: 12px;
@@ -1802,6 +1812,11 @@ button:hover .punch {
   transition: all 0.18s ease;
 }
 
+:root[data-theme="light"] .profile-route-card {
+  background: #F4EFE3;
+  border-color: rgba(34, 38, 27, 0.14);
+}
+
 :root[data-theme="dark"] .profile-route-card {
   background: var(--ground2);
   border-color: rgba(255, 255, 255, 0.08);
@@ -1809,7 +1824,7 @@ button:hover .punch {
 }
 
 .profile-route-card:hover {
-  background: #FFFFFF;
+  background: var(--ground2);
   border-color: var(--metro);
   transform: translateX(2px);
   box-shadow: 0 4px 14px rgba(0, 103, 71, 0.08);
@@ -1844,89 +1859,20 @@ button:hover .punch {
   transition: all 0.15s ease;
 }
 
-.profile-route-mode-icon[data-mode="metro"],
-.profile-trip-mode-icon[data-mode="metro"] {
-  background: rgba(0, 103, 71, 0.10);
-  color: var(--metro);
-  border-color: rgba(0, 103, 71, 0.22);
-}
-.profile-route-mode-icon[data-mode="bus"],
-.profile-trip-mode-icon[data-mode="bus"] {
-  background: rgba(199, 54, 43, 0.10);
-  color: var(--mode-bus);
-  border-color: rgba(199, 54, 43, 0.22);
-}
-.profile-route-mode-icon[data-mode="rickshaw"],
-.profile-trip-mode-icon[data-mode="rickshaw"] {
-  background: rgba(224, 101, 31, 0.10);
-  color: var(--mode-rickshaw);
-  border-color: rgba(224, 101, 31, 0.22);
-}
-.profile-route-mode-icon[data-mode="bike"],
-.profile-trip-mode-icon[data-mode="bike"] {
-  background: rgba(43, 74, 122, 0.10);
-  color: var(--mode-bike);
-  border-color: rgba(43, 74, 122, 0.22);
-}
-.profile-route-mode-icon[data-mode="cng"],
-.profile-trip-mode-icon[data-mode="cng"] {
-  background: rgba(123, 164, 40, 0.12);
-  color: var(--mode-cng);
-  border-color: rgba(123, 164, 40, 0.25);
-}
-.profile-route-mode-icon[data-mode="walk"],
-.profile-trip-mode-icon[data-mode="walk"] {
-  background: rgba(138, 148, 160, 0.12);
-  color: var(--mode-walk);
-  border-color: rgba(138, 148, 160, 0.22);
-}
-
-:root[data-theme="dark"] .profile-route-mode-icon[data-mode="metro"],
-:root[data-theme="dark"] .profile-trip-mode-icon[data-mode="metro"] {
-  background: rgba(39, 185, 122, 0.15);
-  color: #27B97A;
-  border-color: rgba(39, 185, 122, 0.30);
-}
-:root[data-theme="dark"] .profile-route-mode-icon[data-mode="bus"],
-:root[data-theme="dark"] .profile-trip-mode-icon[data-mode="bus"] {
-  background: rgba(217, 95, 64, 0.15);
-  color: #D95F40;
-  border-color: rgba(217, 95, 64, 0.30);
-}
-:root[data-theme="dark"] .profile-route-mode-icon[data-mode="rickshaw"],
-:root[data-theme="dark"] .profile-trip-mode-icon[data-mode="rickshaw"] {
-  background: rgba(212, 145, 58, 0.15);
-  color: #D4913A;
-  border-color: rgba(212, 145, 58, 0.30);
-}
-:root[data-theme="dark"] .profile-route-mode-icon[data-mode="bike"],
-:root[data-theme="dark"] .profile-trip-mode-icon[data-mode="bike"] {
-  background: rgba(91, 142, 204, 0.15);
-  color: #5B8ECC;
-  border-color: rgba(91, 142, 204, 0.30);
-}
-:root[data-theme="dark"] .profile-route-mode-icon[data-mode="cng"],
-:root[data-theme="dark"] .profile-trip-mode-icon[data-mode="cng"] {
-  background: rgba(125, 181, 66, 0.15);
-  color: #7DB542;
-  border-color: rgba(125, 181, 66, 0.30);
-}
-:root[data-theme="dark"] .profile-route-mode-icon[data-mode="walk"],
-:root[data-theme="dark"] .profile-trip-mode-icon[data-mode="walk"] {
-  background: rgba(138, 132, 128, 0.15);
-  color: #8A8480;
-  border-color: rgba(138, 132, 128, 0.30);
-}
-
 .profile-info-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  background: #FFFFFF;
-  border: 1px solid rgba(34, 38, 27, 0.12);
+  background: var(--ground);
+  border: 1px solid var(--line);
   border-radius: 8px;
   font-size: 13.5px;
+}
+
+:root[data-theme="light"] .profile-info-row {
+  background: #F4EFE3;
+  border-color: rgba(34, 38, 27, 0.14);
 }
 
 :root[data-theme="dark"] .profile-info-row {
@@ -1941,9 +1887,14 @@ button:hover .punch {
   flex-wrap: wrap;
   gap: 16px;
   padding: 16px 18px;
-  background: #FFFFFF;
-  border: 1px solid rgba(34, 38, 27, 0.12);
+  background: var(--ground);
+  border: 1px solid var(--line);
   border-radius: 10px;
+}
+
+:root[data-theme="light"] .profile-security-box {
+  background: #F4EFE3;
+  border-color: rgba(34, 38, 27, 0.14);
 }
 
 :root[data-theme="dark"] .profile-security-box {
@@ -1996,8 +1947,8 @@ button:hover .punch {
 
 /* Favorite Stop Card (Favorite Stops Tab) */
 .profile-stop-card {
-  background: #F8FAF3;
-  border: 1px solid rgba(34, 38, 27, 0.10);
+  background: var(--ground);
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 16px 20px;
   margin-bottom: 10px;
@@ -2010,6 +1961,11 @@ button:hover .punch {
   transition: all 0.18s ease;
 }
 
+:root[data-theme="light"] .profile-stop-card {
+  background: #F4EFE3;
+  border-color: rgba(34, 38, 27, 0.14);
+}
+
 :root[data-theme="dark"] .profile-stop-card {
   background: var(--ground2);
   border-color: rgba(255, 255, 255, 0.08);
@@ -2017,7 +1973,7 @@ button:hover .punch {
 }
 
 .profile-stop-card:hover {
-  background: #FFFFFF;
+  background: var(--ground2);
   border-color: var(--metro);
   transform: translateX(2px);
   box-shadow: 0 4px 14px rgba(0, 103, 71, 0.08);
@@ -2097,8 +2053,8 @@ button:hover .punch {
 }
 
 .profile-quick-station-btn {
-  background: #FFFFFF;
-  border: 1px solid rgba(34, 38, 27, 0.14);
+  background: var(--ground);
+  border: 1px solid var(--line);
   color: var(--cream);
   padding: 5px 12px;
   border-radius: 7px;
@@ -2107,6 +2063,11 @@ button:hover .punch {
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(34, 38, 27, 0.04);
   transition: all 0.15s ease;
+}
+
+:root[data-theme="light"] .profile-quick-station-btn {
+  background: #F4EFE3;
+  border-color: rgba(34, 38, 27, 0.15);
 }
 
 :root[data-theme="dark"] .profile-quick-station-btn {
@@ -2131,8 +2092,8 @@ button:hover .punch {
 
 /* Trip Timeline (Trip History Tab) */
 .profile-trip-item {
-  background: #F8FAF3;
-  border: 1px solid rgba(34, 38, 27, 0.10);
+  background: var(--ground);
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 16px 20px;
   margin-bottom: 12px;
@@ -2145,6 +2106,11 @@ button:hover .punch {
   transition: all 0.15s ease;
 }
 
+:root[data-theme="light"] .profile-trip-item {
+  background: #F4EFE3;
+  border-color: rgba(34, 38, 27, 0.14);
+}
+
 :root[data-theme="dark"] .profile-trip-item {
   background: var(--ground2);
   border-color: rgba(255, 255, 255, 0.08);
@@ -2152,7 +2118,7 @@ button:hover .punch {
 }
 
 .profile-trip-item:hover {
-  background: #FFFFFF;
+  background: var(--ground2);
   border-color: rgba(34, 38, 27, 0.22);
 }
 
@@ -2206,13 +2172,18 @@ button:hover .punch {
 }
 
 .profile-trip-pill {
-  background: #FFFFFF;
-  border: 1px solid rgba(34, 38, 27, 0.14);
+  background: var(--ground);
+  border: 1px solid var(--line);
   padding: 2px 8px;
   border-radius: 5px;
   font-family: var(--data);
   font-size: 11.5px;
   color: var(--cream);
+}
+
+:root[data-theme="light"] .profile-trip-pill {
+  background: #F4EFE3;
+  border-color: rgba(34, 38, 27, 0.14);
 }
 
 :root[data-theme="dark"] .profile-trip-pill {
@@ -2228,14 +2199,19 @@ button:hover .punch {
 }
 
 .profile-settings-block {
-  background: #F8FAF3;
-  border: 1px solid rgba(34, 38, 27, 0.10);
+  background: var(--ground);
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 20px 22px;
   display: flex;
   flex-direction: column;
   gap: 14px;
   box-shadow: 0 1px 4px rgba(34, 38, 27, 0.03);
+}
+
+:root[data-theme="light"] .profile-settings-block {
+  background: #F4EFE3;
+  border-color: rgba(34, 38, 27, 0.14);
 }
 
 :root[data-theme="dark"] .profile-settings-block {
@@ -2262,8 +2238,8 @@ button:hover .punch {
 }
 
 .profile-choice-card {
-  background: #FFFFFF;
-  border: 1.5px solid rgba(34, 38, 27, 0.14);
+  background: var(--ground);
+  border: 1.5px solid var(--line);
   border-radius: 9px;
   padding: 12px;
   display: flex;
@@ -2276,6 +2252,11 @@ button:hover .punch {
   box-shadow: 0 1px 3px rgba(34, 38, 27, 0.03);
 }
 
+:root[data-theme="light"] .profile-choice-card {
+  background: #F4EFE3;
+  border-color: rgba(34, 38, 27, 0.15);
+}
+
 :root[data-theme="dark"] .profile-choice-card {
   background: #191B20;
   border-color: rgba(255, 255, 255, 0.10);
@@ -2284,7 +2265,7 @@ button:hover .punch {
 
 .profile-choice-card:hover {
   border-color: var(--metro);
-  background: #FFFFFF;
+  background: var(--ground2);
 }
 
 :root[data-theme="dark"] .profile-choice-card:hover {
@@ -2307,8 +2288,8 @@ button:hover .punch {
 
 /* Forms & Inputs */
 .profile-inline-form {
-  background: #F8FAF3;
-  border: 1px solid rgba(34, 38, 27, 0.12);
+  background: var(--ground);
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 20px 22px;
   margin-bottom: 22px;
@@ -2316,6 +2297,11 @@ button:hover .punch {
   flex-direction: column;
   gap: 14px;
   box-shadow: 0 1px 4px rgba(34, 38, 27, 0.03);
+}
+
+:root[data-theme="light"] .profile-inline-form {
+  background: #F4EFE3;
+  border-color: rgba(34, 38, 27, 0.14);
 }
 
 :root[data-theme="dark"] .profile-inline-form {
@@ -2347,11 +2333,16 @@ button:hover .punch {
   font-size: 14px;
   padding: 9px 13px;
   border-radius: 6px;
-  border: 1px solid rgba(34, 38, 27, 0.18);
-  background: #FFFFFF;
+  border: 1px solid var(--line);
+  background: var(--ground);
   color: var(--cream);
   outline: none;
   transition: all 0.15s ease;
+}
+
+:root[data-theme="light"] .profile-form-input {
+  background: #F4EFE3;
+  border-color: rgba(34, 38, 27, 0.20);
 }
 
 :root[data-theme="dark"] .profile-form-input {
@@ -2373,13 +2364,18 @@ button:hover .punch {
   text-align: center;
   padding: 48px 24px;
   color: var(--c70);
-  background: #F8FAF3;
-  border: 1.5px dashed rgba(34, 38, 27, 0.16);
+  background: var(--ground);
+  border: 1.5px dashed var(--line);
   border-radius: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
+}
+
+:root[data-theme="light"] .profile-empty-box {
+  background: #F4EFE3;
+  border-color: rgba(34, 38, 27, 0.16);
 }
 
 :root[data-theme="dark"] .profile-empty-box {
@@ -2428,8 +2424,8 @@ button:hover .punch {
   font-weight: 600;
   padding: 6px 14px;
   border-radius: 6px;
-  border: 1px solid rgba(34, 38, 27, 0.16);
-  background: #FFFFFF;
+  border: 1px solid var(--line);
+  background: var(--ground);
   color: var(--cream);
   cursor: pointer;
   display: inline-flex;
@@ -2439,9 +2435,14 @@ button:hover .punch {
   transition: all 0.15s ease;
 }
 
+:root[data-theme="light"] .action-chip {
+  background: #F4EFE3;
+  border-color: rgba(34, 38, 27, 0.16);
+}
+
 .action-chip:hover {
   border-color: var(--metro);
-  background: #F8FAF3;
+  background: var(--ground2);
   color: var(--metro);
 }
 
@@ -2487,69 +2488,22 @@ button:hover .punch {
 }
 
 .action-chip--logout:hover {
-  background: rgba(168, 56, 42, 0.08);
   border-color: var(--stamp);
+  background: rgba(168, 56, 42, 0.08);
   color: var(--stamp);
 }
 
 :root[data-theme="dark"] .action-chip--logout {
-  border-color: rgba(224, 90, 58, 0.30);
-  color: #E05A3A;
+  border-color: rgba(217, 95, 64, 0.30);
+  color: #D95F40;
 }
 
 :root[data-theme="dark"] .action-chip--logout:hover {
-  background: rgba(224, 90, 58, 0.15);
-  border-color: #E05A3A;
-  color: #E05A3A;
+  border-color: #D95F40;
+  background: rgba(217, 95, 64, 0.15);
+  color: #D95F40;
 }
 
-/* Responsive Rules */
-@media (max-width: 860px) {
-  .profile-stats-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-  .profile-settings-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 680px) {
-  .profile-page-wrapper {
-    padding: 16px 12px 48px;
-  }
-  .profile-hero-card {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 20px;
-  }
-  .profile-hero-actions {
-    width: 100%;
-    margin-top: 10px;
-  }
-  .profile-hero-actions button {
-    flex: 1;
-  }
-  .profile-card {
-    padding: 18px 16px;
-  }
-  .profile-stats-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-  .profile-stat-num {
-    font-size: 22px;
-  }
-  .profile-route-card,
-  .profile-stop-card,
-  .profile-trip-item {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .profile-route-actions {
-    width: 100%;
-    justify-content: flex-end;
-  }
-}
 
 /* ==========================================================================
    6. USER PREFERENCE ROUTING & MODE FILTER CONTROLS
