@@ -330,8 +330,8 @@ export function Profile({ user, onUpdateUser, onLogout }) {
         <div className="profile-hero-card">
           <div className="profile-hero-left">
             <div className="profile-avatar-wrap">
-              <div className="profile-avatar">{initialLetter}</div>
-              <span className="profile-avatar-online-dot" title="Active Commuter" />
+              <div className={`profile-avatar ${isGuest ? 'profile-avatar--guest' : ''}`}>{initialLetter}</div>
+              <span className={`profile-avatar-online-dot ${isGuest ? 'profile-avatar-online-dot--guest' : ''}`} title={isGuest ? 'Guest Session' : 'Active Commuter'} />
             </div>
 
             <div className="profile-hero-info">

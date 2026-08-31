@@ -1304,13 +1304,28 @@ button:hover .punch {
   font-family: var(--head);
   font-size: 28px;
   font-weight: 700;
-  box-shadow: 0 4px 14px rgba(0, 103, 71, 0.30);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   border: 3px solid #FFFFFF;
 }
 
 :root[data-theme="dark"] .profile-avatar {
-  background: linear-gradient(135deg, #27B97A 0%, #0c4a31 100%);
+  background: linear-gradient(135deg, #1b7a50 0%, #0d4a34 100%);
   border-color: #262c33;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.30);
+}
+
+.profile-avatar--guest {
+  background: linear-gradient(135deg, #475569 0%, #334155 100%) !important;
+  color: #F8FAFC !important;
+  border-color: #FFFFFF !important;
+  box-shadow: 0 2px 8px rgba(51, 65, 85, 0.15) !important;
+}
+
+:root[data-theme="dark"] .profile-avatar--guest {
+  background: linear-gradient(135deg, #334155 0%, #1E293B 100%) !important;
+  color: #E2E8F0 !important;
+  border-color: #242A33 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
 }
 
 .profile-avatar-online-dot {
@@ -1322,11 +1337,16 @@ button:hover .punch {
   border-radius: 50%;
   background: #10b981;
   border: 2.5px solid #FFFFFF;
-  box-shadow: 0 0 8px rgba(16, 185, 122, 0.6);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 :root[data-theme="dark"] .profile-avatar-online-dot {
   border-color: #1A1E24;
+}
+
+.profile-avatar-online-dot--guest {
+  background: #94A3B8 !important;
+  box-shadow: none !important;
 }
 
 .profile-hero-info {
