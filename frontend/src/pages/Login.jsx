@@ -31,10 +31,20 @@ const TEXT = {
   }
 };
 
-export function Login({ onLogin, onGuestLogin, onGoogleLogin, onSwitchToRegister, onSwitchToForgotPassword }) {
+export function Login({
+  initialEmail = '',
+  onLogin,
+  onGuestLogin,
+  onGoogleLogin,
+  onSwitchToRegister,
+  onSwitchToForgotPassword
+}) {
   const { lang } = useLanguage();
   const t = TEXT[lang];
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState(() => ({
+    email: initialEmail,
+    password: ''
+  }));
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGuestSubmitting, setIsGuestSubmitting] = useState(false);

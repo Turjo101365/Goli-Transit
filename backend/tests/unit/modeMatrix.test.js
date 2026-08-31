@@ -75,9 +75,9 @@ test('non-metro modes ignore the timestamp entirely', () => {
 	assert.deepEqual(lateNight, midday);
 });
 
-test('metro service window: closed after 8:50 PM (exact boundary)', () => {
+test('metro service window: ticket counters closed after 8:50 PM (degraded)', () => {
 	const result = getModeState('metro', 'clear', '2026-08-31T14:50:00Z'); // Mon 8:50 PM Dhaka
-	assert.equal(result.state, 2);
+	assert.equal(result.state, 1);
 });
 
 test('metro service window: still open one minute before 8:50 PM', () => {
@@ -85,8 +85,13 @@ test('metro service window: still open one minute before 8:50 PM', () => {
 	assert.equal(result.state, 0);
 });
 
-test('metro service window: clearly closed at 9 PM', () => {
+test('metro service window: closed to general public at 9 PM (pass holders only / degraded)', () => {
 	const result = getModeState('metro', 'rain', '2026-08-31T15:00:00Z'); // Mon 9:00 PM Dhaka
+	assert.equal(result.state, 1);
+});
+
+test('metro service window: fully closed after 10 PM', () => {
+	const result = getModeState('metro', 'clear', '2026-08-31T16:00:00Z'); // Mon 10:00 PM Dhaka
 	assert.equal(result.state, 2);
 });
 

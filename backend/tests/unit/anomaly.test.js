@@ -6,6 +6,19 @@ import { ensureGraphCache, refreshGraphSnapshot } from '../../src/cache/graph.ca
 
 test('anomaly update changes only affected edge and reroutes traffic', async () => {
   const graph = await ensureGraphCache();
+  graph.addNode('A', { latitude: 23.7925, longitude: 90.4078 });
+  graph.addNode('B', { latitude: 23.7937, longitude: 90.4066 });
+  graph.addNode('C', { latitude: 23.7580, longitude: 90.3890 });
+  graph.addNode('D', { latitude: 23.7700, longitude: 90.3950 });
+  const ab = graph.addEdge('A', 'B', 'bus', 3);
+  ab.allowedVehicles.add('bus');
+  const bc = graph.addEdge('B', 'C', 'bus', 4);
+  bc.allowedVehicles.add('bus');
+  const ad = graph.addEdge('A', 'D', 'bus', 5);
+  ad.allowedVehicles.add('bus');
+  const dc = graph.addEdge('D', 'C', 'bus', 5);
+  dc.allowedVehicles.add('bus');
+
   const initialSnapshot = await refreshGraphSnapshot();
   const initialEdge = initialSnapshot.edges.find((edge) => edge.from === 'B' && edge.to === 'C');
   assert.equal(initialEdge.currentWeight, 4);
