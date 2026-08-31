@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 function toInt(value, fallback) {
 	const parsed = Number.parseInt(value, 10);
 	return Number.isFinite(parsed) ? parsed : fallback;
@@ -54,17 +56,19 @@ function resolveAuthSecret(nodeEnvValue) {
 	return configuredSecret || 'ezz-go-dev-secret';
 }
 
+const isRunningTest = process.env.NODE_ENV === 'test' || process.env.npm_lifecycle_event === 'test' || process.argv.some(a => a.includes('test'));
+
 export const env = {
 	APP_NAME: appName,
 	NODE_ENV: nodeEnv,
 	HOST: resolveHost(process.env.HOST, nodeEnv),
 	PORT: toInt(process.env.PORT, 8080),
 	DATABASE_URL: process.env.DATABASE_URL || '',
-	DB_ENABLED: toBoolean(process.env.DB_ENABLED, false),
+	DB_ENABLED: toBoolean(process.env.DB_ENABLED, !isRunningTest),
 	DB_HOST: process.env.DB_HOST || '127.0.0.1',
 	DB_PORT: toInt(process.env.DB_PORT, 3306),
 	DB_USER: process.env.DB_USER || 'root',
-	DB_PASSWORD: process.env.DB_PASSWORD || '',
+	DB_PASSWORD: process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : 'root123',
 	DB_NAME: process.env.DB_NAME || 'GoliTransitDB',
 	DB_POOL_SIZE: toInt(process.env.DB_POOL_SIZE, 10),
 	REDIS_ENABLED: toBoolean(process.env.REDIS_ENABLED, true),

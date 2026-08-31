@@ -43,7 +43,7 @@ export const dbConfig = {
 
   user: parsedDbUrl?.user || env.DB_USER || 'root',
   password: parsedDbUrl?.password || env.DB_PASSWORD || '',
-  database: parsedDbUrl?.database || env.DB_NAME || 'test',
+  database: parsedDbUrl?.database || env.DB_NAME || 'GoliTransitDB',
 
   connectionLimit: Number(env.DB_POOL_SIZE) || 10
 };
