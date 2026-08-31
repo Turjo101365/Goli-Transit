@@ -7,5 +7,7 @@ export const routeValidation = z.object({
 	originLat: z.number().min(-90).max(90),
 	originLng: z.number().min(-180).max(180),
 	destinationLat: z.number().min(-90).max(90),
-	destinationLng: z.number().min(-180).max(180)
+	destinationLng: z.number().min(-180).max(180),
+	originLabel: z.string().optional(),
+	destinationLabel: z.string().optional()
 });

@@ -76,7 +76,7 @@ function sanitizeUser(user) {
 		createdAt: serializeDate(user.createdAt)
 	};
 
-	if (user.isGuest) {
+	if (user.isGuest || (user.email && user.email.includes(`@${GUEST_EMAIL_DOMAIN}`))) {
 		safe.isGuest = true;
 	}
 
@@ -262,9 +262,28 @@ export const authService = {
 	},
 
 	// Emergency access: no email, no password, no rate-limit-by-identity —
-	// just a working session for whoever needs EZZ GO right now. Never
-	// touches the real users table; see the guestUsersById comment above.
+	// Creates a real database user row if DB is live so routes and profile
+	// data are persisted, with memory fallback.
 	async guest() {
+		const dbAvailable = await hasLiveDatabase();
+		if (dbAvailable) {
+			const guestTag = randomBytes(4).toString('hex');
+			const guestEmail = `guest_${guestTag}@${GUEST_EMAIL_DOMAIN}`;
+			const dbUser = await userRepository.createUser({
+				name: 'Guest Commuter',
+				email: guestEmail,
+				passwordHash: null
+			});
+
+			if (dbUser) {
+				const guestUser = {
+					...dbUser,
+					isGuest: true
+				};
+				return createSessionResponse(guestUser, { ttlHours: GUEST_SESSION_TTL_HOURS });
+			}
+		}
+
 		const user = createGuestUser();
 		return createSessionResponse(user, { ttlHours: GUEST_SESSION_TTL_HOURS });
 	},
@@ -320,12 +339,20 @@ export const authService = {
 				throw createHttpError(401, 'AUTH_USER_NOT_FOUND', 'User session is no longer valid. Please log in again.');
 			}
 
+			if (user.email && user.email.includes(`@${GUEST_EMAIL_DOMAIN}`)) {
+				user.isGuest = true;
+			}
+
 			return sanitizeUser(user);
 		}
 
 		const memoryUser = findMemoryUserById(payload.sub);
 		if (!memoryUser) {
 			throw createHttpError(401, 'AUTH_USER_NOT_FOUND', 'User session is no longer valid. Please log in again.');
+		}
+
+		if (payload.isGuest) {
+			memoryUser.isGuest = true;
 		}
 
 		return sanitizeUser(memoryUser);

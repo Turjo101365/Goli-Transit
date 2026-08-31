@@ -308,7 +308,9 @@ export function EzzGoMap() {
 			originLat: originPoint.lat,
 			originLng: originPoint.lng,
 			destinationLat: destinationPoint.lat,
-			destinationLng: destinationPoint.lng
+			destinationLng: destinationPoint.lng,
+			originLabel: originPoint.label,
+			destinationLabel: destinationPoint.label
 		})
 			.then((result) => {
 				if (cancelled) {

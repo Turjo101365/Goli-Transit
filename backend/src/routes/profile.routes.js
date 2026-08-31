@@ -3,6 +3,7 @@ import { authMiddleware } from '../middlewares/auth.middleware.js';
 import {
 	getProfileController,
 	updateProfileController,
+	createTripController,
 	saveRouteController,
 	deleteSavedRouteController,
 	addFavoriteStopController,
@@ -13,6 +14,7 @@ export const profileRoutes = Router();
 
 profileRoutes.get('/', authMiddleware, getProfileController);
 profileRoutes.put('/', authMiddleware, updateProfileController);
+profileRoutes.post('/trips', authMiddleware, createTripController);
 profileRoutes.post('/routes', authMiddleware, saveRouteController);
 profileRoutes.delete('/routes/:routeId', authMiddleware, deleteSavedRouteController);
 profileRoutes.post('/stops', authMiddleware, addFavoriteStopController);

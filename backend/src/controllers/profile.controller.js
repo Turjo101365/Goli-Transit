@@ -5,39 +5,19 @@ import { userRepository } from '../repositories/user.repository.js';
 export async function getProfileController(req, res, next) {
 	try {
 		const userId = req.user.id;
-		
-		const user = await userRepository.findById(userId);
-		if (!user) {
-			return res.status(200).json({
-				ok: true,
-				data: {
-					user: {
-						id: req.user.id,
-						name: req.user.name,
-						email: req.user.email,
-						createdAt: req.user.createdAt || null,
-						updatedAt: req.user.updatedAt || null
-					},
-					trips: [],
-					savedRoutes: [],
-					favoriteStops: [],
-					stats: {
-						totalTrips: 0,
-						totalDistance: 0,
-						totalMinutes: 0,
-						savedRoutesCount: 0,
-						favoriteStopsCount: 0
-					}
-				},
-				requestId: req.id
-			});
-		}
+		const user = (await userRepository.findById(userId).catch(() => null)) || req.user;
 
 		const [trips, savedRoutes, favoriteStops, stats] = await Promise.all([
-			profileRepository.getTrips(userId, 10).catch(() => []),
+			profileRepository.getTrips(userId, 20).catch(() => []),
 			profileRepository.getSavedRoutes(userId).catch(() => []),
 			profileRepository.getFavoriteStops(userId).catch(() => []),
-			profileRepository.getStats(userId).catch(() => ({ totalTrips: 0, totalDistance: 0, totalMinutes: 0, savedRoutesCount: 0, favoriteStopsCount: 0 }))
+			profileRepository.getStats(userId).catch(() => ({
+				totalTrips: 0,
+				totalDistance: 0,
+				totalMinutes: 0,
+				savedRoutesCount: 0,
+				favoriteStopsCount: 0
+			}))
 		]);
 
 		return res.status(200).json({
@@ -48,13 +28,50 @@ export async function getProfileController(req, res, next) {
 					name: user.name,
 					email: user.email,
 					createdAt: user.createdAt,
-					updatedAt: user.updatedAt
+					updatedAt: user.updatedAt,
+					isGuest: Boolean(req.user.isGuest || (user.email && user.email.includes('guest.ezzgo.local')))
 				},
 				trips,
 				savedRoutes,
 				favoriteStops,
 				stats
 			},
+			requestId: req.id
+		});
+	} catch (error) {
+		next(error);
+	}
+}
+
+export async function createTripController(req, res, next) {
+	try {
+		const userId = req.user.id;
+		const { fromLocation, toLocation, mode, distanceKm, durationMinutes, status } = req.body;
+
+		if (!fromLocation || !toLocation) {
+			return res.status(400).json({
+				ok: false,
+				error: {
+					code: 'PROFILE_INVALID_INPUT',
+					message: 'fromLocation and toLocation are required'
+				},
+				requestId: req.id
+			});
+		}
+
+		const tripId = await profileRepository.createTrip({
+			userId,
+			fromLocation,
+			toLocation,
+			mode: mode || 'bus',
+			distanceKm: distanceKm ? Number(distanceKm) : null,
+			durationMinutes: durationMinutes ? Number(durationMinutes) : null,
+			status: status || 'completed'
+		});
+
+		return res.status(201).json({
+			ok: true,
+			data: { id: tripId },
 			requestId: req.id
 		});
 	} catch (error) {
