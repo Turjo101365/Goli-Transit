@@ -3,7 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import '../styles/tokens.css';
 import { useLanguage } from '../state/LanguageContext.jsx';
 import { getCondition } from '../services/condition.service.js';
-import { formatMinutesOfDay } from '../utils/format.js';
+import { formatMinutesOfDay, toBanglaDigits } from '../utils/format.js';
+import {
+  WEATHER_CONDITION_LABEL,
+  HEAT_CONDITION_LABEL,
+  formatTemp,
+  weatherSuggestion
+} from '../utils/weather.js';
 import { ThemeToggle } from './ThemeToggle.jsx';
 
 const BRAND = 'EZZ GO';
@@ -49,6 +55,7 @@ export function EzzGoHero({ authUser, onGuestLogin }) {
   const t = TEXT[lang];
 
   const [schedule, setSchedule] = useState(null);
+  const [weather, setWeather] = useState(null);
 
   useEffect(() => {
     getCondition()
@@ -59,6 +66,15 @@ export function EzzGoHero({ authUser, onGuestLogin }) {
           highAlertZones: data.highAlertZones || [],
           activeWindow: data.activeWindow || null
         });
+        setWeather({
+          condition: data.condition || 'clear',
+          temperatureC: data.temperatureC,
+          feelsLikeC: data.feelsLikeC,
+          heatCondition: data.heatCondition,
+          precipitationProbability: data.precipitationProbability,
+          precipitationMm: data.precipitationMm,
+          waterloggedAreas: data.waterloggedAreas || []
+        });
       })
       .catch(() => {});
   }, []);
@@ -68,7 +84,16 @@ export function EzzGoHero({ authUser, onGuestLogin }) {
       <div className="page-wrap" style={{ '--wrap-max': '860px', paddingTop: 24 }}>
         <div className="hero-split" style={{ marginTop: 8 }}>
           <div>
-            <p className="t-body" style={{ color: 'var(--stamp)', fontWeight: 700 }}>{t.kicker}</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
+              <p className="t-body" style={{ color: 'var(--stamp)', fontWeight: 700, margin: 0 }}>{t.kicker}</p>
+              {weather && weather.temperatureC !== null && (
+                <span className="hero-weather-pill" title={lang === 'bn' ? 'ঢাকার বর্তমান আবহাওয়া' : 'Current Dhaka Weather'}>
+                  <span style={{ fontSize: 13 }}>{weather.condition === 'rain' || weather.condition === 'heavy_rain' ? '🌧️' : '☀️'}</span>
+                  <span style={{ fontWeight: 600 }}>{formatTemp(weather.temperatureC, lang)}</span>
+                  <span style={{ opacity: 0.85 }}>· {WEATHER_CONDITION_LABEL[weather.condition]?.[lang] || weather.condition}</span>
+                </span>
+              )}
+            </div>
             <h2 className="t-brand" style={{ fontSize: 'clamp(28px,4vw,40px)', margin: '4px 0 6px', maxWidth: '16ch' }}>
               {t.head}
             </h2>
@@ -136,19 +161,55 @@ export function EzzGoHero({ authUser, onGuestLogin }) {
             </div>
 
             {/* Live Weather & Road Watch */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className="t-place" style={{ fontSize: 15, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="M13 19v3M9 19v3"/></svg>
+                  {weather?.condition === 'rain' || weather?.condition === 'heavy_rain' ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/></svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                  )}
                   {lang === 'bn' ? 'লাইভ আবহাওয়া' : 'Live Weather'}
                 </span>
-                <span className="t-label" style={{ color: 'var(--sev-0)', fontSize: 10.5 }}>
-                  {lang === 'bn' ? 'ওপেন-মিটিও সিঙ্ক' : 'Open-Meteo Sync'}
-                </span>
+                {weather && weather.temperatureC !== null && weather.temperatureC !== undefined ? (
+                  <span className="t-num" style={{ fontSize: 12.5, color: weather.condition === 'clear' ? 'var(--metro)' : 'var(--stamp)', background: weather.condition === 'clear' ? 'rgba(0, 103, 71, 0.1)' : 'rgba(168, 56, 42, 0.1)', padding: '2px 8px', borderRadius: 4 }}>
+                    {formatTemp(weather.temperatureC, lang)} · {WEATHER_CONDITION_LABEL[weather.condition]?.[lang] || weather.condition}
+                  </span>
+                ) : (
+                  <span className="t-label" style={{ color: 'var(--sev-0)', fontSize: 10.5 }}>
+                    {lang === 'bn' ? 'ওপেন-মিটিও সিঙ্ক' : 'Open-Meteo Sync'}
+                  </span>
+                )}
               </div>
-              <p className="t-body" style={{ margin: 0, fontSize: 12.5, color: 'var(--c70)' }}>
-                {lang === 'bn' ? 'বৃষ্টি ও জলাবদ্ধতার রিয়েলটাইম প্রভাব মনিটর' : 'Real-time rain & waterlogging monitoring'}
-              </p>
+
+              {weather && weather.temperatureC !== null ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <p className="t-body" style={{ margin: 0, fontSize: 12.5, color: 'var(--c70)' }}>
+                    {weather.heatCondition ? (HEAT_CONDITION_LABEL[weather.heatCondition]?.[lang] || weather.heatCondition) : null}
+                    {weather.heatCondition && weather.feelsLikeC !== null ? ' · ' : ''}
+                    {weather.feelsLikeC !== null
+                      ? `${lang === 'bn' ? 'অনুভূত হচ্ছে' : 'Feels like'} ${formatTemp(weather.feelsLikeC, lang)}`
+                      : ''}
+                    {weather.precipitationProbability !== null && weather.precipitationProbability > 0
+                      ? ` · ${lang === 'bn' ? 'বৃষ্টির সম্ভাবনা' : 'Rain probability'} ${lang === 'bn' ? toBanglaDigits(weather.precipitationProbability) : weather.precipitationProbability}%`
+                      : ''}
+                  </p>
+                  {weatherSuggestion(weather.condition, weather.heatCondition, lang) ? (
+                    <p className="t-label" style={{ margin: '2px 0 0', color: 'var(--stamp)', fontSize: 11.5 }}>
+                      💡 {weatherSuggestion(weather.condition, weather.heatCondition, lang)}
+                    </p>
+                  ) : null}
+                  {weather.waterloggedAreas && weather.waterloggedAreas.length > 0 ? (
+                    <p className="t-label" style={{ margin: '2px 0 0', color: 'var(--stamp)', fontSize: 11.5 }}>
+                      ⚠️ {lang === 'bn' ? 'জলাবদ্ধ এলাকা:' : 'Waterlogged areas:'} {weather.waterloggedAreas.map((a) => (lang === 'bn' ? a.nameBn : a.nameEn)).join(', ')}
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="t-body" style={{ margin: 0, fontSize: 12.5, color: 'var(--c70)' }}>
+                  {lang === 'bn' ? 'বৃষ্টি ও জলাবদ্ধতার রিয়েলটাইম প্রভাব মনিটর' : 'Real-time rain & waterlogging monitoring'}
+                </p>
+              )}
             </div>
 
             {/* Peak Hour Traffic Shift */}

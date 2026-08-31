@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../state/LanguageContext.jsx';
 import { ThemeToggle } from './ThemeToggle.jsx';
+import { WeatherBadge } from './WeatherBadge.jsx';
 
 const NAV_ITEMS = [
   { to: '/map', bn: 'মানচিত্র', en: 'Transit Map' },
   { to: '/live', bn: 'লাইভ জার্নি', en: 'Live Journey' },
-  { to: '/belt', bn: 'জ্যাম বেল্ট', en: 'Traffic Belt' }
+  { to: '/belt', bn: 'জ্যাম বেল্ট', en: 'Traffic Belt' },
+  { to: '/profile', bn: 'প্রোফাইল', en: 'Profile' }
 ];
 
 export function Header({ authUser, onLogout }) {
@@ -67,6 +69,7 @@ export function Header({ authUser, onLogout }) {
 
         {/* Header Right Actions */}
         <div className="header-actions">
+          <WeatherBadge />
           <ThemeToggle />
 
           <button
@@ -80,6 +83,22 @@ export function Header({ authUser, onLogout }) {
 
           {authUser ? (
             <div className="user-controls">
+              <NavLink
+                to="/profile"
+                className={({ isActive }) => `user-badge ${isActive ? 'user-badge--active' : ''}`}
+                title={authUser.email || authUser.name || 'Profile'}
+                aria-label="View Profile"
+                style={{ textDecoration: 'none', cursor: 'pointer' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                <span>
+                  {authUser.name || (authUser.email ? authUser.email.split('@')[0] : (authUser.isGuest ? (lang === 'bn' ? 'গেস্ট' : 'Guest') : 'User'))}
+                </span>
+              </NavLink>
+
               {authUser.isGuest ? (
                 <button
                   type="button"
@@ -88,15 +107,8 @@ export function Header({ authUser, onLogout }) {
                 >
                   {lang === 'en' ? 'Save Account' : 'অ্যাকাউন্ট সেভ'}
                 </button>
-              ) : (
-                <span className="user-badge" title={authUser.email || authUser.name}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
-                  <span>{authUser.name || (authUser.email ? authUser.email.split('@')[0] : 'User')}</span>
-                </span>
-              )}
+              ) : null}
+
               <button
                 type="button"
                 onClick={onLogout}
