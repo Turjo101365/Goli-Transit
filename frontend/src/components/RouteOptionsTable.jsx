@@ -35,19 +35,36 @@ function ModeLinePreview({ mode }) {
 	);
 }
 
-function ModeChain({ segments, lang }) {
+function ModeChain({ segments, lang, isRecommended, tags }) {
 	return (
-		<span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-			{segments.map((segment, index) => {
-				const label = MODE_LABELS[segment.mode] || { bn: segment.mode, en: segment.mode };
-				return (
-					<span key={`${segment.mode}-${index}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-						{index > 0 ? <span style={{ color: 'var(--c45)' }}>·</span> : null}
-						<ModeLinePreview mode={segment.mode} />
-						<span className="t-place" style={{ fontSize: 15 }}>{t(label.bn, label.en, lang)}</span>
+		<span style={{ display: 'inline-flex', flexDirection: 'column', gap: 4 }}>
+			<span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+				{isRecommended ? (
+					<span className="route-badge-pill route-badge-pill--recommended">
+						⭐ {lang === 'bn' ? 'সেরা পছন্দ' : 'Recommended'}
 					</span>
-				);
-			})}
+				) : null}
+				{segments.map((segment, index) => {
+					const label = MODE_LABELS[segment.mode] || { bn: segment.mode, en: segment.mode };
+					return (
+						<span key={`${segment.mode}-${index}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+							{index > 0 ? <span style={{ color: 'var(--c45)' }}>·</span> : null}
+							<ModeLinePreview mode={segment.mode} />
+							<span className="t-place" style={{ fontSize: 15 }}>{t(label.bn, label.en, lang)}</span>
+						</span>
+					);
+				})}
+			</span>
+
+			{tags && tags.length > 0 ? (
+				<span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
+					{tags.map((tag) => (
+						<span key={tag.id} className="route-badge-pill">
+							{t(tag.bn, tag.en, lang)}
+						</span>
+					))}
+				</span>
+			) : null}
 		</span>
 	);
 }
@@ -90,12 +107,19 @@ function OptionMeasure({ p50, p90, isUnreliable, lang }) {
 	);
 }
 
-export function RouteOptionsTable({ options, lang = 'bn', punchedId, onPunch }) {
+export function RouteOptionsTable({ options, lang = 'bn', punchedId, onPunch, recommendationReason }) {
 	return (
 		<div>
+			{recommendationReason ? (
+				<div className="route-recommendation-banner">
+					<span>{t(recommendationReason.bn, recommendationReason.en, lang)}</span>
+					<span style={{ fontSize: 11, opacity: 0.85 }}>A* Optimized</span>
+				</div>
+			) : null}
+
 			<div style={{ display: 'grid', gridTemplateColumns: GRID_TEMPLATE, gap: 10, alignItems: 'baseline' }} className="rule-solid">
 				<span />
-				<span className="t-label">{t('বাহন', 'Mode', lang)}</span>
+				<span className="t-label">{t('বাহন ও বৈশিষ্ট্য', 'Mode & Attributes', lang)}</span>
 				<span className="t-label" style={{ textAlign: 'right' }}>{t('সাধারণ', 'Usual', lang)}</span>
 				<span className="t-label" style={{ textAlign: 'right' }}>{t('খারাপ দিনে', 'Bad day', lang)}</span>
 				<span className="t-label" style={{ textAlign: 'right' }}>{t('ভাড়া', 'Fare', lang)}</span>
@@ -121,7 +145,12 @@ export function RouteOptionsTable({ options, lang = 'bn', punchedId, onPunch }) 
 							}}
 						>
 							<span className={`punch${isPunched ? ' punch--selected' : ''}`} />
-							<ModeChain segments={option.segments} lang={lang} />
+							<ModeChain
+								segments={option.segments}
+								lang={lang}
+								isRecommended={option.isRecommended}
+								tags={option.tags}
+							/>
 							<span className="t-num" style={{ textAlign: 'right' }}>{num(option.p50, lang)}</span>
 							<span className="t-num" style={{ textAlign: 'right', color: isUnreliable ? 'var(--stamp)' : 'var(--cream)' }}>
 								{num(option.p90, lang)}

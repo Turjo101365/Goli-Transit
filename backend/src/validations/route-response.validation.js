@@ -17,18 +17,33 @@ const segmentSchema = z.object({
 	pts: z.array(z.tuple([z.number(), z.number()])).min(2)
 });
 
+const tagSchema = z.object({
+	id: z.string(),
+	bn: z.string(),
+	en: z.string()
+});
+
 const optionSchema = z.object({
 	id: z.string().min(1),
 	p50: z.number().int().nonnegative(),
 	p90: z.number().int().nonnegative(),
 	fare: z.number().int().nonnegative().nullable(),
 	distanceKm: z.number().nonnegative(),
-	segments: z.array(segmentSchema).min(1)
+	segments: z.array(segmentSchema).min(1),
+	rank: z.number().int().positive().optional(),
+	isRecommended: z.boolean().optional(),
+	preferenceScore: z.number().optional(),
+	transfersCount: z.number().int().nonnegative().optional(),
+	walkMinutes: z.number().int().nonnegative().optional(),
+	estimatedFare: z.number().int().nonnegative().optional(),
+	recommendationReason: labelSchema.nullable().optional(),
+	tags: z.array(tagSchema).optional()
 });
 
 // See docs/API.md. Options are now computed per request (dynamicRoute
 // .service.js) rather than a single frozen dataset — this shape (not the
 // data behind it) is what's held stable for consumers.
 export const routeResponseValidation = z.object({
+	preference: z.enum(['fastest', 'comfortable', 'family', 'fast_comfortable', 'cheapest']).optional(),
 	options: z.array(optionSchema)
 });

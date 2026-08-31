@@ -3,6 +3,7 @@ import { metroPath, nearestMetroStation } from '../core/algorithms/metroPath.js'
 import { fetchOsrmRoute } from './osrm.client.js';
 import { distance } from '../utils/distance.js';
 import { config } from '../constants/config.js';
+import { rankRoutesByPreference, PREFERENCES } from '../core/algorithms/preferenceScorer.js';
 
 const {
 	WALKING_SPEED_KMH,
@@ -27,8 +28,17 @@ const DIRECT_LABEL = {
 	walk: { bn: 'হেঁটে', en: 'On foot' }
 };
 
-function accessMode(km) {
-	return km > ACCESS_WALK_LIMIT_KM ? 'rickshaw' : 'walk';
+function resolveAccessMode(km, allowedModesSet) {
+	const canWalk = allowedModesSet.has('walk');
+	const canRickshaw = allowedModesSet.has('rickshaw');
+
+	if (canWalk && canRickshaw) {
+		return km > ACCESS_WALK_LIMIT_KM ? 'rickshaw' : 'walk';
+	}
+	if (canRickshaw) {
+		return 'rickshaw';
+	}
+	return 'walk';
 }
 
 function accessMinutes(km, mode) {
@@ -72,11 +82,15 @@ function sumPathKm(points) {
 	return total;
 }
 
-// Metro option: nearest real station to each point, a real dijkstra path
+// Metro option: nearest real station to each point, a real A*/dijkstra path
 // (and real cumulative fare) between them, plus real access legs on each
 // end. Returns null if either point is too far from a station, both
 // resolve to the same station, or no metro path exists between them.
-async function buildMetroOption(graph, origin, destination) {
+async function buildMetroOption(graph, origin, destination, allowedModesSet) {
+	if (!allowedModesSet.has('metro')) {
+		return null;
+	}
+
 	const fromStation = nearestMetroStation(graph, origin, distance);
 	const toStation = nearestMetroStation(graph, destination, distance);
 
@@ -93,8 +107,8 @@ async function buildMetroOption(graph, origin, destination) {
 		return null;
 	}
 
-	const fromMode = accessMode(fromStation.km);
-	const toMode = accessMode(toStation.km);
+	const fromMode = resolveAccessMode(fromStation.km, allowedModesSet);
+	const toMode = resolveAccessMode(toStation.km, allowedModesSet);
 	const fromAccessMin = accessMinutes(fromStation.km, fromMode);
 	const toAccessMin = accessMinutes(toStation.km, toMode);
 	const rideMin = path.minutes + MODE_WAIT_MINUTES.metro;
@@ -205,20 +219,45 @@ async function buildDirectOption(mode, origin, destination) {
 	};
 }
 
-export async function computeDynamicRouteOptions({ originLat, originLng, destinationLat, destinationLng }) {
+export async function computeDynamicRouteOptions({
+	originLat,
+	originLng,
+	destinationLat,
+	destinationLng,
+	preference = PREFERENCES.FASTEST,
+	allowedModes = ['metro', 'bus', 'rickshaw', 'cng', 'walk']
+}) {
 	const graph = await ensureGraphCache();
 	const origin = { lat: originLat, lng: originLng };
 	const destination = { lat: destinationLat, lng: destinationLng };
 
+	const allowedModesSet = new Set(
+		Array.isArray(allowedModes) && allowedModes.length > 0
+			? allowedModes
+			: ['metro', 'bus', 'rickshaw', 'cng', 'walk']
+	);
+
 	const directDistanceKm = distance(origin, destination);
-	// A pure-walk option only makes sense for a short trip.
-	const candidateModes = directDistanceKm <= 3 ? ['bus', 'cng', 'rickshaw', 'bike', 'walk'] : ['bus', 'cng', 'rickshaw', 'bike'];
+	
+	// Candidate direct modes filtered strictly by allowedModes
+	const potentialDirectModes = directDistanceKm <= 3
+		? ['bus', 'cng', 'rickshaw', 'bike', 'walk']
+		: ['bus', 'cng', 'rickshaw', 'bike'];
+
+	const candidateDirectModes = potentialDirectModes.filter((m) => allowedModesSet.has(m));
 
 	const [metroOption, ...directOptions] = await Promise.all([
-		buildMetroOption(graph, origin, destination),
-		...candidateModes.map((mode) => buildDirectOption(mode, origin, destination))
+		buildMetroOption(graph, origin, destination, allowedModesSet),
+		...candidateDirectModes.map((mode) => buildDirectOption(mode, origin, destination))
 	]);
 
-	const options = [metroOption, ...directOptions].filter(Boolean);
-	return { options };
+	const rawOptions = [metroOption, ...directOptions].filter(Boolean);
+
+	// Rank options using the preference scoring layer
+	const rankedOptions = rankRoutesByPreference(rawOptions, preference);
+
+	return {
+		preference,
+		options: rankedOptions
+	};
 }

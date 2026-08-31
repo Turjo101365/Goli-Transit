@@ -198,6 +198,22 @@ async function reverseGeocode(lat, lng) {
 	}
 }
 
+const PREFERENCE_OPTIONS = [
+	{ id: 'fastest', icon: '⚡', bn: 'দ্রুততম', en: 'Fastest', descBn: 'সর্বনিম্ন সময়', descEn: 'Min travel time' },
+	{ id: 'comfortable', icon: '🛋', bn: 'আরামদায়ক', en: 'Comfortable', descBn: 'কম বদল ও কম হাঁটা', descEn: 'Fewer transfers' },
+	{ id: 'family', icon: '👨‍👩‍👧', bn: 'পারিবারিক', en: 'Family', descBn: 'সর্বোচ্চ আরাম ও নিরাপত্তা', descEn: 'Family safe' },
+	{ id: 'fast_comfortable', icon: '⚡🛋', bn: 'দ্রুত + আরাম', en: 'Fast & Comfy', descBn: 'সময় ও আরামের ব্যালেন্স', descEn: 'Speed + comfort' },
+	{ id: 'cheapest', icon: '💰', bn: 'সাশ্রয়ী', en: 'Cheapest', descBn: 'সর্বনিম্ন আনুমানিক ভাড়া', descEn: 'Lowest fare' }
+];
+
+const TRANSPORT_MODES = [
+	{ id: 'bus', icon: '🚌', bn: 'বাস', en: 'Bus' },
+	{ id: 'metro', icon: '🚇', bn: 'মেট্রো', en: 'Metro' },
+	{ id: 'rickshaw', icon: '🛺', bn: 'রিকশা', en: 'Rickshaw' },
+	{ id: 'cng', icon: '🛺', bn: 'সিএনজি', en: 'CNG' },
+	{ id: 'walk', icon: '🚶', bn: 'হাঁটা', en: 'Walking' }
+];
+
 export function EzzGoMap() {
 	const { lang } = useLanguage();
 	const { theme } = useTheme();
@@ -222,6 +238,8 @@ export function EzzGoMap() {
 		}
 	}
 	const [armed, setArmed] = useState(null); // 'A' | 'B' | null — which endpoint a map tap targets
+	const [preference, setPreference] = useState('fastest');
+	const [allowedModes, setAllowedModes] = useState(['metro', 'bus', 'rickshaw', 'cng', 'walk']);
 	const [routeOptions, setRouteOptions] = useState([]);
 	const [routeError, setRouteError] = useState(null);
 	const [routeLoading, setRouteLoading] = useState(false);
@@ -238,6 +256,18 @@ export function EzzGoMap() {
 	const geoRequestedRef = useRef(false);
 	const stationsRef = useRef(stations);
 	const endpointsRef = useRef(endpoints);
+
+	function toggleAllowedMode(modeId) {
+		setAllowedModes((current) => {
+			if (current.includes(modeId)) {
+				if (current.length <= 1) {
+					return current; // keep at least 1 mode active
+				}
+				return current.filter((m) => m !== modeId);
+			}
+			return [...current, modeId];
+		});
+	}
 
 	useEffect(() => {
 		stationsRef.current = stations;
@@ -290,9 +320,7 @@ export function EzzGoMap() {
 	const originPoint = endpoints.A;
 	const destinationPoint = endpoints.B;
 
-	// Fresh /route request every time either endpoint changes — real
-	// dynamic directions, not a fixed dataset. Nothing fires until both
-	// "From" and "To" are set.
+	// Fresh /route request every time endpoints, preference, or allowed modes change
 	useEffect(() => {
 		if (!originPoint || !destinationPoint) {
 			setRouteOptions([]);
@@ -310,7 +338,9 @@ export function EzzGoMap() {
 			destinationLat: destinationPoint.lat,
 			destinationLng: destinationPoint.lng,
 			originLabel: originPoint.label,
-			destinationLabel: destinationPoint.label
+			destinationLabel: destinationPoint.label,
+			preference,
+			allowedModes
 		})
 			.then((result) => {
 				if (cancelled) {
@@ -319,9 +349,10 @@ export function EzzGoMap() {
 
 				const nextOptions = result.options || [];
 				setRouteOptions(nextOptions);
-				setSelectedOptionId((current) =>
-					nextOptions.some((option) => option.id === current) ? current : nextOptions[0]?.id
-				);
+				// Automatically select the top recommended option
+				if (nextOptions.length > 0) {
+					setSelectedOptionId(nextOptions[0]?.id);
+				}
 			})
 			.catch((err) => {
 				if (!cancelled) {
@@ -338,7 +369,7 @@ export function EzzGoMap() {
 			cancelled = true;
 		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [originPoint?.lat, originPoint?.lng, destinationPoint?.lat, destinationPoint?.lng]);
+	}, [originPoint?.lat, originPoint?.lng, destinationPoint?.lat, destinationPoint?.lng, preference, allowedModes]);
 
 	// A stale simulation trace from a previous origin/destination shouldn't
 	// keep animating (or keep claiming to be "done") once the query changes.
@@ -778,6 +809,64 @@ export function EzzGoMap() {
 				<div className="map-grid-ticket">
 				<div className="rule-solid" style={{ marginBottom: 20 }} />
 
+				{/* Preference & Allowed Modes Control Panel */}
+				<div className="routing-control-panel">
+					<div className="routing-control-header">
+						<h3 className="routing-control-title">
+							<span>🧭</span>
+							<span>{t('রুট পছন্দ (Route Preference)', 'Route Preference', lang)}</span>
+						</h3>
+						<span className="t-label" style={{ fontSize: 11, color: 'var(--c70)' }}>
+							{t('A* অ্যালগরিদম দ্বারা র‍্যাঙ্ককৃত', 'A* Algorithm Ranked', lang)}
+						</span>
+					</div>
+
+					<div className="preference-chips-grid">
+						{PREFERENCE_OPTIONS.map((pref) => {
+							const isActive = pref.id === preference;
+							return (
+								<button
+									key={pref.id}
+									type="button"
+									className={`preference-chip ${isActive ? 'preference-chip--active' : ''}`}
+									onClick={() => setPreference(pref.id)}
+									title={t(pref.descBn, pref.descEn, lang)}
+								>
+									<span className="preference-chip-icon">{pref.icon}</span>
+									<span style={{ display: 'flex', flexDirection: 'column' }}>
+										<span>{t(pref.bn, pref.en, lang)}</span>
+										<span style={{ fontSize: 10, opacity: 0.75, fontWeight: 400 }}>
+											{t(pref.descBn, pref.descEn, lang)}
+										</span>
+									</span>
+								</button>
+							);
+						})}
+					</div>
+
+					<div className="mode-filter-bar">
+						<span className="mode-filter-label">
+							{t('অনুমোদিত বাহন:', 'Allowed Modes:', lang)}
+						</span>
+						{TRANSPORT_MODES.map((mode) => {
+							const isChecked = allowedModes.includes(mode.id);
+							return (
+								<button
+									key={mode.id}
+									type="button"
+									className={`mode-toggle-chip ${isChecked ? 'mode-toggle-chip--active' : ''}`}
+									onClick={() => toggleAllowedMode(mode.id)}
+									aria-pressed={isChecked}
+								>
+									<span className="mode-toggle-check">{isChecked ? '☑' : '☐'}</span>
+									<span>{mode.icon}</span>
+									<span>{t(mode.bn, mode.en, lang)}</span>
+								</button>
+							);
+						})}
+					</div>
+				</div>
+
 				{!originPoint || !destinationPoint ? (
 					<p className="t-body" style={{ color: 'var(--c70)' }}>
 						{t('যাত্রা দেখতে দুটো জায়গাই বেছে নিন', 'Pick both "From" and "To" to see a route', lang)}
@@ -788,7 +877,7 @@ export function EzzGoMap() {
 					<p className="t-body" style={{ color: 'var(--stamp)' }}>{routeError}</p>
 				) : routeOptions.length === 0 ? (
 					<p className="t-body" style={{ color: 'var(--c70)' }}>
-						{t('এই দুই জায়গার মধ্যে কোনো রুট পাওয়া যায়নি', 'No route found between these two points', lang)}
+						{t('নির্বাচিত বাহন ও পছন্দের মধ্যে কোনো রুট পাওয়া যায়নি। অন্য বাহন নির্বাচন করে চেষ্টা করুন।', 'No route found matching these modes and preference. Try selecting more transport modes.', lang)}
 					</p>
 				) : selectedOption ? (
 					<>
@@ -824,6 +913,7 @@ export function EzzGoMap() {
 							lang={lang}
 							punchedId={selectedOptionId}
 							onPunch={setSelectedOptionId}
+							recommendationReason={routeOptions.find((opt) => opt.isRecommended)?.recommendationReason}
 						/>
 					</>
 				) : (
