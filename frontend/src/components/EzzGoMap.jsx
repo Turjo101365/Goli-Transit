@@ -528,8 +528,14 @@ export function EzzGoMap() {
 		);
 	}, []);
 
+	function handleStationPick(station) {
+		const targetEndpoint = armed || (!endpoints.A ? 'A' : 'B');
+		resolveEndpoint(targetEndpoint, { lat: station.lat, lng: station.lng }, t(station.nameBn, station.nameEn, lang), { nodeId: station.id });
+	}
+
 	function handleMapPick(point) {
-		resolveEndpoint(armed, point, null);
+		const targetEndpoint = armed || (!endpoints.A ? 'A' : 'B');
+		resolveEndpoint(targetEndpoint, point, null);
 	}
 
 	function handleDrag(endpointId, event) {
@@ -688,14 +694,26 @@ export function EzzGoMap() {
 								<CircleMarker
 									key={station.id}
 									center={[station.lat, station.lng]}
-									radius={simState === 'path' ? 5 : simState ? 4.5 : 3.5}
+									radius={simState === 'path' ? 6 : simState ? 5 : 4}
+									eventHandlers={{
+										click: () => handleStationPick(station)
+									}}
 									pathOptions={{
 										color: simState === 'path' ? COLOUR.stamp : COLOUR.metro,
 										weight: simState === 'path' ? 2.5 : 1.5,
 										fillColor: simFill || COLOUR.ground2,
 										fillOpacity: 1
 									}}
-								/>
+								>
+									<Popup>
+										<div style={{ textAlign: 'center', padding: '4px 6px' }}>
+											<b style={{ color: 'var(--metro)' }}>{t(station.nameBn, station.nameEn, lang)}</b>
+											<p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--c70)' }}>
+												{t('ক্লিক করে শুরু বা শেষ হিসেবে নিন', 'Click to set as From or To', lang)}
+											</p>
+										</div>
+									</Popup>
+								</CircleMarker>
 							);
 						})}
 
@@ -713,7 +731,14 @@ export function EzzGoMap() {
 								icon={pinIconA}
 								draggable
 								eventHandlers={{ dragend: (event) => handleDrag('A', event) }}
-							/>
+							>
+								<Popup>
+									<div style={{ padding: '2px 6px' }}>
+										<b>{t('শুরুর স্থান (From)', 'Starting Point (From)', lang)}:</b><br />
+										{endpoints.A.label}
+									</div>
+								</Popup>
+							</Marker>
 						) : null}
 						{endpoints.B ? (
 							<Marker
@@ -721,7 +746,14 @@ export function EzzGoMap() {
 								icon={pinIconB}
 								draggable
 								eventHandlers={{ dragend: (event) => handleDrag('B', event) }}
-							/>
+							>
+								<Popup>
+									<div style={{ padding: '2px 6px' }}>
+										<b>{t('গন্তব্য (To)', 'Destination (To)', lang)}:</b><br />
+										{endpoints.B.label}
+									</div>
+								</Popup>
+							</Marker>
 						) : null}
 					</MapContainer>
 				</div>

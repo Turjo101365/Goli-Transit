@@ -18,6 +18,17 @@ export function LocationSearchField({ label, placeholder, stations = [], restric
 	const [results, setResults] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const debounceRef = useRef(null);
+	const containerRef = useRef(null);
+
+	useEffect(() => {
+		function handleClickOutside(event) {
+			if (containerRef.current && !containerRef.current.contains(event.target)) {
+				setOpen(false);
+			}
+		}
+		document.addEventListener('mousedown', handleClickOutside);
+		return () => document.removeEventListener('mousedown', handleClickOutside);
+	}, []);
 
 	useEffect(() => {
 		if (!open) {
@@ -36,7 +47,7 @@ export function LocationSearchField({ label, placeholder, stations = [], restric
 		}
 
 		const localMatches = stations.filter(
-			(station) => station.nameBn.includes(trimmed) || station.nameEn.toLowerCase().includes(trimmed.toLowerCase())
+			(station) => station.nameBn?.includes(trimmed) || station.nameEn?.toLowerCase().includes(trimmed.toLowerCase())
 		);
 
 		if (localMatches.length > 0 || restrictToStations) {
@@ -90,14 +101,14 @@ export function LocationSearchField({ label, placeholder, stations = [], restric
 	}
 
 	return (
-		<div style={{ position: 'relative' }}>
+		<div ref={containerRef} style={{ position: 'relative' }}>
 			{label ? <span className="t-label" style={{ display: 'block', marginBottom: 6, color: 'var(--cream)', fontSize: 12 }}>{label}</span> : null}
 			<input
 				type="text"
 				value={query}
-				onFocus={() => {
+				onFocus={(event) => {
 					setOpen(true);
-					setQuery('');
+					event.target.select();
 					onFocus?.();
 				}}
 				onChange={(event) => setQuery(event.target.value)}
