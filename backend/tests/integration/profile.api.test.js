@@ -54,7 +54,22 @@ test('Profile API - Complete authenticated user lifecycle and database operation
 		Authorization: `Bearer ${authToken}`
 	};
 
-	// 2. GET /profile - Fetch Profile Data
+	// 2. Reject duplicate registration with same email (even with different casing)
+	const dupRes = await fetch(`${baseUrl}/auth/register`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			name: 'Duplicate Attempt',
+			email: testEmail.toUpperCase(),
+			password: 'AnotherPassword@123',
+			confirmPassword: 'AnotherPassword@123'
+		})
+	});
+	const dupData = await dupRes.json();
+	assert.equal(dupRes.status, 409, `Duplicate email did not return 409: ${JSON.stringify(dupData)}`);
+	assert.equal(dupData.ok, false);
+
+	// 3. GET /profile - Fetch Profile Data (must be 100% clean, no dummy data)
 	const profileRes = await fetch(`${baseUrl}/profile`, {
 		method: 'GET',
 		headers: authHeaders
@@ -64,11 +79,12 @@ test('Profile API - Complete authenticated user lifecycle and database operation
 	assert.ok(profileData.ok);
 	assert.equal(profileData.data.user.name, 'Test Commuter');
 	assert.equal(profileData.data.user.email, testEmail);
-	assert.equal(Array.isArray(profileData.data.trips), true);
-	assert.equal(Array.isArray(profileData.data.savedRoutes), true);
-	assert.equal(Array.isArray(profileData.data.favoriteStops), true);
+	assert.equal(profileData.data.trips.length, 0, 'New user must have 0 trips');
+	assert.equal(profileData.data.savedRoutes.length, 0, 'New user must have 0 saved routes');
+	assert.equal(profileData.data.favoriteStops.length, 0, 'New user must have 0 favorite stops');
+	assert.equal(profileData.data.stats.totalTrips, 0, 'New user totalTrips must be 0');
 
-	// 3. PUT /profile - Update profile details and avatar
+	// 4. PUT /profile - Update profile details and avatar
 	const updateRes = await fetch(`${baseUrl}/profile`, {
 		method: 'PUT',
 		headers: authHeaders,
@@ -115,6 +131,28 @@ test('Profile API - Complete authenticated user lifecycle and database operation
 	const goodPwdData = await goodPwdRes.json();
 	assert.equal(goodPwdRes.status, 200);
 	assert.ok(goodPwdData.ok);
+
+	// 5.5 Map route search must NOT auto-insert trips into database
+	const searchRouteRes = await fetch(`${baseUrl}/route`, {
+		method: 'POST',
+		headers: authHeaders,
+		body: JSON.stringify({
+			originLat: 23.8084,
+			originLng: 90.3682,
+			originLabel: 'Mirpur 10',
+			destinationLat: 23.7281,
+			destinationLng: 90.4191,
+			destinationLabel: 'Motijheel'
+		})
+	});
+	assert.equal(searchRouteRes.status, 200);
+
+	const profileAfterSearchRes = await fetch(`${baseUrl}/profile`, {
+		method: 'GET',
+		headers: authHeaders
+	});
+	const profileAfterSearch = await profileAfterSearchRes.json();
+	assert.equal(profileAfterSearch.data.trips.length, 0, 'Route searches must not create fake/auto trips');
 
 	// 6. Test Logging and Deleting Trips
 	const createTripRes = await fetch(`${baseUrl}/profile/trips`, {

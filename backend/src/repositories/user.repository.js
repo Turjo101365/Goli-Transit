@@ -65,19 +65,20 @@ export const userRepository = {
 	findById,
 
 	async createUser({ name, email, passwordHash }) {
+		const normalizedEmail = String(email || '').trim().toLowerCase();
 		const result = await dbQuery(
 			[
 				'INSERT INTO users (name, email, password_hash)',
 				'VALUES (:name, :email, :passwordHash)'
 			].join(' '),
 			{
-				name,
-				email,
+				name: String(name || '').trim(),
+				email: normalizedEmail,
 				passwordHash
 			}
 		);
 
-		if (!result.insertId) {
+		if (!result?.insertId) {
 			return null;
 		}
 

@@ -118,12 +118,12 @@ function findGuestUserById(id) {
 
 function createMemoryUser({ name, email, passwordHash, role = 'user', phone = null, avatarUrl = null, bio = null }) {
 	const id = `mem-${memoryUserSequence++}`;
-	const normEmail = String(email || '').toLowerCase();
+	const normEmail = normalizeEmail(email);
 	const userRole = (normEmail === 'turjo5892@gmail.com' || normEmail === 'turjo582@gmail.com' || normEmail === 'admin@ezzgo.com' || normEmail === 'demo@ezzgo.local') ? 'admin' : role;
 	const user = {
 		id,
 		name,
-		email,
+		email: normEmail,
 		passwordHash,
 		role: userRole,
 		status: 'active',
@@ -134,7 +134,7 @@ function createMemoryUser({ name, email, passwordHash, role = 'user', phone = nu
 		updatedAt: new Date()
 	};
 
-	memoryUsersByEmail.set(email, user);
+	memoryUsersByEmail.set(normEmail, user);
 	memoryUsersById.set(id, user);
 	return user;
 }
@@ -255,6 +255,10 @@ function assertResetSessionActive(session, email) {
 export const authService = {
 	async register(payload) {
 		const email = normalizeEmail(payload.email);
+		if (!email) {
+			throw createHttpError(400, 'AUTH_INVALID_EMAIL', 'A valid email address is required.');
+		}
+
 		const dbAvailable = await hasLiveDatabase();
 
 		if (dbAvailable) {
@@ -263,17 +267,30 @@ export const authService = {
 				throw createHttpError(409, 'AUTH_EMAIL_EXISTS', 'An account with this email already exists.');
 			}
 
-			const user = await userRepository.createUser({
-				name: payload.name.trim(),
-				email,
-				passwordHash: hashPassword(payload.password)
-			});
+			try {
+				const user = await userRepository.createUser({
+					name: payload.name.trim(),
+					email,
+					passwordHash: hashPassword(payload.password)
+				});
 
-			if (!user) {
-				throw createHttpError(500, 'AUTH_REGISTER_FAILED', 'Unable to create account right now.');
+				if (!user) {
+					throw createHttpError(500, 'AUTH_REGISTER_FAILED', 'Unable to create account right now.');
+				}
+
+				return createSessionResponse(user);
+			} catch (err) {
+				if (
+					err?.code === 'ER_DUP_ENTRY' ||
+					err?.code === '23505' ||
+					String(err?.message || '').includes('duplicate') ||
+					String(err?.message || '').includes('Duplicate') ||
+					String(err?.message || '').includes('uq_users_email')
+				) {
+					throw createHttpError(409, 'AUTH_EMAIL_EXISTS', 'An account with this email already exists.');
+				}
+				throw err;
 			}
-
-			return createSessionResponse(user);
 		}
 
 		const existingMemoryUser = findMemoryUserByEmail(email);
