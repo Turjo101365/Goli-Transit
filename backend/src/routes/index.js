@@ -8,6 +8,7 @@ import { profileRoutes } from './profile.routes.js';
 import { conditionRoutes } from './condition.routes.js';
 import { journeyRoutes } from './journey.routes.js';
 import { modesRoutes } from './modes.routes.js';
+import { adminRoutes } from './admin.routes.js';
 import { healthController } from '../controllers/graph.controller.js';
 
 export function createRouter() {
@@ -23,6 +24,8 @@ export function createRouter() {
   router.use('/condition', conditionRoutes);
   router.use('/journey', journeyRoutes);
   router.use('/modes', modesRoutes);
+  router.use('/admin', adminRoutes);
+  router.use('/api/admin', adminRoutes);
 
   return router;
 }
