@@ -1,8 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   getProfile,
   updateProfile,
+  changePassword,
+  deleteAccount,
+  createTrip,
+  deleteTrip,
+  clearTrips,
   saveRoute,
   deleteSavedRoute,
   addFavoriteStop,
@@ -79,6 +84,17 @@ const MRT6_STATIONS = [
   { id: 'mrt_motijheel', nameBn: 'মতিঝিল', nameEn: 'Motijheel', lat: 23.7281, lng: 90.4191 }
 ];
 
+const TRANSIT_AVATAR_PRESETS = [
+  { id: 'preset:metro', icon: '🚇', bn: 'মেট্রো মাস্টার', en: 'Metro Master' },
+  { id: 'preset:bus', icon: '🚌', bn: 'সিটি বাস', en: 'City Bus' },
+  { id: 'preset:rickshaw', icon: '🛺', bn: 'ঢাকা রিকশা', en: 'Dhaka Rickshaw' },
+  { id: 'preset:cng', icon: '🚕', bn: 'গ্রিন সিএনজি', en: 'Green CNG' },
+  { id: 'preset:train', icon: '🚆', bn: 'রেল কমিউটার', en: 'Rail Commuter' },
+  { id: 'preset:bike', icon: '🛵', bn: 'বাইক রাইডার', en: 'Bike Rider' },
+  { id: 'preset:walk', icon: '🚶', bn: 'পথচারী', en: 'Swift Walker' },
+  { id: 'preset:captain', icon: '🛡️', bn: 'ট্রানজিট ক্যাপটেন', en: 'Transit Captain' }
+];
+
 function findStationByNameOrId(query) {
   if (!query) return null;
   const q = String(query).trim().toLowerCase();
@@ -97,6 +113,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
   const { theme, setTheme } = useTheme();
   const { setOrigin, setDestination } = useTrip();
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
 
   const [activeTab, setActiveTab] = useState('routes');
   const [profileData, setProfileData] = useState(null);
@@ -104,10 +121,40 @@ export function Profile({ user, onUpdateUser, onLogout }) {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
+  // Edit Profile Form State
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ name: '', email: '' });
+  const [editForm, setEditForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    bio: '',
+    avatarUrl: ''
+  });
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // Avatar Modal State
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+  const [customAvatarUrl, setCustomAvatarUrl] = useState('');
+
+  // Password Change State
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmNewPassword: ''
+  });
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState(null);
+  const [passwordError, setPasswordError] = useState(null);
+
+  // Delete Account State
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  // Add Route State
   const [showAddRoute, setShowAddRoute] = useState(false);
   const [isSavingRoute, setIsSavingRoute] = useState(false);
   const [routeForm, setRouteForm] = useState({
@@ -118,11 +165,24 @@ export function Profile({ user, onUpdateUser, onLogout }) {
     durationMinutes: ''
   });
 
+  // Add Stop State
   const [showAddStop, setShowAddStop] = useState(false);
   const [isAddingStop, setIsAddingStop] = useState(false);
   const [stopForm, setStopForm] = useState({
     name: '',
     nodeId: ''
+  });
+
+  // Log Trip State
+  const [showAddTrip, setShowAddTrip] = useState(false);
+  const [isSavingTrip, setIsSavingTrip] = useState(false);
+  const [tripForm, setTripForm] = useState({
+    fromLocation: '',
+    toLocation: '',
+    mode: 'metro',
+    distanceKm: '',
+    durationMinutes: '',
+    status: 'completed'
   });
 
   const [copiedId, setCopiedId] = useState(false);
@@ -135,9 +195,13 @@ export function Profile({ user, onUpdateUser, onLogout }) {
         const data = await getProfile();
         if (!isMounted) return;
         setProfileData(data);
+        const userData = data?.user || user;
         setEditForm({
-          name: data?.user?.name || user?.name || '',
-          email: data?.user?.email || user?.email || ''
+          name: userData?.name || '',
+          email: userData?.email || '',
+          phone: userData?.phone || '',
+          bio: userData?.bio || '',
+          avatarUrl: userData?.avatarUrl || ''
         });
       } catch (err) {
         if (!isMounted) return;
@@ -158,11 +222,15 @@ export function Profile({ user, onUpdateUser, onLogout }) {
       setError(null);
       const data = await getProfile();
       setProfileData(data);
+      const userData = data?.user || user;
       setEditForm({
-        name: data?.user?.name || user?.name || '',
-        email: data?.user?.email || user?.email || ''
+        name: userData?.name || '',
+        email: userData?.email || '',
+        phone: userData?.phone || '',
+        bio: userData?.bio || '',
+        avatarUrl: userData?.avatarUrl || ''
       });
-      setSuccessMessage(lang === 'bn' ? 'প্রোফাইল আপডেট সম্পন্ন হয়েছে' : 'Profile data synchronized');
+      setSuccessMessage(lang === 'bn' ? 'প্রোফাইল ডেটা সিঙ্ক হয়েছে' : 'Profile data synchronized with database');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       setError(err.message);
@@ -175,19 +243,234 @@ export function Profile({ user, onUpdateUser, onLogout }) {
     e.preventDefault();
     try {
       setIsUpdating(true);
-      const updated = await updateProfile(editForm);
-      const updatedUser = updated.user || updated;
+      setError(null);
+      const result = await updateProfile(editForm);
+      const updatedUser = result.user || result;
       setProfileData((prev) => ({ ...prev, user: updatedUser }));
       const token = getStoredAuthToken();
       if (token) saveStoredSession({ token, user: updatedUser });
       if (onUpdateUser) onUpdateUser(updatedUser);
       setIsEditing(false);
-      setSuccessMessage(lang === 'bn' ? 'তথ্য সফলভাবে সংরক্ষিত হয়েছে' : 'Profile updated successfully');
+      setSuccessMessage(lang === 'bn' ? 'প্রোফাইল তথ্য সফলভাবে সংরক্ষিত হয়েছে' : 'Profile updated successfully in database');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       setError(err.message);
     } finally {
       setIsUpdating(false);
+    }
+  }
+
+  async function handleAvatarPresetSelect(presetId) {
+    try {
+      setEditForm((prev) => ({ ...prev, avatarUrl: presetId }));
+      const payload = {
+        name: editForm.name || profileData?.user?.name || user?.name,
+        email: editForm.email || profileData?.user?.email || user?.email,
+        phone: editForm.phone || profileData?.user?.phone || null,
+        bio: editForm.bio || profileData?.user?.bio || null,
+        avatarUrl: presetId
+      };
+      const result = await updateProfile(payload);
+      const updatedUser = result.user || result;
+      setProfileData((prev) => ({ ...prev, user: updatedUser }));
+      const token = getStoredAuthToken();
+      if (token) saveStoredSession({ token, user: updatedUser });
+      if (onUpdateUser) onUpdateUser(updatedUser);
+      setAvatarModalOpen(false);
+      setSuccessMessage(lang === 'bn' ? 'প্রোফাইল ছবি পরিবর্তন করা হয়েছে' : 'Profile picture updated');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleCustomAvatarSubmit(e) {
+    e.preventDefault();
+    if (!customAvatarUrl) return;
+    try {
+      setEditForm((prev) => ({ ...prev, avatarUrl: customAvatarUrl }));
+      const payload = {
+        name: editForm.name || profileData?.user?.name || user?.name,
+        email: editForm.email || profileData?.user?.email || user?.email,
+        phone: editForm.phone || profileData?.user?.phone || null,
+        bio: editForm.bio || profileData?.user?.bio || null,
+        avatarUrl: customAvatarUrl
+      };
+      const result = await updateProfile(payload);
+      const updatedUser = result.user || result;
+      setProfileData((prev) => ({ ...prev, user: updatedUser }));
+      const token = getStoredAuthToken();
+      if (token) saveStoredSession({ token, user: updatedUser });
+      if (onUpdateUser) onUpdateUser(updatedUser);
+      setAvatarModalOpen(false);
+      setCustomAvatarUrl('');
+      setSuccessMessage(lang === 'bn' ? 'প্রোফাইল ছবি পরিবর্তন করা হয়েছে' : 'Profile picture updated');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function handleFileUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setError(lang === 'bn' ? 'ছবির সাইজ ২MB এর কম হতে হবে' : 'Image size must be less than 2MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const dataUri = reader.result;
+      try {
+        const payload = {
+          name: editForm.name || profileData?.user?.name || user?.name,
+          email: editForm.email || profileData?.user?.email || user?.email,
+          phone: editForm.phone || profileData?.user?.phone || null,
+          bio: editForm.bio || profileData?.user?.bio || null,
+          avatarUrl: dataUri
+        };
+        const result = await updateProfile(payload);
+        const updatedUser = result.user || result;
+        setProfileData((prev) => ({ ...prev, user: updatedUser }));
+        const token = getStoredAuthToken();
+        if (token) saveStoredSession({ token, user: updatedUser });
+        if (onUpdateUser) onUpdateUser(updatedUser);
+        setAvatarModalOpen(false);
+        setSuccessMessage(lang === 'bn' ? 'প্রোফাইল ছবি আপলোড সম্পন্ন হয়েছে' : 'Profile photo uploaded successfully');
+        setTimeout(() => setSuccessMessage(null), 3000);
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function handleChangePasswordSubmit(e) {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordMessage(null);
+
+    if (passwordForm.newPassword !== passwordForm.confirmNewPassword) {
+      setPasswordError(lang === 'bn' ? 'নতুন পাসওয়ার্ড দুটি মিলছে না' : 'New passwords do not match');
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      setPasswordError(lang === 'bn' ? 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে' : 'Password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      setIsChangingPassword(true);
+      const result = await changePassword({
+        currentPassword: passwordForm.currentPassword || null,
+        newPassword: passwordForm.newPassword,
+        confirmNewPassword: passwordForm.confirmNewPassword
+      });
+      setPasswordMessage(result?.message || (lang === 'bn' ? 'পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে' : 'Password updated successfully'));
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmNewPassword: '' });
+      setTimeout(() => setPasswordMessage(null), 4000);
+    } catch (err) {
+      setPasswordError(err.message || 'Failed to change password');
+    } finally {
+      setIsChangingPassword(false);
+    }
+  }
+
+  async function handleDeleteAccountSubmit(e) {
+    e.preventDefault();
+    try {
+      setIsDeletingAccount(true);
+      await deleteAccount({ password: deletePassword || null });
+      setDeleteModalOpen(false);
+      if (onLogout) onLogout();
+      navigate('/', { replace: true });
+    } catch (err) {
+      setError(err.message);
+      setIsDeletingAccount(false);
+    }
+  }
+
+  async function handleCreateTrip(e) {
+    e.preventDefault();
+    if (!tripForm.fromLocation || !tripForm.toLocation) return;
+    try {
+      setIsSavingTrip(true);
+      const result = await createTrip({
+        fromLocation: tripForm.fromLocation,
+        toLocation: tripForm.toLocation,
+        mode: tripForm.mode,
+        distanceKm: tripForm.distanceKm ? Number(tripForm.distanceKm) : null,
+        durationMinutes: tripForm.durationMinutes ? Number(tripForm.durationMinutes) : null,
+        status: tripForm.status || 'completed'
+      });
+      const newTrip = {
+        id: result.id || Date.now(),
+        fromLocation: tripForm.fromLocation,
+        toLocation: tripForm.toLocation,
+        mode: tripForm.mode,
+        distanceKm: tripForm.distanceKm ? Number(tripForm.distanceKm) : null,
+        durationMinutes: tripForm.durationMinutes ? Number(tripForm.durationMinutes) : null,
+        status: tripForm.status || 'completed',
+        completedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      };
+      setProfileData((prev) => ({
+        ...prev,
+        trips: [newTrip, ...(prev?.trips || [])],
+        stats: {
+          ...prev?.stats,
+          totalTrips: (prev?.stats?.totalTrips || 0) + 1,
+          totalDistance: (prev?.stats?.totalDistance || 0) + Number(tripForm.distanceKm || 0),
+          totalMinutes: (prev?.stats?.totalMinutes || 0) + Number(tripForm.durationMinutes || 0)
+        }
+      }));
+      setTripForm({ fromLocation: '', toLocation: '', mode: 'metro', distanceKm: '', durationMinutes: '', status: 'completed' });
+      setShowAddTrip(false);
+      setSuccessMessage(lang === 'bn' ? 'ভ্রমণ সফলভাবে ডাটাবেজে যুক্ত হয়েছে' : 'Trip logged in database successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSavingTrip(false);
+    }
+  }
+
+  async function handleDeleteTrip(tripId) {
+    try {
+      await deleteTrip(tripId);
+      setProfileData((prev) => ({
+        ...prev,
+        trips: (prev?.trips || []).filter((t) => t.id !== tripId)
+      }));
+      setSuccessMessage(lang === 'bn' ? 'ভ্রমণ ইতিহাস থেকে মুছে ফেলা হয়েছে' : 'Trip removed from database');
+      setTimeout(() => setSuccessMessage(null), 2500);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleClearAllTrips() {
+    if (!window.confirm(lang === 'bn' ? 'আপনি কি সমস্ত ভ্রমণ ইতিহাস ডাটাবেজ থেকে মুছে ফেলতে চান?' : 'Are you sure you want to clear all your journey history from the database?')) {
+      return;
+    }
+    try {
+      await clearTrips();
+      setProfileData((prev) => ({
+        ...prev,
+        trips: [],
+        stats: {
+          ...prev?.stats,
+          totalTrips: 0,
+          totalDistance: 0,
+          totalMinutes: 0
+        }
+      }));
+      setSuccessMessage(lang === 'bn' ? 'সমস্ত ভ্রমণ ইতিহাস মুছে ফেলা হয়েছে' : 'All journey history cleared');
+      setTimeout(() => setSuccessMessage(null), 2500);
+    } catch (err) {
+      setError(err.message || 'Failed to clear trips');
     }
   }
 
@@ -215,7 +498,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
       }));
       setRouteForm({ name: '', fromLocation: '', toLocation: '', mode: 'metro', durationMinutes: '' });
       setShowAddRoute(false);
-      setSuccessMessage(lang === 'bn' ? 'রুট সফলভাবে সংরক্ষিত হয়েছে' : 'Route saved successfully');
+      setSuccessMessage(lang === 'bn' ? 'রুট সফলভাবে ডাটাবেজে সংরক্ষিত হয়েছে' : 'Route saved in database');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       setError(err.message);
@@ -231,7 +514,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
         ...prev,
         savedRoutes: (prev?.savedRoutes || []).filter((r) => r.id !== routeId)
       }));
-      setSuccessMessage(lang === 'bn' ? 'রুট মুছে ফেলা হয়েছে' : 'Route removed');
+      setSuccessMessage(lang === 'bn' ? 'রুট মুছে ফেলা হয়েছে' : 'Route removed from database');
       setTimeout(() => setSuccessMessage(null), 2500);
     } catch (err) {
       setError(err.message);
@@ -343,7 +626,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
         ...prev,
         favoriteStops: (prev?.favoriteStops || []).filter((s) => s.id !== stopId)
       }));
-      setSuccessMessage(lang === 'bn' ? 'স্টপ তালিকা থেকে সরানো হয়েছে' : 'Stop unpinned');
+      setSuccessMessage(lang === 'bn' ? 'স্টপ তালিকা থেকে সরানো হয়েছে' : 'Stop unpinned from database');
       setTimeout(() => setSuccessMessage(null), 2500);
     } catch (err) {
       setError(err.message);
@@ -415,6 +698,9 @@ export function Profile({ user, onUpdateUser, onLogout }) {
     .charAt(0)
     .toUpperCase();
 
+  const userAvatarUrl = currentUser?.avatarUrl;
+  const matchedPreset = TRANSIT_AVATAR_PRESETS.find((p) => p.id === userAvatarUrl);
+
   return (
     <div className="profile-page-wrapper">
       <div className="profile-container">
@@ -449,9 +735,22 @@ export function Profile({ user, onUpdateUser, onLogout }) {
         {/* 1. TICKET STUB COMMUTER PASS HERO */}
         <div className="profile-hero-card">
           <div className="profile-hero-left">
-            <div className="profile-avatar-wrap">
+            <div
+              className="profile-avatar-wrap profile-avatar-clickable"
+              onClick={() => setAvatarModalOpen(true)}
+              title={lang === 'bn' ? 'প্রোফাইল ছবি পরিবর্তন করতে ক্লিক করুন' : 'Click to change profile picture'}
+            >
               <div className={`profile-avatar ${isGuest ? 'profile-avatar--guest' : ''}`}>
-                {initialLetter}
+                {matchedPreset ? (
+                  <span style={{ fontSize: 32 }}>{matchedPreset.icon}</span>
+                ) : userAvatarUrl && (userAvatarUrl.startsWith('http') || userAvatarUrl.startsWith('data:image')) ? (
+                  <img src={userAvatarUrl} alt={currentUser?.name} className="profile-avatar-img" />
+                ) : (
+                  initialLetter
+                )}
+              </div>
+              <div className="profile-avatar-edit-overlay">
+                📷 {lang === 'bn' ? 'বদলান' : 'Edit'}
               </div>
               <span
                 className={`profile-avatar-online-dot ${isGuest ? 'profile-avatar-online-dot--guest' : ''}`}
@@ -477,15 +776,27 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                     ✓ {lang === 'bn' ? 'যাচাইকৃত যাত্রী' : 'Verified Commuter'}
                   </span>
                 )}
+                {currentUser?.role === 'admin' && (
+                  <span className="profile-tag" style={{ background: 'rgba(0,103,71,0.2)', color: 'var(--metro)', borderColor: 'var(--metro)' }}>
+                    🛡️ {lang === 'bn' ? 'সিস্টেম অ্যাডমিন' : 'Admin'}
+                  </span>
+                )}
               </div>
 
               <div className="profile-hero-rank">
                 <span>🚇</span>
-                <span>{lang === 'bn' ? 'ঢাকা ট্রানজিট যাত্রী · লেভেল ১' : 'Dhaka Transit Commuter · Level 1'}</span>
+                <span>
+                  {currentUser?.bio || (lang === 'bn' ? 'ঢাকা ট্রানজিট যাত্রী · সক্রিয় যাতায়াতকারী' : 'Dhaka Transit Commuter · Active Transit User')}
+                </span>
               </div>
 
               <p className="profile-hero-email">
-                {currentUser?.email || (lang === 'bn' ? 'কোনো ইমেইল যুক্ত নেই (অস্থায়ী)' : 'No email associated (Temporary)')}
+                📧 {currentUser?.email || (lang === 'bn' ? 'কোনো ইমেইল যুক্ত নেই (অস্থায়ী)' : 'No email associated (Temporary)')}
+                {currentUser?.phone ? (
+                  <span style={{ marginLeft: 12, color: 'var(--c70)' }}>
+                    📱 {currentUser.phone}
+                  </span>
+                ) : null}
               </p>
 
               <div className="profile-meta-row">
@@ -493,6 +804,13 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                   {lang === 'bn' ? 'যুক্ত হয়েছেন: ' : 'Member since: '}
                   <strong>{formatDate(currentUser?.createdAt, lang)}</strong>
                 </span>
+
+                {currentUser?.lastLoginAt ? (
+                  <span style={{ marginLeft: 10, color: 'var(--c70)' }}>
+                    {lang === 'bn' ? 'শেষ লগইন: ' : 'Last active: '}
+                    <strong>{formatTimeAgo(currentUser.lastLoginAt, lang)}</strong>
+                  </span>
+                ) : null}
 
                 {currentUser?.id ? (
                   <button
@@ -580,7 +898,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
 
             <div className="profile-guest-benefits">
               <span className="profile-guest-benefit-chip">
-                🔒 {lang === 'bn' ? 'স্থায়ী ক্লাউড ব্যাকআপ' : 'Permanent Cloud Storage'}
+                🔒 {lang === 'bn' ? 'স্থায়ী ডাটাবেজ ব্যাকআপ' : 'Permanent Database Storage'}
               </span>
               <span className="profile-guest-benefit-chip">
                 📱 {lang === 'bn' ? 'যেকোনো ডিভাইসে সিঙ্ক' : 'Cross-Device Sync'}
@@ -619,7 +937,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
               <span className="profile-stat-label">{lang === 'bn' ? 'মোট ট্রিপ' : 'Total Trips'}</span>
               <div className="profile-stat-icon-wrap" style={{ color: 'var(--metro)' }}>🚇</div>
             </div>
-            <div className="profile-stat-num">{num(stats.totalTrips || 0, lang)}</div>
+            <div className="profile-stat-num">{num(stats.totalTrips || trips.length || 0, lang)}</div>
             <span className="profile-stat-subtext">{lang === 'bn' ? 'সম্পন্ন জার্নি' : 'Completed Journeys'}</span>
           </div>
 
@@ -699,7 +1017,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
             className={`profile-tab-btn ${activeTab === 'settings' ? 'profile-tab-btn--active' : ''}`}
             onClick={() => setActiveTab('settings')}
           >
-            <span>⚙️ {lang === 'bn' ? 'সেটিংস ও পছন্দ' : 'Settings & Preferences'}</span>
+            <span>⚙️ {lang === 'bn' ? 'সেটিংস ও নিরাপত্তা' : 'Settings & Security'}</span>
           </button>
         </div>
 
@@ -818,7 +1136,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
               <div className="profile-empty-box">
                 <div className="profile-empty-icon">🛣️</div>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--cream)' }}>
-                  {lang === 'bn' ? 'এখনও কোনো রুট সংরক্ষণ করা হয়নি' : 'No saved routes yet'}
+                  {lang === 'bn' ? 'এখনও কোনো রুট সংরক্ষণ করা হয়নি' : 'No saved routes yet in database'}
                 </p>
                 <p style={{ margin: 0, fontSize: 13, color: 'var(--c70)', maxWidth: 420 }}>
                   {lang === 'bn'
@@ -1030,22 +1348,135 @@ export function Profile({ user, onUpdateUser, onLogout }) {
           <div className="profile-card">
             <div className="profile-card-header">
               <h2 className="profile-card-title">
-                🕒 {lang === 'bn' ? 'আপনার ভ্রমণ ইতিহাস' : 'Your Journey History'}
+                🕒 {lang === 'bn' ? 'আপনার ভ্রমণ ইতিহাস' : 'Your Journey History (Database Records)'}
               </h2>
-              <button
-                type="button"
-                className="action-chip action-chip--highlight"
-                onClick={() => navigate('/map')}
-              >
-                🗺️ {lang === 'bn' ? 'নতুন ট্রিপ খুঁজুন' : 'Plan New Trip'}
-              </button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {trips.length > 0 && (
+                  <button
+                    type="button"
+                    className="action-chip action-chip--logout"
+                    onClick={handleClearAllTrips}
+                    title={lang === 'bn' ? 'ডাটাবেজ থেকে সমস্ত ভ্রমণ ইতিহাস মুছুন' : 'Clear all journey history from database'}
+                  >
+                    🗑️ {lang === 'bn' ? 'সব মুছুন' : 'Clear All'}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="action-chip"
+                  onClick={() => setShowAddTrip((prev) => !prev)}
+                >
+                  {showAddTrip ? (lang === 'bn' ? '✕ ফর্ম বন্ধ' : '✕ Close') : (lang === 'bn' ? '+ ভ্রমণ লগ করুন' : '+ Log Trip')}
+                </button>
+                <button
+                  type="button"
+                  className="action-chip action-chip--highlight"
+                  onClick={() => navigate('/map')}
+                  style={{ fontWeight: 700 }}
+                >
+                  🗺️ {lang === 'bn' ? 'নতুন ট্রিপ খুঁজুন' : 'Plan New Trip'}
+                </button>
+              </div>
             </div>
+
+            {/* Manual Trip Logging Form */}
+            {showAddTrip && (
+              <form className="profile-inline-form" onSubmit={handleCreateTrip}>
+                <div style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--cream)' }}>
+                  {lang === 'bn' ? 'ডাটাবেজে নতুন ভ্রমণ রেকর্ড করুন' : 'Log a Journey to Database'}
+                </div>
+                <div className="profile-form-grid">
+                  <div className="profile-form-group">
+                    <label className="profile-form-label">{lang === 'bn' ? 'শুরুর স্থান (Origin)' : 'Origin'}</label>
+                    <input
+                      type="text"
+                      className="profile-form-input"
+                      placeholder={lang === 'bn' ? 'যেমন: উত্তরা উত্তর' : 'e.g. Uttara North'}
+                      value={tripForm.fromLocation}
+                      onChange={(e) => setTripForm({ ...tripForm, fromLocation: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="profile-form-group">
+                    <label className="profile-form-label">{lang === 'bn' ? 'গন্তব্য (Destination)' : 'Destination'}</label>
+                    <input
+                      type="text"
+                      className="profile-form-input"
+                      placeholder={lang === 'bn' ? 'যেমন: মতিঝিল' : 'e.g. Motijheel'}
+                      value={tripForm.toLocation}
+                      onChange={(e) => setTripForm({ ...tripForm, toLocation: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="profile-form-group">
+                    <label className="profile-form-label">{lang === 'bn' ? 'বাহন (Mode)' : 'Mode'}</label>
+                    <select
+                      className="profile-form-input"
+                      value={tripForm.mode}
+                      onChange={(e) => setTripForm({ ...tripForm, mode: e.target.value })}
+                    >
+                      <option value="metro">{lang === 'bn' ? 'মেট্রোরেল (Metro MRT-6)' : 'Metro MRT-6'}</option>
+                      <option value="bus">{lang === 'bn' ? 'বাস (City Bus)' : 'City Bus'}</option>
+                      <option value="rickshaw">{lang === 'bn' ? 'রিকশা (Rickshaw)' : 'Rickshaw'}</option>
+                      <option value="cng">{lang === 'bn' ? 'সিএনজি (CNG Auto)' : 'CNG Auto'}</option>
+                      <option value="bike">{lang === 'bn' ? 'বাইক (Ride Share)' : 'Bike'}</option>
+                      <option value="walk">{lang === 'bn' ? 'হাঁটা (Walk)' : 'Walk'}</option>
+                    </select>
+                  </div>
+
+                  <div className="profile-form-group">
+                    <label className="profile-form-label">{lang === 'bn' ? 'দূরত্ব (কিমি)' : 'Distance (km)'}</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      className="profile-form-input"
+                      placeholder="e.g. 12.5"
+                      value={tripForm.distanceKm}
+                      onChange={(e) => setTripForm({ ...tripForm, distanceKm: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="profile-form-group">
+                    <label className="profile-form-label">{lang === 'bn' ? 'সময় (মিনিট)' : 'Duration (mins)'}</label>
+                    <input
+                      type="number"
+                      min="1"
+                      className="profile-form-input"
+                      placeholder="e.g. 30"
+                      value={tripForm.durationMinutes}
+                      onChange={(e) => setTripForm({ ...tripForm, durationMinutes: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 6 }}>
+                  <button
+                    type="button"
+                    className="action-chip"
+                    onClick={() => setShowAddTrip(false)}
+                  >
+                    {lang === 'bn' ? 'বাতিল' : 'Cancel'}
+                  </button>
+                  <button
+                    type="submit"
+                    className="action-chip action-chip--highlight"
+                    disabled={isSavingTrip}
+                    style={{ fontWeight: 700 }}
+                  >
+                    {isSavingTrip ? (lang === 'bn' ? 'সংরক্ষণ হচ্ছে...' : 'Saving...') : (lang === 'bn' ? '✓ ট্রিপ যুক্ত করুন' : '✓ Save Trip')}
+                  </button>
+                </div>
+              </form>
+            )}
 
             {trips.length === 0 ? (
               <div className="profile-empty-box">
                 <div className="profile-empty-icon">🧭</div>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--cream)' }}>
-                  {lang === 'bn' ? 'কোনো ভ্রমণের তথ্য পাওয়া যায়নি' : 'No journey history found'}
+                  {lang === 'bn' ? 'ডাটাবেজে কোনো ভ্রমণের তথ্য পাওয়া যায়নি' : 'No journey history found in database'}
                 </p>
                 <p style={{ margin: 0, fontSize: 13, color: 'var(--c70)', maxWidth: 420 }}>
                   {lang === 'bn'
@@ -1086,8 +1517,28 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                       </div>
                     </div>
 
-                    <div style={{ fontSize: 12.5, color: 'var(--c70)', fontFamily: 'var(--data)' }}>
-                      🕒 {formatTimeAgo(trip.completedAt || trip.createdAt, lang)}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      <div style={{ fontSize: 12.5, color: 'var(--c70)', fontFamily: 'var(--data)' }}>
+                        🕒 {formatTimeAgo(trip.completedAt || trip.createdAt, lang)}
+                      </div>
+                      <button
+                        type="button"
+                        className="action-chip action-chip--highlight"
+                        style={{ padding: '5px 12px', fontSize: 12, fontWeight: 700 }}
+                        onClick={() => handleUseRoute(trip)}
+                        title={lang === 'bn' ? 'পুনরায় ম্যাপে এই রুট চালু করুন' : 'Plan this route again on the map'}
+                      >
+                        🚀 {lang === 'bn' ? 'ম্যাপে চালান' : 'Plan on Map'}
+                      </button>
+                      <button
+                        type="button"
+                        className="action-chip action-chip--logout"
+                        style={{ padding: '5px 10px' }}
+                        onClick={() => handleDeleteTrip(trip.id)}
+                        title="Delete Trip Log"
+                      >
+                        🗑️
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -1096,12 +1547,12 @@ export function Profile({ user, onUpdateUser, onLogout }) {
           </div>
         )}
 
-        {/* TAB 4: SETTINGS & PREFERENCES */}
+        {/* TAB 4: SETTINGS & SECURITY */}
         {activeTab === 'settings' && (
           <div className="profile-card">
             <div className="profile-card-header">
               <h2 className="profile-card-title">
-                ⚙️ {lang === 'bn' ? 'অ্যাকাউন্ট সেটিংস ও পছন্দসমূহ' : 'Account Settings & Preferences'}
+                ⚙️ {lang === 'bn' ? 'অ্যাকাউন্ট সেটিংস ও নিরাপত্তা' : 'Account Settings & Security'}
               </h2>
             </div>
 
@@ -1109,7 +1560,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
               {/* Personal Info Edit Block */}
               <div className="profile-settings-block">
                 <h3 className="profile-settings-title">
-                  👤 {lang === 'bn' ? 'ব্যক্তিগত তথ্য' : 'Personal Information'}
+                  👤 {lang === 'bn' ? 'ব্যক্তিগত প্রোফাইল তথ্য' : 'Personal Profile Information'}
                 </h3>
 
                 {isEditing ? (
@@ -1137,6 +1588,28 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                       />
                     </div>
 
+                    <div className="profile-form-group">
+                      <label className="profile-form-label">{lang === 'bn' ? 'ফোন নম্বর' : 'Phone Number'}</label>
+                      <input
+                        type="tel"
+                        className="profile-form-input"
+                        placeholder={lang === 'bn' ? 'যেমন: 017xxxxxxxx' : 'e.g. 017xxxxxxxx'}
+                        value={editForm.phone}
+                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="profile-form-group">
+                      <label className="profile-form-label">{lang === 'bn' ? 'বায়ো / পরিচয়' : 'Bio / Short Note'}</label>
+                      <input
+                        type="text"
+                        className="profile-form-input"
+                        placeholder={lang === 'bn' ? 'যেমন: নিয়মিত মিরপুর-মতিঝিল যাত্রী' : 'e.g. Regular Mirpur to Motijheel commuter'}
+                        value={editForm.bio}
+                        onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
+                      />
+                    </div>
+
                     <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                       <button
                         type="button"
@@ -1151,7 +1624,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                         disabled={isUpdating}
                         style={{ fontWeight: 700 }}
                       >
-                        {isUpdating ? (lang === 'bn' ? 'আপডেট হচ্ছে...' : 'Updating...') : (lang === 'bn' ? '✓ পরিবর্তন সেভ করুন' : '✓ Save Changes')}
+                        {isUpdating ? (lang === 'bn' ? 'আপডেট হচ্ছে...' : 'Updating...') : (lang === 'bn' ? '✓ ডাটাবেজে সেভ করুন' : '✓ Save Changes')}
                       </button>
                     </div>
                   </form>
@@ -1165,16 +1638,147 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                       <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'ইমেইল:' : 'Email:'}</span>
                       <span style={{ fontFamily: 'var(--data)', color: 'var(--cream)' }}>{currentUser?.email || (lang === 'bn' ? 'যুক্ত নেই' : 'N/A')}</span>
                     </div>
+                    <div className="profile-info-row">
+                      <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'ফোন নম্বর:' : 'Phone:'}</span>
+                      <span style={{ fontFamily: 'var(--data)', color: 'var(--cream)' }}>{currentUser?.phone || (lang === 'bn' ? 'যুক্ত নেই' : 'Not set')}</span>
+                    </div>
+                    <div className="profile-info-row">
+                      <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'বায়ো:' : 'Bio:'}</span>
+                      <span style={{ color: 'var(--cream)' }}>{currentUser?.bio || (lang === 'bn' ? 'তথ্য নেই' : 'None')}</span>
+                    </div>
 
+                    <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        className="action-chip action-chip--highlight"
+                        onClick={() => setIsEditing(true)}
+                      >
+                        ✏️ {lang === 'bn' ? 'তথ্য এডিট করুন' : 'Edit Information'}
+                      </button>
+                      <button
+                        type="button"
+                        className="action-chip"
+                        onClick={() => setAvatarModalOpen(true)}
+                      >
+                        📷 {lang === 'bn' ? 'ছবি পরিবর্তন' : 'Change Avatar'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Change Password Block */}
+              <div className="profile-settings-block">
+                <h3 className="profile-settings-title">
+                  🔑 {lang === 'bn' ? 'পাসওয়ার্ড পরিবর্তন' : 'Change Password'}
+                </h3>
+
+                {passwordError && (
+                  <div className="profile-alert-banner profile-alert-banner--error" style={{ padding: '8px 12px', fontSize: 12.5 }}>
+                    <span>⚠️ {passwordError}</span>
+                  </div>
+                )}
+
+                {passwordMessage && (
+                  <div className="profile-alert-banner profile-alert-banner--success" style={{ padding: '8px 12px', fontSize: 12.5 }}>
+                    <span>✓ {passwordMessage}</span>
+                  </div>
+                )}
+
+                {isGuest ? (
+                  <div style={{ color: 'var(--c70)', fontSize: 13 }}>
+                    <p style={{ margin: '0 0 10px' }}>
+                      {lang === 'bn' ? 'গেস্ট অ্যাকাউন্টের কোনো পাসওয়ার্ড থাকে না। অ্যাকাউন্ট স্থায়ী করতে সাইন আপ করুন।' : 'Guest sessions do not have a password. Please sign up to create a permanent account.'}
+                    </p>
                     <button
                       type="button"
-                      className="action-chip"
-                      style={{ alignSelf: 'flex-start', marginTop: 6 }}
-                      onClick={() => setIsEditing(true)}
+                      className="action-chip action-chip--highlight"
+                      onClick={() => navigate('/register')}
                     >
-                      ✏️ {lang === 'bn' ? 'তথ্য পরিবর্তন করুন' : 'Edit Information'}
+                      ✨ {lang === 'bn' ? 'রেজিস্টার করুন' : 'Register Now'}
                     </button>
                   </div>
+                ) : (
+                  <form onSubmit={handleChangePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {currentUser?.hasPassword !== false && (
+                      <div className="profile-form-group">
+                        <label className="profile-form-label">{lang === 'bn' ? 'বর্তমান পাসওয়ার্ড' : 'Current Password'}</label>
+                        <div className="password-input-wrap">
+                          <input
+                            type={showCurrentPassword ? 'text' : 'password'}
+                            className="profile-form-input"
+                            placeholder="••••••••"
+                            value={passwordForm.currentPassword}
+                            onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                            required
+                          />
+                          <button
+                            type="button"
+                            className="password-toggle-btn"
+                            onClick={() => setShowCurrentPassword((prev) => !prev)}
+                            tabIndex={-1}
+                          >
+                            {showCurrentPassword ? '👁️' : '🙈'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="profile-form-group">
+                      <label className="profile-form-label">{lang === 'bn' ? 'নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)' : 'New Password (min 6 chars)'}</label>
+                      <div className="password-input-wrap">
+                        <input
+                          type={showNewPassword ? 'text' : 'password'}
+                          className="profile-form-input"
+                          placeholder="••••••••"
+                          value={passwordForm.newPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                          minLength={6}
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="password-toggle-btn"
+                          onClick={() => setShowNewPassword((prev) => !prev)}
+                          tabIndex={-1}
+                        >
+                          {showNewPassword ? '👁️' : '🙈'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="profile-form-group">
+                      <label className="profile-form-label">{lang === 'bn' ? 'নতুন পাসওয়ার্ড নিশ্চিত করুন' : 'Confirm New Password'}</label>
+                      <div className="password-input-wrap">
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          className="profile-form-input"
+                          placeholder="••••••••"
+                          value={passwordForm.confirmNewPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, confirmNewPassword: e.target.value })}
+                          minLength={6}
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="password-toggle-btn"
+                          onClick={() => setShowConfirmPassword((prev) => !prev)}
+                          tabIndex={-1}
+                        >
+                          {showConfirmPassword ? '👁️' : '🙈'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="action-chip action-chip--highlight"
+                      disabled={isChangingPassword}
+                      style={{ alignSelf: 'flex-start', marginTop: 4, fontWeight: 700 }}
+                    >
+                      {isChangingPassword ? (lang === 'bn' ? 'আপডেট হচ্ছে...' : 'Updating...') : (lang === 'bn' ? '🔒 পাসওয়ার্ড আপডেট করুন' : '🔒 Update Password')}
+                    </button>
+                  </form>
                 )}
               </div>
 
@@ -1235,59 +1839,183 @@ export function Profile({ user, onUpdateUser, onLogout }) {
                 </div>
               </div>
 
-              {/* Security & Access */}
-              <div className="profile-settings-block" style={{ gridColumn: '1 / -1' }}>
-                <h3 className="profile-settings-title">
-                  🔒 {lang === 'bn' ? 'অ্যাকাউন্ট নিরাপত্তা ও সেশন' : 'Security & Access'}
+              {/* Danger Zone: Account Deletion */}
+              <div className="profile-settings-block">
+                <h3 className="profile-settings-title" style={{ color: 'var(--stamp)' }}>
+                  ⚠️ {lang === 'bn' ? 'অ্যাকাউন্ট অপশন ও ডিলিট' : 'Account Actions & Danger Zone'}
                 </h3>
 
-                <div className="profile-security-box">
+                <div className="danger-zone-card">
                   <div>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--cream)' }}>
-                      {isGuest
-                        ? (lang === 'bn' ? 'গেস্ট সেশনকে স্থায়ী অ্যাকাউন্টে রূপান্তর করুন' : 'Upgrade Guest Session to Permanent Account')
-                        : (lang === 'bn' ? 'পাসওয়ার্ড পরিবর্তন বা রিসেট করুন' : 'Change or Reset Account Password')}
-                    </p>
+                    <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--cream)' }}>
+                      {lang === 'bn' ? 'অ্যাকাউন্ট স্থায়ীভাবে মুছে ফেলুন' : 'Permanently Delete Account'}
+                    </h4>
                     <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--c70)' }}>
-                      {isGuest
-                        ? (lang === 'bn' ? 'আপনার ডেটা আজীবন সংরক্ষণ করতে একটি ইমেইল ও পাসওয়ার্ড দিয়ে নিবন্ধন করুন।' : 'Secure your commuter data across all devices by registering with email and password.')
-                        : (lang === 'bn' ? 'ইমেইল ভেরিফিকেশন কোডের মাধ্যমে নিরাপদে নতুন পাসওয়ার্ড তৈরি করুন।' : 'Reset your password securely via OTP email verification.')}
+                      {lang === 'bn'
+                        ? 'এটি আপনার ট্রিপ হিস্ট্রি, সেভ করা রুট ও সব ডেটা ডাটাবেজ থেকে চিরতরে মুছে ফেলবে।'
+                        : 'This permanently wipes your trips, saved routes, and database record.'}
                     </p>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    {isGuest ? (
-                      <button
-                        type="button"
-                        className="action-chip action-chip--highlight"
-                        onClick={() => navigate('/register')}
-                        style={{ fontWeight: 700 }}
-                      >
-                        ✨ {lang === 'bn' ? 'অ্যাকাউন্ট রেজিস্টার করুন' : 'Register Account'}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="action-chip"
-                        onClick={() => navigate('/forgot-password')}
-                      >
-                        🔑 {lang === 'bn' ? 'পাসওয়ার্ড রিসেট' : 'Reset Password'}
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      className="action-chip action-chip--logout"
-                      onClick={onLogout}
-                    >
-                      {lang === 'bn' ? 'লগআউট করুন' : 'Log Out'}
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className="btn-danger"
+                    onClick={() => setDeleteModalOpen(true)}
+                  >
+                    🗑️ {lang === 'bn' ? 'অ্যাকাউন্ট ডিলিট' : 'Delete Account'}
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         )}
+
+        {/* 6. AVATAR PICKER MODAL */}
+        {avatarModalOpen && (
+          <div className="profile-modal-overlay" onClick={() => setAvatarModalOpen(false)}>
+            <div className="profile-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="profile-modal-header">
+                <h3 className="profile-modal-title">
+                  📷 {lang === 'bn' ? 'প্রোফাইল ছবি নির্বাচন করুন' : 'Select Profile Avatar'}
+                </h3>
+                <button
+                  type="button"
+                  className="profile-modal-close-btn"
+                  onClick={() => setAvatarModalOpen(false)}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div>
+                <label className="profile-form-label" style={{ marginBottom: 8, display: 'block' }}>
+                  {lang === 'bn' ? '১. ট্রানজিট প্রিসেট আইকন বেছে নিন:' : '1. Choose a Dhaka Transit Preset Avatar:'}
+                </label>
+                <div className="avatar-presets-grid">
+                  {TRANSIT_AVATAR_PRESETS.map((preset) => (
+                    <div
+                      key={preset.id}
+                      className={`avatar-preset-card ${userAvatarUrl === preset.id ? 'avatar-preset-card--selected' : ''}`}
+                      onClick={() => handleAvatarPresetSelect(preset.id)}
+                    >
+                      <span className="avatar-preset-icon">{preset.icon}</span>
+                      <span className="avatar-preset-label">{lang === 'bn' ? preset.bn : preset.en}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14 }}>
+                <label className="profile-form-label" style={{ marginBottom: 8, display: 'block' }}>
+                  {lang === 'bn' ? '২. নিজের ডিভাইস থেকে ছবি আপলোড করুন:' : '2. Or Upload Photo from Device:'}
+                </label>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  style={{ display: 'none' }}
+                />
+                <button
+                  type="button"
+                  className="action-chip action-chip--highlight"
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{ width: '100%', justifyContent: 'center', padding: '10px 14px', fontWeight: 700 }}
+                >
+                  📁 {lang === 'bn' ? 'ফাইল বেছে নিন (Max 2MB)' : 'Browse Photo (Max 2MB)'}
+                </button>
+              </div>
+
+              <form onSubmit={handleCustomAvatarSubmit} style={{ borderTop: '1px solid var(--line)', paddingTop: 14 }}>
+                <label className="profile-form-label" style={{ marginBottom: 6, display: 'block' }}>
+                  {lang === 'bn' ? '৩. অথবা ছবির অনলাইন URL দিন:' : '3. Or Enter Image URL:'}
+                </label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    type="url"
+                    className="profile-form-input"
+                    placeholder="https://example.com/avatar.jpg"
+                    value={customAvatarUrl}
+                    onChange={(e) => setCustomAvatarUrl(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="submit"
+                    className="action-chip"
+                    style={{ fontWeight: 700 }}
+                  >
+                    {lang === 'bn' ? 'সেভ' : 'Set'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* 7. DELETE ACCOUNT CONFIRMATION MODAL */}
+        {deleteModalOpen && (
+          <div className="profile-modal-overlay" onClick={() => setDeleteModalOpen(false)}>
+            <div className="profile-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="profile-modal-header">
+                <h3 className="profile-modal-title" style={{ color: 'var(--stamp)' }}>
+                  ⚠️ {lang === 'bn' ? 'অ্যাকাউন্ট ডিলিট নিশ্চিতকরণ' : 'Confirm Account Deletion'}
+                </h3>
+                <button
+                  type="button"
+                  className="profile-modal-close-btn"
+                  onClick={() => setDeleteModalOpen(false)}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{ fontSize: 13.5, color: 'var(--cream)', lineHeight: 1.5 }}>
+                <p>
+                  {lang === 'bn'
+                    ? 'আপনি কি নিশ্চিত যে আপনার অ্যাকাউন্টটি স্থায়ীভাবে মুছে ফেলতে চান? এটি ডাটাবেজ থেকে আপনার সমস্ত ভ্রমণ হিস্ট্রি, সেভ করা রুট এবং ব্যক্তিগত তথ্য চিরতরে মুছে ফেলবে।'
+                    : 'Are you sure you want to delete your account? All your trips, saved routes, and user records will be permanently removed from the database.'}
+                </p>
+              </div>
+
+              <form onSubmit={handleDeleteAccountSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {currentUser?.hasPassword !== false && !isGuest && (
+                  <div className="profile-form-group">
+                    <label className="profile-form-label">{lang === 'bn' ? 'নিশ্চিত করতে পাসওয়ার্ড দিন' : 'Enter password to confirm'}</label>
+                    <input
+                      type="password"
+                      className="profile-form-input"
+                      placeholder="••••••••"
+                      value={deletePassword}
+                      onChange={(e) => setDeletePassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+                  <button
+                    type="button"
+                    className="action-chip"
+                    onClick={() => setDeleteModalOpen(false)}
+                    disabled={isDeletingAccount}
+                  >
+                    {lang === 'bn' ? 'বাতিল' : 'Cancel'}
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-danger"
+                    disabled={isDeletingAccount}
+                  >
+                    {isDeletingAccount
+                      ? (lang === 'bn' ? 'ডিলিট হচ্ছে...' : 'Deleting...')
+                      : (lang === 'bn' ? 'স্থায়ীভাবে ডিলিট করুন' : 'Permanently Delete')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

@@ -10,6 +10,32 @@ const NAV_ITEMS = [
   { to: '/belt', bn: 'জ্যাম বেল্ট', en: 'Traffic Belt' }
 ];
 
+const PRESET_ICONS = {
+  'preset:metro': '🚇',
+  'preset:bus': '🚌',
+  'preset:rickshaw': '🛺',
+  'preset:cng': '🚕',
+  'preset:train': '🚆',
+  'preset:bike': '🛵',
+  'preset:walk': '🚶',
+  'preset:captain': '🛡️'
+};
+
+function renderUserAvatar(avatarUrl, size = 15) {
+  if (avatarUrl && PRESET_ICONS[avatarUrl]) {
+    return <span style={{ fontSize: size }}>{PRESET_ICONS[avatarUrl]}</span>;
+  }
+  if (avatarUrl && (avatarUrl.startsWith('http') || avatarUrl.startsWith('data:image'))) {
+    return <img src={avatarUrl} alt="Avatar" style={{ width: size + 4, height: size + 4, borderRadius: '50%', objectFit: 'cover' }} />;
+  }
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
 export function Header({ authUser, onLogout }) {
   const { lang, toggleLang } = useLanguage();
   const navigate = useNavigate();
@@ -94,10 +120,7 @@ export function Header({ authUser, onLogout }) {
                 aria-label="View Profile"
               >
                 <span className="user-badge-avatar">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
+                  {renderUserAvatar(authUser?.avatarUrl, 15)}
                 </span>
                 <span className="user-badge-name">{userName}</span>
               </NavLink>
@@ -185,10 +208,7 @@ export function Header({ authUser, onLogout }) {
           {authUser ? (
             <div className="mobile-user-card">
               <div className="mobile-user-avatar">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
-                </svg>
+                {renderUserAvatar(authUser?.avatarUrl, 20)}
               </div>
               <div className="mobile-user-info">
                 <div className="mobile-user-name">{userName}</div>
