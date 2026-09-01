@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
-import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet';
+import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import '../styles/tokens.css';
 import { createRoute, getGraphSnapshot, simulateRoute } from '../services/route.service.js';
 import { getCondition } from '../services/condition.service.js';
@@ -31,20 +31,24 @@ const ESRI_URLS = {
 const ACCESS_WALK_LIMIT_KM = 0.9; // 900m — beyond this, access leg is labelled rickshaw, not walk
 const ARRIVE_BY_OFFSETS_MIN = [45, 90, 150];
 
-// Explicit per-segment Leaflet style, not a CSS className — a className on
-// an SVG path only works as long as a matching CSS rule exists, and that
-// rule has gone missing from tokens.css before. These read straight off
-// the design tokens (mode is carried by dash pattern first, colour
-// second, per CLAUDE.md) so the map can't silently fall back to Leaflet's
-// default blue again.
-const MODE_LINE_STYLE = {
-	walk: { color: 'var(--cream)', weight: 4, dashArray: '1 8' },
-	metro: { color: 'var(--metro)', weight: 6 },
-	rickshaw: { color: 'var(--stamp)', weight: 5, dashArray: '11 7' },
-	bus: { color: 'var(--mode-bus)', weight: 5, dashArray: '12 5' },
-	cng: { color: 'var(--mode-cng)', weight: 5, dashArray: '6 4' },
-	bike: { color: 'var(--mode-bike)', weight: 5, dashArray: '3 3' }
-};
+function getModeLineStyle(mode, theme) {
+	const isDark = theme === 'dark';
+	switch (mode) {
+		case 'metro':
+			return { color: isDark ? '#27B97A' : '#006747', weight: 6, opacity: 0.95 };
+		case 'bus':
+			return { color: isDark ? '#F87171' : '#C7362B', weight: 5, dashArray: '10 6', opacity: 0.95 };
+		case 'cng':
+			return { color: isDark ? '#4ADE80' : '#2E7D32', weight: 5, dashArray: '6 4', opacity: 0.95 };
+		case 'rickshaw':
+			return { color: isDark ? '#FB923C' : '#E0651F', weight: 5, dashArray: '8 6', opacity: 0.95 };
+		case 'bike':
+			return { color: isDark ? '#60A5FA' : '#2563EB', weight: 4, dashArray: '4 4', opacity: 0.95 };
+		case 'walk':
+		default:
+			return { color: isDark ? '#E2E8F0' : '#334155', weight: 4, dashArray: '2 6', opacity: 0.9 };
+	}
+}
 
 const WEATHER_CONDITION_LABEL = {
 	clear: { bn: 'পরিষ্কার', en: 'Clear' },
@@ -88,25 +92,26 @@ function weatherSuggestion(condition, heatCondition, lang) {
 	return null;
 }
 
-// Keeps the two picked points (and the pins) in view whenever either one
-// changes — without this the map stays at its initial Dhaka-wide center
-// and a far-off pick (e.g. Keraniganj) can render off in a corner or look
-// zoomed to nothing in particular.
-function FitBoundsHandler({ originLat, originLng, destLat, destLng }) {
+// Keeps the active route or picked endpoints in view whenever selection changes
+function FitBoundsHandler({ selectedOption, originLat, originLng, destLat, destLng }) {
 	const map = useMap();
 
 	useEffect(() => {
-		if (originLat == null || originLng == null || destLat == null || destLng == null) {
-			return;
+		if (selectedOption?.segments?.length) {
+			const allPts = selectedOption.segments.flatMap((s) => s.pts || []);
+			if (allPts.length >= 2) {
+				map.fitBounds(allPts, { padding: [45, 45], maxZoom: 15 });
+				return;
+			}
 		}
 
-		map.fitBounds(
-			[[originLat, originLng], [destLat, destLng]],
-			{ padding: [45, 45], maxZoom: 15 }
-		);
-		// Only origin/destination should trigger a re-fit — not every render.
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [originLat, originLng, destLat, destLng]);
+		if (originLat != null && originLng != null && destLat != null && destLng != null) {
+			map.fitBounds(
+				[[originLat, originLng], [destLat, destLng]],
+				{ padding: [45, 45], maxZoom: 15 }
+			);
+		}
+	}, [map, selectedOption?.id, originLat, originLng, destLat, destLng]);
 
 	return null;
 }
@@ -523,8 +528,14 @@ export function EzzGoMap() {
 		);
 	}, []);
 
+	function handleStationPick(station) {
+		const targetEndpoint = armed || (!endpoints.A ? 'A' : 'B');
+		resolveEndpoint(targetEndpoint, { lat: station.lat, lng: station.lng }, t(station.nameBn, station.nameEn, lang), { nodeId: station.id });
+	}
+
 	function handleMapPick(point) {
-		resolveEndpoint(armed, point, null);
+		const targetEndpoint = armed || (!endpoints.A ? 'A' : 'B');
+		resolveEndpoint(targetEndpoint, point, null);
 	}
 
 	function handleDrag(endpointId, event) {
@@ -532,8 +543,8 @@ export function EzzGoMap() {
 		resolveEndpoint(endpointId, { lat, lng }, null);
 	}
 
-	const selectedOption = routeOptions.find((option) => option.id === selectedOptionId);
-	const hasMetroOption = routeOptions.some((option) => option.id === 'metro');
+	const selectedOption = routeOptions.find((option) => option.id === selectedOptionId) || routeOptions[0] || null;
+	const hasMetroOption = routeOptions.some((option) => option.id?.includes('metro') || option.segments?.some((s) => s.mode === 'metro'));
 	const currentSimStep = simulation?.trace[simStep] || null;
 	const simDone = simulation ? simStep >= simulation.trace.length - 1 : false;
 
@@ -668,6 +679,7 @@ export function EzzGoMap() {
 
 						<MapClickHandler armed={armed} onPick={handleMapPick} />
 						<FitBoundsHandler
+							selectedOption={selectedOption}
 							originLat={originPoint?.lat ?? null}
 							originLng={originPoint?.lng ?? null}
 							destLat={destinationPoint?.lat ?? null}
@@ -682,22 +694,34 @@ export function EzzGoMap() {
 								<CircleMarker
 									key={station.id}
 									center={[station.lat, station.lng]}
-									radius={simState === 'path' ? 5 : simState ? 4.5 : 3.5}
+									radius={simState === 'path' ? 6 : simState ? 5 : 4}
+									eventHandlers={{
+										click: () => handleStationPick(station)
+									}}
 									pathOptions={{
 										color: simState === 'path' ? COLOUR.stamp : COLOUR.metro,
 										weight: simState === 'path' ? 2.5 : 1.5,
 										fillColor: simFill || COLOUR.ground2,
 										fillOpacity: 1
 									}}
-								/>
+								>
+									<Popup>
+										<div style={{ textAlign: 'center', padding: '4px 6px' }}>
+											<b style={{ color: 'var(--metro)' }}>{t(station.nameBn, station.nameEn, lang)}</b>
+											<p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--c70)' }}>
+												{t('ক্লিক করে শুরু বা শেষ হিসেবে নিন', 'Click to set as From or To', lang)}
+											</p>
+										</div>
+									</Popup>
+								</CircleMarker>
 							);
 						})}
 
 						{selectedOption?.segments.map((segment, index) => (
 							<Polyline
-								key={`${segment.mode}-${index}`}
+								key={`${selectedOption.id}-${segment.mode}-${index}`}
 								positions={segment.pts}
-								pathOptions={MODE_LINE_STYLE[segment.mode] || {}}
+								pathOptions={getModeLineStyle(segment.mode, theme)}
 							/>
 						))}
 
@@ -707,7 +731,14 @@ export function EzzGoMap() {
 								icon={pinIconA}
 								draggable
 								eventHandlers={{ dragend: (event) => handleDrag('A', event) }}
-							/>
+							>
+								<Popup>
+									<div style={{ padding: '2px 6px' }}>
+										<b>{t('শুরুর স্থান (From)', 'Starting Point (From)', lang)}:</b><br />
+										{endpoints.A.label}
+									</div>
+								</Popup>
+							</Marker>
 						) : null}
 						{endpoints.B ? (
 							<Marker
@@ -715,7 +746,14 @@ export function EzzGoMap() {
 								icon={pinIconB}
 								draggable
 								eventHandlers={{ dragend: (event) => handleDrag('B', event) }}
-							/>
+							>
+								<Popup>
+									<div style={{ padding: '2px 6px' }}>
+										<b>{t('গন্তব্য (To)', 'Destination (To)', lang)}:</b><br />
+										{endpoints.B.label}
+									</div>
+								</Popup>
+							</Marker>
 						) : null}
 					</MapContainer>
 				</div>

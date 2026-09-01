@@ -60,7 +60,8 @@ export async function runMigrations() {
     user: dbConfig.user,
     password: dbConfig.password,
     database: dbConfig.database,
-    multipleStatements: true
+    multipleStatements: true,
+    ...(dbConfig.ssl ? { ssl: dbConfig.ssl } : {})
   });
 
   try {

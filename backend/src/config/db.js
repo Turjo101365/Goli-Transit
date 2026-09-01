@@ -20,13 +20,16 @@ function parseDatabaseUrl(databaseUrl) {
 		}
 
 		const databaseName = parsed.pathname?.replace(/^\//, '') || '';
+		const sslParam = parsed.searchParams.get('ssl') || parsed.searchParams.get('sslmode');
+		const useSsl = sslParam === 'true' || sslParam === 'require' || sslParam === 'prefer' || parsed.searchParams.get('ssl-mode') === 'REQUIRED';
 
 		return {
 			host: parsed.hostname,
 			port: Number(parsed.port) || 3306,
 			user: decodeURIComponent(parsed.username || ''),
 			password: decodeURIComponent(parsed.password || ''),
-			database: decodeURIComponent(databaseName)
+			database: decodeURIComponent(databaseName),
+			ssl: useSsl ? { rejectUnauthorized: false } : undefined
 		};
 	} catch {
 		return null;
@@ -43,7 +46,8 @@ export const dbConfig = {
 
   user: parsedDbUrl?.user || env.DB_USER || 'root',
   password: parsedDbUrl?.password || env.DB_PASSWORD || '',
-  database: parsedDbUrl?.database || env.DB_NAME || 'test',
+  database: parsedDbUrl?.database || env.DB_NAME || 'GoliTransitDB',
+  ssl: parsedDbUrl?.ssl || (env.DB_SSL ? { rejectUnauthorized: false } : undefined),
 
   connectionLimit: Number(env.DB_POOL_SIZE) || 10
 };
@@ -86,22 +90,11 @@ export async function initDb() {
 			connectionLimit: dbConfig.connectionLimit,
 			waitForConnections: true,
 			queueLimit: 0,
-			namedPlaceholders: true
+			namedPlaceholders: true,
+			...(dbConfig.ssl ? { ssl: dbConfig.ssl } : {})
 		});
 
-		const [schemaRows] = await candidatePool.query(
-			[
-				'SELECT SCHEMA_NAME',
-				'FROM INFORMATION_SCHEMA.SCHEMATA',
-				'WHERE SCHEMA_NAME = :databaseName',
-				'LIMIT 1'
-			].join(' '),
-			{ databaseName: dbConfig.database }
-		);
-
-		if (!schemaRows.length) {
-			throw new Error(`Unknown database '${dbConfig.database}'`);
-		}
+		await candidatePool.query('SELECT 1');
 
 		pool = candidatePool;
 		status = {

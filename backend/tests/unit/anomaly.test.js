@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { anomalyService } from '../../src/services/anomaly.service.js';
 import { routeService } from '../../src/services/route.service.js';
 import { ensureGraphCache, refreshGraphSnapshot } from '../../src/cache/graph.cache.js';
+import { closeDb } from '../../src/config/db.js';
 
 test('anomaly update changes only affected edge and reroutes traffic', async () => {
   const graph = await ensureGraphCache();
@@ -63,4 +64,6 @@ test('anomaly update changes only affected edge and reroutes traffic', async () 
 
   assert.deepEqual(rerouted.legs.map((leg) => `${leg.from}->${leg.to}`), ['A->D', 'D->C']);
   assert.equal(graph.getEdge('B', 'C', 'bus').currentWeight, 16);
+
+  await closeDb();
 });

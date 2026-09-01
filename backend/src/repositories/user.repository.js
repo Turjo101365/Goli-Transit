@@ -9,6 +9,10 @@ function mapUserRow(row) {
 		id: row.id,
 		name: row.name,
 		email: row.email,
+		role: row.role || 'user',
+		status: row.status || 'active',
+		phone: row.phone || null,
+		lastLoginAt: row.last_login_at || null,
 		passwordHash: row.password_hash,
 		createdAt: row.created_at,
 		updatedAt: row.updated_at
@@ -18,7 +22,7 @@ function mapUserRow(row) {
 async function findById(id) {
 	const rows = await dbQuery(
 		[
-			'SELECT id, name, email, password_hash, created_at, updated_at',
+			'SELECT id, name, email, role, status, phone, last_login_at, password_hash, created_at, updated_at',
 			'FROM users',
 			'WHERE id = :id',
 			'LIMIT 1'
@@ -33,7 +37,7 @@ export const userRepository = {
 	async listUsers() {
 		const rows = await dbQuery(
 			[
-				'SELECT id, name, email, password_hash, created_at, updated_at',
+				'SELECT id, name, email, role, status, phone, last_login_at, password_hash, created_at, updated_at',
 				'FROM users',
 				'ORDER BY id DESC'
 			].join(' ')
@@ -45,12 +49,12 @@ export const userRepository = {
 	async findByEmail(email) {
 		const rows = await dbQuery(
 			[
-				'SELECT id, name, email, password_hash, created_at, updated_at',
+				'SELECT id, name, email, role, status, phone, last_login_at, password_hash, created_at, updated_at',
 				'FROM users',
-				'WHERE email = :email',
+				'WHERE LOWER(email) = LOWER(:email)',
 				'LIMIT 1'
 			].join(' '),
-			{ email }
+			{ email: String(email || '').trim().toLowerCase() }
 		);
 
 		return mapUserRow(rows[0]);
@@ -158,5 +162,40 @@ export const userRepository = {
 			].join(' '),
 			{ userId, passwordHash }
 		);
+	},
+
+	async updateLastLogin(userId) {
+		await dbQuery(
+			[
+				'UPDATE users',
+				'SET last_login_at = CURRENT_TIMESTAMP',
+				'WHERE id = :userId'
+			].join(' '),
+			{ userId }
+		);
+	},
+
+	async updateUserRole(userId, role) {
+		await dbQuery(
+			[
+				'UPDATE users',
+				'SET role = :role, updated_at = CURRENT_TIMESTAMP',
+				'WHERE id = :userId'
+			].join(' '),
+			{ userId, role }
+		);
+		return findById(userId);
+	},
+
+	async updateUserStatus(userId, status) {
+		await dbQuery(
+			[
+				'UPDATE users',
+				'SET status = :status, updated_at = CURRENT_TIMESTAMP',
+				'WHERE id = :userId'
+			].join(' '),
+			{ userId, status }
+		);
+		return findById(userId);
 	}
 };

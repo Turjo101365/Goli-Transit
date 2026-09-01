@@ -62,7 +62,7 @@ function startServer(port, host) {
   });
 
   server.on('error', (error) => {
-    if (error.code === 'EADDRINUSE') {
+    if (error.code === 'EADDRINUSE' && env.NODE_ENV !== 'production') {
       console.warn(`Port ${port} busy → trying ${port + 1}`);
       startServer(port + 1, host);
     } else {

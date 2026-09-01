@@ -17,32 +17,20 @@ const {
 
 const ACCESS_LABEL = {
 	walk: { bn: 'হেঁটে স্টেশনে', en: 'Walk to station' },
-	rickshaw: { bn: 'রিকশায় স্টেশনে', en: 'Rickshaw to station' }
+	rickshaw: { bn: 'রিকশায় স্টেশনে', en: 'Rickshaw to station' },
+	bus: { bn: 'বাসে স্টেশনে', en: 'Bus to station' }
 };
 
 const DIRECT_LABEL = {
-	bus: { bn: 'বাসে', en: 'By bus' },
-	cng: { bn: 'সিএনজিতে', en: 'By CNG' },
-	rickshaw: { bn: 'রিকশায়', en: 'By rickshaw' },
-	bike: { bn: 'বাইকে', en: 'By bike' },
-	walk: { bn: 'হেঁটে', en: 'On foot' }
+	bus: { bn: 'বাসে সরাসরি', en: 'Direct by Bus' },
+	cng: { bn: 'সিএনজিতে সরাসরি', en: 'Direct by CNG' },
+	rickshaw: { bn: 'রিকশায় সরাসরি', en: 'Direct by Rickshaw' },
+	bike: { bn: 'বাইকে সরাসরি', en: 'Direct by Bike' },
+	walk: { bn: 'হেঁটে গন্তব্যে', en: 'On foot' }
 };
 
-function resolveAccessMode(km, allowedModesSet) {
-	const canWalk = allowedModesSet.has('walk');
-	const canRickshaw = allowedModesSet.has('rickshaw');
-
-	if (canWalk && canRickshaw) {
-		return km > ACCESS_WALK_LIMIT_KM ? 'rickshaw' : 'walk';
-	}
-	if (canRickshaw) {
-		return 'rickshaw';
-	}
-	return 'walk';
-}
-
 function accessMinutes(km, mode) {
-	const speed = mode === 'rickshaw' ? MODE_SPEED_KMH.rickshaw : WALKING_SPEED_KMH;
+	const speed = mode === 'rickshaw' ? MODE_SPEED_KMH.rickshaw : mode === 'bus' ? MODE_SPEED_KMH.bus : WALKING_SPEED_KMH;
 	return (km / speed) * 60;
 }
 
@@ -67,9 +55,7 @@ function round1(value) {
 	return Math.round(value * 10) / 10;
 }
 
-// Real distance along a real MRT-6 station path — haversine between each
-// consecutive pair of the path's actual station coordinates, not a
-// straight origin-to-destination line.
+// Real distance along a real MRT-6 station path
 function sumPathKm(points) {
 	let total = 0;
 	for (let i = 1; i < points.length; i++) {
@@ -82,15 +68,8 @@ function sumPathKm(points) {
 	return total;
 }
 
-// Metro option: nearest real station to each point, a real A*/dijkstra path
-// (and real cumulative fare) between them, plus real access legs on each
-// end. Returns null if either point is too far from a station, both
-// resolve to the same station, or no metro path exists between them.
-async function buildMetroOption(graph, origin, destination, allowedModesSet) {
-	if (!allowedModesSet.has('metro')) {
-		return null;
-	}
-
+// Builds a Metro-based multi-modal option with specified access and egress modes
+async function buildMetroVariant(graph, origin, destination, fromMode, toMode, variantId) {
 	const fromStation = nearestMetroStation(graph, origin, distance);
 	const toStation = nearestMetroStation(graph, destination, distance);
 
@@ -98,7 +77,9 @@ async function buildMetroOption(graph, origin, destination, allowedModesSet) {
 		return null;
 	}
 
-	if (fromStation.km > METRO_ACCESS_RADIUS_KM || toStation.km > METRO_ACCESS_RADIUS_KM) {
+	// Maximum access radius
+	const maxRadius = fromMode === 'bus' || toMode === 'bus' ? METRO_ACCESS_RADIUS_KM * 2 : METRO_ACCESS_RADIUS_KM;
+	if (fromStation.km > maxRadius || toStation.km > maxRadius) {
 		return null;
 	}
 
@@ -107,9 +88,7 @@ async function buildMetroOption(graph, origin, destination, allowedModesSet) {
 		return null;
 	}
 
-	const fromMode = resolveAccessMode(fromStation.km, allowedModesSet);
-	const toMode = resolveAccessMode(toStation.km, allowedModesSet);
-	const fromAccessMin = accessMinutes(fromStation.km, fromMode);
+	const fromAccessMin = accessMinutes(fromStation.km, fromMode) + (fromMode === 'bus' ? MODE_WAIT_MINUTES.bus : fromMode === 'rickshaw' ? 2 : 0);
 	const toAccessMin = accessMinutes(toStation.km, toMode);
 	const rideMin = path.minutes + MODE_WAIT_MINUTES.metro;
 
@@ -125,63 +104,65 @@ async function buildMetroOption(graph, origin, destination, allowedModesSet) {
 		}
 	}
 
-	const accessFare = fromMode === 'rickshaw' || toMode === 'rickshaw' ? null : 0;
+	let accessFare = 0;
+	if (fromMode === 'bus') {
+		accessFare += busFare(fromStation.km);
+	} else if (fromMode === 'rickshaw') {
+		accessFare = null; // unmetered rickshaw fare varies
+	}
 
-	// Access legs are short, but still real road/footpath hops, not a drawn
-	// straight line — same OSRM call the direct options use. Falls back to
-	// the straight two-point line only if OSRM can't resolve this short hop.
+	if (toMode === 'bus') {
+		if (accessFare !== null) accessFare += busFare(toStation.km);
+	} else if (toMode === 'rickshaw') {
+		accessFare = null;
+	}
+
 	const [fromAccessOsrm, toAccessOsrm] = await Promise.all([
 		fetchOsrmRoute(fromMode, origin, fromStation.coords),
 		fetchOsrmRoute(toMode, toStation.coords, destination)
 	]);
 
-	// Real distance end to end: road-snapped access legs (or their straight-
-	// line haversine fallback — fromStation.km/toStation.km, already computed
-	// by nearestMetroStation) plus the real distance along the MRT-6 path's
-	// own station coordinates.
 	const totalDistanceKm = round1(
 		(fromAccessOsrm?.distanceKm ?? fromStation.km) +
 		sumPathKm(metroPts) +
 		(toAccessOsrm?.distanceKm ?? toStation.km)
 	);
 
+	const totalFare = accessFare === null ? null : path.fareTaka + accessFare;
+
 	return {
-		id: 'metro',
+		id: variantId,
 		p50,
 		p90: withP90('metro', p50),
-		fare: accessFare === null ? null : path.fareTaka,
+		fare: totalFare,
 		distanceKm: totalDistanceKm,
 		segments: [
 			{
 				mode: fromMode,
 				min: Math.round(fromAccessMin),
-				fare: fromMode === 'walk' ? 0 : null,
-				label: ACCESS_LABEL[fromMode],
+				fare: fromMode === 'bus' ? busFare(fromStation.km) : fromMode === 'walk' ? 0 : null,
+				label: ACCESS_LABEL[fromMode] || { bn: `${fromMode}-এ স্টেশনে`, en: `${fromMode} to station` },
 				pts: fromAccessOsrm?.geometry || [[origin.lat, origin.lng], [fromStation.coords.lat, fromStation.coords.lng]]
 			},
 			{
 				mode: 'metro',
 				min: Math.round(rideMin),
 				fare: path.fareTaka,
-				label: { bn: 'মেট্রোতে গন্তব্যে', en: 'Metro to destination' },
+				label: { bn: 'মেট্রোতে গন্তব্যের স্টেশনে', en: 'Metro to destination station' },
 				pts: metroPts
 			},
 			{
 				mode: toMode,
 				min: Math.round(toAccessMin),
-				fare: toMode === 'walk' ? 0 : null,
-				label: ACCESS_LABEL[toMode],
+				fare: toMode === 'bus' ? busFare(toStation.km) : toMode === 'walk' ? 0 : null,
+				label: ACCESS_LABEL[toMode] || { bn: `${toMode}-এ গন্তব্যে`, en: `${toMode} to destination` },
 				pts: toAccessOsrm?.geometry || [[toStation.coords.lat, toStation.coords.lng], [destination.lat, destination.lng]]
 			}
 		]
 	};
 }
 
-// A direct option (no metro) for one road mode: real OSRM road-snapped
-// distance and geometry, time from our own per-mode speed constants (OSRM's
-// driving duration is free-flow car speed, not Dhaka's actual pace for that
-// mode), fare from a real published rate where one exists. Returns null if
-// OSRM can't resolve a road route between the two points.
+// Direct single-mode road route
 async function buildDirectOption(mode, origin, destination) {
 	const osrm = await fetchOsrmRoute(mode, origin, destination);
 	if (!osrm) {
@@ -199,10 +180,9 @@ async function buildDirectOption(mode, origin, destination) {
 	} else if (mode === 'walk') {
 		fare = 0;
 	}
-	// rickshaw and bike: no official fixed rate — fare stays null ("varies").
 
 	return {
-		id: mode,
+		id: `direct_${mode}`,
 		p50,
 		p90: withP90(mode, p50),
 		fare,
@@ -212,7 +192,7 @@ async function buildDirectOption(mode, origin, destination) {
 				mode,
 				min: p50,
 				fare,
-				label: DIRECT_LABEL[mode],
+				label: DIRECT_LABEL[mode] || { bn: `${mode}-এ`, en: `By ${mode}` },
 				pts: osrm.geometry
 			}
 		]
@@ -238,22 +218,56 @@ export async function computeDynamicRouteOptions({
 	);
 
 	const directDistanceKm = distance(origin, destination);
-	
-	// Candidate direct modes filtered strictly by allowedModes
-	const potentialDirectModes = directDistanceKm <= 3
-		? ['bus', 'cng', 'rickshaw', 'bike', 'walk']
-		: ['bus', 'cng', 'rickshaw', 'bike'];
+	const candidatePromises = [];
 
-	const candidateDirectModes = potentialDirectModes.filter((m) => allowedModesSet.has(m));
+	// 1. Metro Multi-Modal Combinations
+	if (allowedModesSet.has('metro')) {
+		// Walking access + egress (Walk -> Metro -> Walk)
+		if (allowedModesSet.has('walk')) {
+			candidatePromises.push(
+				buildMetroVariant(graph, origin, destination, 'walk', 'walk', 'metro_walk')
+			);
+		}
 
-	const [metroOption, ...directOptions] = await Promise.all([
-		buildMetroOption(graph, origin, destination, allowedModesSet),
-		...candidateDirectModes.map((mode) => buildDirectOption(mode, origin, destination))
-	]);
+		// Rickshaw access + egress (Rickshaw -> Metro -> Rickshaw)
+		if (allowedModesSet.has('rickshaw')) {
+			candidatePromises.push(
+				buildMetroVariant(
+					graph,
+					origin,
+					destination,
+					'rickshaw',
+					allowedModesSet.has('walk') ? 'walk' : 'rickshaw',
+					'metro_rickshaw'
+				)
+			);
+		}
 
-	const rawOptions = [metroOption, ...directOptions].filter(Boolean);
+		// Bus to Metro connection (Bus -> Metro -> Walk/Rickshaw)
+		if (allowedModesSet.has('bus') && directDistanceKm > 2.5) {
+			const egressMode = allowedModesSet.has('walk') ? 'walk' : allowedModesSet.has('rickshaw') ? 'rickshaw' : 'bus';
+			candidatePromises.push(
+				buildMetroVariant(graph, origin, destination, 'bus', egressMode, 'bus_metro')
+			);
+		}
+	}
 
-	// Rank options using the preference scoring layer
+	// 2. Direct Road Options
+	const directModes = ['bus', 'cng', 'rickshaw', 'bike', 'walk'];
+	for (const mode of directModes) {
+		if (allowedModesSet.has(mode)) {
+			// Skip pure walk if distance is excessively far (> 4 km) unless walk is the only allowed mode
+			if (mode === 'walk' && directDistanceKm > 4 && allowedModesSet.size > 1) {
+				continue;
+			}
+			candidatePromises.push(buildDirectOption(mode, origin, destination));
+		}
+	}
+
+	const rawResults = await Promise.all(candidatePromises);
+	const rawOptions = rawResults.filter(Boolean);
+
+	// 3. Rank options using the preference scoring layer
 	const rankedOptions = rankRoutesByPreference(rawOptions, preference);
 
 	return {
@@ -261,3 +275,4 @@ export async function computeDynamicRouteOptions({
 		options: rankedOptions
 	};
 }
+
