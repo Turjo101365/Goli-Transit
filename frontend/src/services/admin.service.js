@@ -42,6 +42,23 @@ export async function getAdminSavedRoutes({ search = '', mode = '', limit = 50, 
   return apiRequest(`/api/admin/saved-routes?${params.toString()}`, { method: 'GET' });
 }
 
+export async function getAdminTrips({ search = '', mode = '', status = '', limit = 50, offset = 0 } = {}) {
+  const params = new URLSearchParams();
+  if (search) params.append('search', search);
+  if (mode) params.append('mode', mode);
+  if (status) params.append('status', status);
+  params.append('limit', String(limit));
+  params.append('offset', String(offset));
+
+  return apiRequest(`/api/admin/trips?${params.toString()}`, { method: 'GET' });
+}
+
+export async function deleteAdminTrip(tripId) {
+  return apiRequest(`/api/admin/trips/${tripId}`, {
+    method: 'DELETE'
+  });
+}
+
 export async function updateAdminUser(userId, payload) {
   return apiRequest(`/api/admin/users/${userId}`, {
     method: 'PATCH',
