@@ -100,28 +100,34 @@ export function EzzGoHero({ authUser, onGuestLogin }) {
             <p className="t-label" style={{ marginBottom: 18 }}>{t.route}</p>
             <p className="t-body" style={{ color: 'var(--c70)', lineHeight: 1.6, maxWidth: '48ch' }}>{t.lede}</p>
 
-            <div style={{ display: 'flex', gap: 10, marginTop: 20, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 12, marginTop: 24, flexWrap: 'wrap', alignItems: 'center' }}>
               {authUser ? (
-                <button type="button" className="chip" style={{ padding: '10px 20px', fontSize: 15 }} onClick={() => navigate('/map')}>
-                  {t.openApp}
+                <button
+                  type="button"
+                  className="hero-btn-primary"
+                  onClick={() => navigate('/map')}
+                >
+                  🚀 {t.openApp}
                 </button>
               ) : (
                 <>
-                  <button type="button" className="chip" style={{ padding: '10px 20px', fontSize: 15 }} onClick={() => navigate('/login')}>
+                  <button
+                    type="button"
+                    className="hero-btn-secondary"
+                    onClick={() => navigate('/login')}
+                  >
                     {t.login}
                   </button>
                   <button
                     type="button"
-                    className="chip"
-                    style={{ padding: '10px 20px', fontSize: 15, background: 'var(--cream)', color: 'var(--ground)' }}
+                    className="hero-btn-primary"
                     onClick={() => navigate('/register')}
                   >
                     {t.register}
                   </button>
                   <button
                     type="button"
-                    className="chip"
-                    style={{ padding: '10px 20px', fontSize: 15, borderColor: 'var(--stamp)', color: 'var(--stamp)' }}
+                    className="hero-btn-guest"
                     onClick={() => onGuestLogin?.()}
                   >
                     {t.guest}

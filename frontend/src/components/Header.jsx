@@ -33,15 +33,8 @@ export function Header({ authUser, onLogout }) {
             src="/brand/ezz-go-logo.png"
             alt="EZZ GO"
             className="header-logo-full"
-            width="180"
-            height="46"
-          />
-          <img
-            src="/brand/ezz-go-icon.png"
-            alt="EZZ GO"
-            className="header-logo-compact"
-            width="42"
-            height="42"
+            width="340"
+            height="82"
           />
         </NavLink>
 
@@ -137,6 +130,14 @@ export function Header({ authUser, onLogout }) {
             </div>
           ) : !isAuthPage ? (
             <div className="auth-buttons">
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="btn-header-admin"
+                title={lang === 'en' ? 'Admin Portal Sign In' : 'অ্যাডমিন পোর্টাল লগইন'}
+              >
+                <span className="admin-badge-shield">🛡️</span> {lang === 'en' ? 'Admin' : 'অ্যাডমিন'}
+              </button>
               <button
                 type="button"
                 onClick={() => navigate('/login')}
@@ -275,6 +276,17 @@ export function Header({ authUser, onLogout }) {
               </div>
             ) : (
               <div className="mobile-auth-grid">
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeMobileMenu();
+                    navigate('/login');
+                  }}
+                  className="btn-header-admin mobile-btn-full"
+                  style={{ gridColumn: '1 / -1' }}
+                >
+                  🛡️ {lang === 'en' ? 'Admin Portal Sign In' : 'অ্যাডমিন পোর্টাল লগইন'}
+                </button>
                 <button
                   type="button"
                   onClick={() => {
