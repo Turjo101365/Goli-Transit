@@ -60,7 +60,7 @@ function buildRequestUrl(path) {
 	return API_BASE_URL ? `${API_BASE_URL}${path}` : path;
 }
 
-async function parseResponse(response) {
+async function parseResponse(response, auth = true) {
 	let payload;
 
 	try {
@@ -70,7 +70,7 @@ async function parseResponse(response) {
 	}
 
 	if (!response.ok || (payload && payload.ok === false)) {
-		if (response.status === 401) {
+		if (response.status === 401 && auth) {
 			clearStoredSession();
 
 			if (typeof window !== 'undefined') {
@@ -127,5 +127,5 @@ export async function apiRequest(path, options = {}) {
 		clearTimeout(timeoutId);
 	}
 
-	return parseResponse(response);
+	return parseResponse(response, auth);
 }
