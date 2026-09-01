@@ -390,6 +390,73 @@ export const adminRepository = {
     };
   },
 
+  async listTrips({ search = '', mode = '', status = '', limit = 50, offset = 0 } = {}) {
+    let sql = `
+      SELECT t.id, t.user_id, t.from_location, t.to_location, t.mode, t.distance_km, t.duration_minutes, t.status, t.completed_at, t.created_at,
+             u.name as user_name, u.email as user_email, u.role as user_role
+      FROM trips t
+      LEFT JOIN users u ON u.id = t.user_id
+      WHERE 1=1
+    `;
+    const params = {};
+
+    if (search) {
+      sql += ` AND (t.from_location LIKE :search OR t.to_location LIKE :search OR u.name LIKE :search OR u.email LIKE :search)`;
+      params.search = `%${search}%`;
+    }
+    if (mode) {
+      sql += ` AND t.mode = :mode`;
+      params.mode = mode;
+    }
+    if (status) {
+      sql += ` AND t.status = :status`;
+      params.status = status;
+    }
+
+    sql += ` ORDER BY t.id DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+
+    const countSql = `
+      SELECT COUNT(*) as total
+      FROM trips t
+      LEFT JOIN users u ON u.id = t.user_id
+      WHERE 1=1
+      ${search ? 'AND (t.from_location LIKE :search OR t.to_location LIKE :search OR u.name LIKE :search OR u.email LIKE :search)' : ''}
+      ${mode ? 'AND t.mode = :mode' : ''}
+      ${status ? 'AND t.status = :status' : ''}
+    `;
+
+    const [rows, countRows] = await Promise.all([
+      dbQuery(sql, params),
+      dbQuery(countSql, params)
+    ]);
+
+    return {
+      trips: rows.map(r => ({
+        id: r.id,
+        userId: r.user_id,
+        userName: r.user_name || 'Anonymous Commuter',
+        userEmail: r.user_email || 'N/A',
+        userRole: r.user_role || 'user',
+        fromLocation: r.from_location,
+        toLocation: r.to_location,
+        mode: r.mode || 'transit',
+        distanceKm: r.distance_km ? Number(r.distance_km) : 0,
+        durationMinutes: r.duration_minutes ? Number(r.duration_minutes) : null,
+        status: r.status || 'completed',
+        completedAt: r.completed_at,
+        createdAt: r.created_at
+      })),
+      total: Number(countRows[0]?.total || 0),
+      limit: Number(limit),
+      offset: Number(offset)
+    };
+  },
+
+  async deleteTrip(id) {
+    const result = await dbQuery(`DELETE FROM trips WHERE id = :id`, { id });
+    return result.affectedRows > 0;
+  },
+
   // --- 3. TRANSIT NODES & EDGES ---
   async listNodes({ type = '', search = '' } = {}) {
     let sql = `SELECT id, name_bn, name_en, lat, lng, type, created_at FROM nodes WHERE 1=1`;

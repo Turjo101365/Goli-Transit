@@ -83,6 +83,28 @@ export const adminService = {
     return adminRepository.listSavedRoutes(filters);
   },
 
+  async listTrips(filters) {
+    return adminRepository.listTrips(filters);
+  },
+
+  async deleteTrip(adminUser, tripId, clientIp) {
+    const deleted = await adminRepository.deleteTrip(tripId);
+    if (!deleted) {
+      throw createHttpError(404, 'TRIP_NOT_FOUND', 'Trip not found.');
+    }
+
+    await adminRepository.createAuditLog({
+      adminId: adminUser.id,
+      action: 'TRIP_DELETED',
+      targetType: 'trip',
+      targetId: tripId,
+      details: {},
+      ipAddress: clientIp
+    });
+
+    return { success: true };
+  },
+
   async updateUser(adminUser, targetUserId, payload, clientIp) {
     const user = await adminRepository.getUserById(targetUserId);
     if (!user) {

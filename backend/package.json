@@ -12,7 +12,7 @@
     "db:view": "node scripts/view-db.js",
     "db:inspect": "node scripts/inspect-db.js",
     "poll": "node scripts/poll-traffic.js",
-    "test": "node --test"
+    "test": "node --test --test-concurrency=1"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

@@ -5,6 +5,8 @@ import {
   listUsersController,
   listGuestUsersController,
   listSavedRoutesController,
+  listTripsController,
+  deleteTripController,
   updateUserController,
   deleteUserController,
   listNodesController,
@@ -52,6 +54,8 @@ adminRoutes.post('/invite', requireAdmin, validationMiddleware(inviteAdminValida
 adminRoutes.get('/users', listUsersController);
 adminRoutes.get('/guests', listGuestUsersController);
 adminRoutes.get('/saved-routes', listSavedRoutesController);
+adminRoutes.get('/trips', listTripsController);
+adminRoutes.delete('/trips/:id', requireAdmin, deleteTripController);
 adminRoutes.patch('/users/:id', validationMiddleware(updateUserValidation), updateUserController);
 adminRoutes.delete('/users/:id', requireAdmin, deleteUserController);
 

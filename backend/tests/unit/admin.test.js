@@ -1,8 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { closeDb } from '../../src/config/db.js';
 import { adminRepository } from '../../src/repositories/admin.repository.js';
 import { authService } from '../../src/services/auth.service.js';
 import { adminService } from '../../src/services/admin.service.js';
+
+test.after(async () => {
+  await closeDb().catch(() => {});
+});
 
 test('Admin Repository - getOverviewStats returns structured data', async () => {
   const stats = await adminRepository.getOverviewStats();
@@ -84,3 +89,10 @@ test('Admin Service - inviteAdmin sends invitation and grants role', async () =>
   assert.equal(result.user.role, 'admin');
   assert.ok(result.tempPassword, 'Temporary password should be generated for new user');
 });
+
+test('Admin Repository - listTrips returns all commuter trip logs', async () => {
+  const result = await adminRepository.listTrips({ limit: 10, offset: 0 });
+  assert.ok(Array.isArray(result.trips), 'Trips should be an array');
+  assert.ok(result.total >= 0, 'Trips count should be non-negative');
+});
+

@@ -50,6 +50,27 @@ export async function listSavedRoutesController(req, res, next) {
   }
 }
 
+export async function listTripsController(req, res, next) {
+  try {
+    const { search, mode, status, limit, offset } = req.query;
+    const data = await adminService.listTrips({ search, mode, status, limit, offset });
+    return res.status(200).json({ ok: true, data, requestId: req.id });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteTripController(req, res, next) {
+  try {
+    const { id } = req.params;
+    const clientIp = req.ip || req.headers['x-forwarded-for'] || null;
+    const data = await adminService.deleteTrip(req.user, id, clientIp);
+    return res.status(200).json({ ok: true, data, requestId: req.id });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function updateUserController(req, res, next) {
   try {
     const { id } = req.params;
