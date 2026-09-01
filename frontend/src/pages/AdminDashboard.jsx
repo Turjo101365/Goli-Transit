@@ -7,6 +7,7 @@ import {
   getAdminSavedRoutes,
   updateAdminUser,
   deleteAdminUser,
+  inviteAdminUser,
   getAdminNodes,
   createAdminNode,
   updateAdminNode,
@@ -91,6 +92,11 @@ export function AdminDashboard({ authUser }) {
   const [userStatusFilter, setUserStatusFilter] = useState('');
   const [editingUser, setEditingUser] = useState(null);
   const [editUserForm, setEditUserForm] = useState({ name: '', role: 'user', status: 'active', phone: '' });
+
+  // Admin Invitation State
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ email: '', name: '', role: 'admin' });
+  const [inviting, setInviting] = useState(false);
 
   // Guests Data
   const [guests, setGuests] = useState([]);
@@ -293,6 +299,27 @@ export function AdminDashboard({ authUser }) {
       loadDashboardData(true);
     } catch (err) {
       showError(err.message);
+    }
+  };
+
+  const handleInviteAdmin = async (e) => {
+    e.preventDefault();
+    if (!inviteForm.email) return;
+    setInviting(true);
+    try {
+      await inviteAdminUser(inviteForm);
+      showToast(
+        lang === 'bn'
+          ? `সফলভাবে "${inviteForm.email}" ঠিকানায় অ্যাডমিন ইনভাইটেশন পাঠানো হয়েছে!`
+          : `Admin invitation sent successfully to "${inviteForm.email}"!`
+      );
+      setShowInviteModal(false);
+      setInviteForm({ email: '', name: '', role: 'admin' });
+      loadDashboardData(true);
+    } catch (err) {
+      showError(err.message || 'Failed to send admin invitation.');
+    } finally {
+      setInviting(false);
     }
   };
 
@@ -525,16 +552,16 @@ export function AdminDashboard({ authUser }) {
                   {lang === 'bn' ? 'অ্যাডমিন কমান্ড সেন্টার' : 'Transit Admin Command Center'}
                 </h1>
                 <span className="profile-user-badge-guest" style={{ background: 'rgba(39, 185, 122, 0.15)', color: 'var(--metro)', borderColor: 'var(--metro)', textTransform: 'uppercase', letterSpacing: 1 }}>
-                  {authUser?.email?.toLowerCase() === 'turjo5892@gmail.com' ? 'SUPER ADMIN (Turjo)' : (authUser?.role === 'admin' ? 'SUPER ADMIN' : 'MODERATOR')}
+                  {authUser?.role === 'admin' ? 'SUPER ADMIN' : 'MODERATOR'}
                 </span>
               </div>
               <p className="profile-user-email" style={{ margin: '4px 0 0', color: 'var(--c70)' }}>
-                {lang === 'bn' ? `লগইনকৃত অ্যাডমিন: ${authUser?.email || 'Turjo5892@gmail.com'} • সম্পূর্ণ ডেটাবেজ ও ট্রানজিট নেটওয়ার্ক নিয়ন্ত্রণ` : `Signed in as ${authUser?.email || 'Turjo5892@gmail.com'} • Full database and transit network control`}
+                {lang === 'bn' ? 'সুপার অ্যাডমিন অধিবেশন • সম্পূর্ণ ডেটাবেজ ও ট্রানজিট নেটওয়ার্ক নিয়ন্ত্রণ' : 'Super Admin Session • Full database and transit network control'}
               </p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 14 }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 14, flexWrap: 'wrap' }}>
             <button
               type="button"
               className="action-chip"
@@ -543,6 +570,14 @@ export function AdminDashboard({ authUser }) {
               style={{ fontWeight: 600 }}
             >
               {refreshing ? '⟳ Refreshing...' : (lang === 'bn' ? '🔄 রিফ্রেশ' : '🔄 Refresh')}
+            </button>
+            <button
+              type="button"
+              className="action-chip"
+              onClick={() => setShowInviteModal(true)}
+              style={{ fontWeight: 700, borderColor: 'var(--metro)', color: 'var(--metro)', background: 'rgba(0, 103, 71, 0.08)' }}
+            >
+              {lang === 'bn' ? '✉️ অ্যাডমিন ইনভাইট' : '✉️ Invite Admin'}
             </button>
             <button
               type="button"
@@ -744,7 +779,7 @@ export function AdminDashboard({ authUser }) {
             {activeTab === 'users' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
                 {/* Sub-tab switcher: Regular Registered Users vs Guest Logins */}
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     className={`action-chip ${userSubTab === 'users' ? 'action-chip--highlight' : ''}`}
@@ -760,6 +795,14 @@ export function AdminDashboard({ authUser }) {
                     style={{ fontWeight: 700 }}
                   >
                     🎟️ {lang === 'bn' ? 'গেস্ট লগইন সেশন (MySQL DB)' : 'Guest Logins & Sessions'} ({num(guestTotal, lang)})
+                  </button>
+                  <button
+                    type="button"
+                    className="action-chip"
+                    onClick={() => setShowInviteModal(true)}
+                    style={{ fontWeight: 700, marginLeft: 'auto', borderColor: 'var(--metro)', color: 'var(--metro)', background: 'rgba(0, 103, 71, 0.08)' }}
+                  >
+                    {lang === 'bn' ? '✉️ + নতুন অ্যাডমিন ইনভাইট' : '✉️ + Invite New Admin'}
                   </button>
                 </div>
 
@@ -831,9 +874,9 @@ export function AdminDashboard({ authUser }) {
                                 <td style={{ padding: '10px 12px' }}>
                                   <div style={{ fontWeight: 600, color: 'var(--cream)' }}>
                                     {u.name}
-                                    {(u.email === 'turjo5892@gmail.com' || u.email === 'turjo582@gmail.com') && (
-                                      <span style={{ marginLeft: 6, fontSize: 11, background: 'var(--metro)', color: '#fff', padding: '1px 5px', borderRadius: 3 }}>
-                                        MAIN ADMIN
+                                    {u.role === 'admin' && (
+                                      <span style={{ marginLeft: 6, fontSize: 10.5, background: 'var(--metro)', color: '#fff', padding: '1px 6px', borderRadius: 3, fontWeight: 700 }}>
+                                        {u.id === 1 ? 'SUPER ADMIN' : 'ADMIN'}
                                       </span>
                                     )}
                                   </div>
@@ -2082,6 +2125,117 @@ export function AdminDashboard({ authUser }) {
           </div>
         )}
       </div>
+
+      {/* Invite Admin Modal */}
+      {showInviteModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.65)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 10000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 20
+        }}>
+          <div className="profile-card" style={{ maxWidth: 520, width: '100%', padding: 24, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', background: 'var(--ground-card, var(--ground))', border: '1px solid var(--line)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid var(--line)', paddingBottom: 12 }}>
+              <h3 style={{ margin: 0, fontSize: 18, color: 'var(--cream)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>✉️</span>
+                <span>{lang === 'bn' ? 'নতুন অ্যাডমিন ইনভাইটেশন' : 'Invite Administrator / Staff'}</span>
+              </h3>
+              <button
+                type="button"
+                className="header-icon-btn"
+                onClick={() => setShowInviteModal(false)}
+                style={{ width: 28, height: 28, fontSize: 16 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="t-body" style={{ color: 'var(--c70)', fontSize: 13, marginBottom: 16, lineHeight: 1.5 }}>
+              {lang === 'bn'
+                ? 'টিম মেম্বারকে ইমেইলের মাধ্যমে অ্যাডমিন বা মডারেটর হিসেবে যুক্ত করুন। স্বয়ংক্রিয়ভাবে ইনভাইটেশন ও লগইন নির্দেশাবলী পাঠানো হবে।'
+                : 'Invite a team member via email to manage transit networks, live disruptions, and commuters. Invitation & login credentials will be delivered directly.'}
+            </p>
+
+            <form onSubmit={handleInviteAdmin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label className="profile-form-label" style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                  {lang === 'bn' ? 'ইমেইল অ্যাড্রেস *' : 'Email Address *'}
+                </label>
+                <input
+                  type="email"
+                  required
+                  className="profile-form-input"
+                  placeholder="colleague@example.com"
+                  value={inviteForm.email}
+                  onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div>
+                <label className="profile-form-label" style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                  {lang === 'bn' ? 'নাম (ঐচ্ছিক)' : 'Full Name (Optional)'}
+                </label>
+                <input
+                  type="text"
+                  className="profile-form-input"
+                  placeholder={lang === 'bn' ? 'যেমন: আরিফুর রহমান' : 'e.g. Arifur Rahman'}
+                  value={inviteForm.name}
+                  onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div>
+                <label className="profile-form-label" style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                  {lang === 'bn' ? 'অ্যাডমিন রোল ও অধিকার' : 'Role & Privileges'}
+                </label>
+                <select
+                  className="profile-form-input"
+                  value={inviteForm.role}
+                  onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
+                  style={{ width: '100%' }}
+                >
+                  <option value="admin">
+                    {lang === 'bn' ? 'Administrator (সম্পূর্ণ সিস্টেম, নোড, রুট ও ব্যবহারকারী নিয়ন্ত্রণ)' : 'Administrator (Full System, Nodes, Routes & Users Control)'}
+                  </option>
+                  <option value="moderator">
+                    {lang === 'bn' ? 'Moderator (লাইভ যানজট ব্রডকাস্ট ও যাত্রী রিপোর্ট তদারকি)' : 'Moderator (Live Congestion Broadcasts & Passenger Reports)'}
+                  </option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
+                <button
+                  type="button"
+                  className="action-chip"
+                  onClick={() => setShowInviteModal(false)}
+                >
+                  {lang === 'bn' ? 'বাতিল' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="hero-btn-primary"
+                  disabled={inviting || !inviteForm.email}
+                  style={{ fontSize: 14, padding: '8px 18px' }}
+                >
+                  {inviting
+                    ? (lang === 'bn' ? 'ইনভাইট পাঠানো হচ্ছে...' : 'Sending Invite...')
+                    : (lang === 'bn' ? '✉️ ইনভাইট পাঠান' : '✉️ Send Invitation')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

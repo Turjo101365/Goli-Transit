@@ -10,6 +10,16 @@ export async function getOverviewController(req, res, next) {
 }
 
 // --- User Controllers ---
+export async function inviteAdminController(req, res, next) {
+  try {
+    const clientIp = req.ip || req.headers['x-forwarded-for'] || null;
+    const data = await adminService.inviteAdmin(req.user, req.body, clientIp);
+    return res.status(200).json({ ok: true, data, requestId: req.id });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function listUsersController(req, res, next) {
   try {
     const { query, role, status, limit, offset } = req.query;

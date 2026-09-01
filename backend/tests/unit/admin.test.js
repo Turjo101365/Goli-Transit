@@ -64,3 +64,23 @@ test('Admin Repository - listSavedRoutes returns all commuter saved routes', asy
     assert.ok(result.routes[0].fromLocation, 'Should contain from location');
   }
 });
+
+test('Admin Service - inviteAdmin sends invitation and grants role', async () => {
+  const adminUser = { id: 1, name: 'Super Admin', email: 'turjo5892@gmail.com', role: 'admin' };
+  const inviteEmail = `invite_test_${Date.now()}@example.com`;
+  
+  const result = await adminService.inviteAdmin(
+    adminUser,
+    {
+      email: inviteEmail,
+      name: 'Assistant Admin',
+      role: 'admin'
+    },
+    '127.0.0.1'
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(result.user.email, inviteEmail);
+  assert.equal(result.user.role, 'admin');
+  assert.ok(result.tempPassword, 'Temporary password should be generated for new user');
+});

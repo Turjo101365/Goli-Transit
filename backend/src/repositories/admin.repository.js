@@ -231,6 +231,42 @@ export const adminRepository = {
     };
   },
 
+  async getUserByEmail(email) {
+    const rows = await dbQuery(
+      `SELECT id, name, email, role, status, phone, last_login_at, created_at, updated_at FROM users WHERE email = :email LIMIT 1`,
+      { email }
+    );
+    if (!rows[0]) return null;
+    const u = rows[0];
+    return {
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role || 'user',
+      status: u.status || 'active',
+      phone: u.phone || null,
+      lastLoginAt: u.last_login_at,
+      createdAt: u.created_at,
+      updatedAt: u.updated_at
+    };
+  },
+
+  async createAdminUser({ name, email, role = 'admin', passwordHash, status = 'active' }) {
+    const res = await dbQuery(
+      `INSERT INTO users (name, email, role, password, password_hash, status)
+       VALUES (:name, :email, :role, :passwordHash, :passwordHash, :status)`,
+      {
+        name,
+        email,
+        role,
+        passwordHash,
+        status
+      }
+    );
+    const newId = res.insertId || res[0]?.id;
+    return this.getUserById(newId);
+  },
+
   async updateUser(id, { name, email, role, status, phone }) {
     const fields = [];
     const params = { id };

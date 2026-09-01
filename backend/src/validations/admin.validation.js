@@ -8,6 +8,13 @@ export const updateUserValidation = z.object({
   phone: z.string().trim().max(32).nullable().optional()
 });
 
+export const inviteAdminValidation = z.object({
+  email: z.string().trim().email().toLowerCase(),
+  name: z.string().trim().min(2).max(120).optional(),
+  role: z.enum(['admin', 'moderator']).default('admin'),
+  tempPassword: z.string().min(6).optional()
+});
+
 export const createNodeValidation = z.object({
   id: z.string().trim().min(2).max(64),
   nameBn: z.string().trim().min(1).max(255),

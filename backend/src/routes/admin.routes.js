@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   getOverviewController,
+  inviteAdminController,
   listUsersController,
   listGuestUsersController,
   listSavedRoutesController,
@@ -27,6 +28,7 @@ import { authMiddleware } from '../middlewares/auth.middleware.js';
 import { requireStaff, requireAdmin } from '../middlewares/admin.middleware.js';
 import { validationMiddleware } from '../middlewares/validation.middleware.js';
 import {
+  inviteAdminValidation,
   updateUserValidation,
   createNodeValidation,
   updateNodeValidation,
@@ -46,6 +48,7 @@ adminRoutes.use(authMiddleware, requireStaff);
 adminRoutes.get('/overview', getOverviewController);
 
 // --- Users & Guests ---
+adminRoutes.post('/invite', requireAdmin, validationMiddleware(inviteAdminValidation), inviteAdminController);
 adminRoutes.get('/users', listUsersController);
 adminRoutes.get('/guests', listGuestUsersController);
 adminRoutes.get('/saved-routes', listSavedRoutesController);

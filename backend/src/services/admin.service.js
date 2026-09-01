@@ -2,13 +2,75 @@ import { adminRepository } from '../repositories/admin.repository.js';
 import { createHttpError } from '../utils/http-error.js';
 import { graphCache } from '../cache/graph.cache.js';
 import { routeCache } from '../cache/route.cache.js';
+import { hashPassword } from '../utils/password.js';
+import { sendAdminInviteEmail } from './mail.service.js';
 
 export const adminService = {
   async getOverview() {
     return adminRepository.getOverviewStats();
   },
 
-  // --- Users ---
+  // --- Users & Invitations ---
+  async inviteAdmin(adminUser, { email, name, role = 'admin', tempPassword }, clientIp) {
+    const existing = await adminRepository.getUserByEmail(email);
+    let targetUser = null;
+    let isExistingUser = false;
+    const generatedPassword = tempPassword || `Admin@${Math.floor(100000 + Math.random() * 900000)}`;
+
+    if (existing) {
+      isExistingUser = true;
+      targetUser = await adminRepository.updateUser(existing.id, {
+        role,
+        status: 'active',
+        name: name || existing.name
+      });
+
+      await adminRepository.createAuditLog({
+        adminId: adminUser.id,
+        action: 'ADMIN_INVITED_EXISTING',
+        targetType: 'user',
+        targetId: existing.id,
+        details: { email, previousRole: existing.role, newRole: role },
+        ipAddress: clientIp
+      });
+    } else {
+      const passwordHash = hashPassword(generatedPassword);
+      targetUser = await adminRepository.createAdminUser({
+        name: name || email.split('@')[0],
+        email,
+        role,
+        passwordHash,
+        status: 'active'
+      });
+
+      await adminRepository.createAuditLog({
+        adminId: adminUser.id,
+        action: 'ADMIN_INVITED_NEW',
+        targetType: 'user',
+        targetId: targetUser.id,
+        details: { email, role },
+        ipAddress: clientIp
+      });
+    }
+
+    // Send invitation email
+    const mailResult = await sendAdminInviteEmail({
+      to: email,
+      name: targetUser.name,
+      role,
+      tempPassword: isExistingUser ? null : generatedPassword,
+      inviterName: adminUser.name || 'Super Admin'
+    });
+
+    return {
+      success: true,
+      user: targetUser,
+      isExistingUser,
+      tempPassword: isExistingUser ? null : generatedPassword,
+      emailDelivered: Boolean(mailResult?.delivered),
+      mockedDelivery: Boolean(mailResult?.mocked)
+    };
+  },
   async listUsers(filters) {
     return adminRepository.listUsers(filters);
   },

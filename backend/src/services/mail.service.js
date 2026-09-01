@@ -165,3 +165,73 @@ export async function sendVerificationCodeEmail({ to, name, code, expiresInMinut
 		return fallbackResult;
 	}
 }
+
+export async function sendAdminInviteEmail({ to, name, role, tempPassword, inviterName }) {
+	const portalUrl = `${env.FRONTEND_URL || 'http://localhost:5173'}/login`;
+	const roleTitle = role === 'admin' ? 'Administrator' : 'Moderator';
+	const safeName = escapeHtml(name || 'there');
+	const safeInviter = escapeHtml(inviterName || 'Super Admin');
+	const safeRole = escapeHtml(roleTitle);
+	const subject = `You've been invited as an ${roleTitle} to ${env.APP_NAME}`;
+
+	if (!env.MAIL_ENABLED) {
+		logger.info('Admin invitation email mocked (mail disabled)', {
+			to,
+			role,
+			portalUrl
+		});
+		return { delivered: false, mocked: true };
+	}
+
+	try {
+		const transporter = await getTransporter();
+		const text = [
+			`Hi ${name || 'there'},`,
+			'',
+			`${inviterName || 'Super Admin'} has invited you to join the ${env.APP_NAME} team as an ${roleTitle}.`,
+			'',
+			tempPassword ? `Your initial login credentials:` : `You can log in with your existing account:`,
+			`Email: ${to}`,
+			tempPassword ? `Temporary Password: ${tempPassword}` : '',
+			'',
+			`Access the Admin Portal here: ${portalUrl}`,
+			'',
+			'Please change your password upon your first sign in.'
+		].filter(Boolean).join('\n');
+
+		const html = [
+			`<p>Hi ${safeName},</p>`,
+			`<p><strong>${safeInviter}</strong> has invited you to join the <strong>${escapeHtml(env.APP_NAME)}</strong> team as an <strong>${safeRole}</strong>.</p>`,
+			tempPassword
+				? `<div style="background: #f4efe3; padding: 12px 16px; border-radius: 6px; border: 1px solid #d4cebe; margin: 16px 0;">
+						<p style="margin: 0 0 6px 0;"><strong>Login Credentials:</strong></p>
+						<p style="margin: 0;"><strong>Email:</strong> ${escapeHtml(to)}</p>
+						<p style="margin: 4px 0 0 0;"><strong>Temporary Password:</strong> <code style="background: #fff; padding: 2px 6px; border-radius: 4px;">${escapeHtml(tempPassword)}</code></p>
+				   </div>`
+				: `<p>You can sign in with your existing account to access the Admin Command Center.</p>`,
+			`<p><a href="${portalUrl}" style="display: inline-block; background: #006747; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;">Sign In to Admin Portal</a></p>`,
+			`<p style="color: #666; font-size: 12px;">Please change your password upon your first sign in.</p>`
+		].join('');
+
+		await transporter.sendMail({
+			from: {
+				address: env.MAIL_FROM_ADDRESS || 'noreply@ezzgo.local',
+				name: env.MAIL_FROM_NAME || env.APP_NAME
+			},
+			to,
+			subject,
+			text,
+			html
+		});
+
+		logger.info('Admin invitation email sent', { to, role });
+		return { delivered: true };
+	} catch (error) {
+		const fallbackResult = handleMailFailure('Admin invitation email', error, { to, role });
+		if (env.NODE_ENV !== 'production') {
+			logger.info('Admin invitation generated for local development', { to, role });
+			return fallbackResult;
+		}
+		return fallbackResult;
+	}
+}

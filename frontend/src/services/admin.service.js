@@ -4,7 +4,14 @@ export async function getAdminOverview() {
   return apiRequest('/api/admin/overview', { method: 'GET' });
 }
 
-// --- Users & Guests ---
+// --- Users, Guests & Admin Invitations ---
+export async function inviteAdminUser(payload) {
+  return apiRequest('/api/admin/invite', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function getAdminUsers({ query = '', role = '', status = '', limit = 50, offset = 0 } = {}) {
   const params = new URLSearchParams();
   if (query) params.append('query', query);
