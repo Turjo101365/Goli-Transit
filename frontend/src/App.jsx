@@ -11,6 +11,7 @@ import { ForgotPassword } from './pages/ForgotPassword.jsx';
 import { VerifyCode } from './pages/VerifyCode.jsx';
 import { ResetPassword } from './pages/ResetPassword.jsx';
 import { Profile } from './pages/Profile.jsx';
+import { AdminDashboard } from './pages/AdminDashboard.jsx';
 import { LanguageProvider } from './state/LanguageContext.jsx';
 import { ThemeProvider } from './state/ThemeContext.jsx';
 import { TripProvider } from './state/TripContext.jsx';
@@ -39,13 +40,31 @@ function RequireAuth({ authUser, children }) {
   return children;
 }
 
+function RequireAdmin({ authUser, children }) {
+  const location = useLocation();
+
+  if (!authUser) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (authUser.role !== 'admin' && authUser.role !== 'moderator') {
+    return <Navigate to="/map" replace />;
+  }
+
+  return children;
+}
+
 function LoginRoute({ onLogin, onGuestLogin, onGoogleLogin }) {
   const navigate = useNavigate();
   const location = useLocation();
 
   async function handleLogin(credentials) {
-    await onLogin(credentials);
-    navigate(location.state?.from?.pathname || '/map', { replace: true });
+    const user = await onLogin(credentials);
+    if (user?.role === 'admin' || user?.role === 'moderator') {
+      navigate('/admin', { replace: true });
+    } else {
+      navigate(location.state?.from?.pathname || '/map', { replace: true });
+    }
   }
 
   async function handleGuestLogin() {
@@ -232,6 +251,14 @@ function AppRoutes({
           </RequireAuth>
         }
       />
+      <Route
+        path="/admin"
+        element={
+          <RequireAdmin authUser={authUser}>
+            <AdminDashboard authUser={authUser} />
+          </RequireAdmin>
+        }
+      />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -276,6 +303,7 @@ function AppShell() {
   async function handleLogin(credentials) {
     const user = await loginUser(credentials);
     setAuthUser(user);
+    return user;
   }
 
   async function handleGuestLogin() {

@@ -119,6 +119,7 @@ export function Login({
               onChange={handleChange}
               required
               style={{ ...authInputStyle, paddingRight: 56 }}
+              placeholder="••••••••"
             />
             <button
               type="button"

@@ -64,6 +64,17 @@ export function Header({ authUser, onLogout }) {
                 {lang === 'en' ? item.en : item.bn}
               </NavLink>
             ))}
+            {(authUser?.role === 'admin' || authUser?.role === 'moderator') && (
+              <NavLink
+                to="/admin"
+                className={({ isActive }) =>
+                  `header-nav-link ${isActive ? 'header-nav-link--active' : ''}`
+                }
+                style={{ color: 'var(--metro)', fontWeight: 700 }}
+              >
+                🛡️ {lang === 'en' ? 'Admin' : 'অ্যাডমিন'}
+              </NavLink>
+            )}
           </nav>
         ) : null}
 
@@ -123,6 +134,15 @@ export function Header({ authUser, onLogout }) {
                 type="button"
                 onClick={() => navigate('/login')}
                 className="btn-header-login"
+                style={{ borderColor: 'var(--metro)', color: 'var(--metro)' }}
+                title="Admin Sign In"
+              >
+                🛡️ {lang === 'en' ? 'Admin' : 'অ্যাডমিন'}
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="btn-header-login"
               >
                 {lang === 'en' ? 'Log in' : 'লগইন'}
               </button>
@@ -177,6 +197,18 @@ export function Header({ authUser, onLogout }) {
                   {lang === 'en' ? item.en : item.bn}
                 </NavLink>
               ))}
+              {(authUser?.role === 'admin' || authUser?.role === 'moderator') && (
+                <NavLink
+                  to="/admin"
+                  onClick={closeMobileMenu}
+                  className={({ isActive }) =>
+                    `mobile-nav-link ${isActive ? 'mobile-nav-link--active' : ''}`
+                  }
+                  style={{ color: 'var(--metro)', fontWeight: 700 }}
+                >
+                  🛡️ {lang === 'en' ? 'Admin Panel' : 'অ্যাডমিন প্যানেল'}
+                </NavLink>
+              )}
             </div>
           ) : null}
 
