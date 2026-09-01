@@ -44,7 +44,7 @@ function RequireAdmin({ authUser, children }) {
   const location = useLocation();
 
   if (!authUser) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/admin/login" state={{ from: location }} replace />;
   }
 
   if (authUser.role !== 'admin' && authUser.role !== 'moderator') {
@@ -54,7 +54,7 @@ function RequireAdmin({ authUser, children }) {
   return children;
 }
 
-function LoginRoute({ onLogin, onGuestLogin, onGoogleLogin }) {
+function LoginRoute({ initialMode = 'user', onLogin, onGuestLogin, onGoogleLogin }) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -80,6 +80,7 @@ function LoginRoute({ onLogin, onGuestLogin, onGoogleLogin }) {
   return (
     <Login
       initialEmail={location.state?.email || ''}
+      initialMode={initialMode}
       onLogin={handleLogin}
       onGuestLogin={handleGuestLogin}
       onGoogleLogin={handleGoogleLogin}
@@ -206,7 +207,8 @@ function AppRoutes({
 
   return (
     <Routes>
-      <Route path="/login" element={<LoginRoute onLogin={onLogin} onGuestLogin={onGuestLogin} onGoogleLogin={onGoogleLogin} />} />
+      <Route path="/login" element={<LoginRoute initialMode="user" onLogin={onLogin} onGuestLogin={onGuestLogin} onGoogleLogin={onGoogleLogin} />} />
+      <Route path="/admin/login" element={<LoginRoute initialMode="admin" onLogin={onLogin} onGuestLogin={onGuestLogin} onGoogleLogin={onGoogleLogin} />} />
       <Route
         path="/register"
         element={

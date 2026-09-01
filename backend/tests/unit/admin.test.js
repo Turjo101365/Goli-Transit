@@ -1,12 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { closeDb } from '../../src/config/db.js';
+import { closeRedis } from '../../src/config/redis.js';
 import { adminRepository } from '../../src/repositories/admin.repository.js';
 import { authService } from '../../src/services/auth.service.js';
 import { adminService } from '../../src/services/admin.service.js';
 
 test.after(async () => {
+  await closeRedis().catch(() => {});
   await closeDb().catch(() => {});
+  setTimeout(() => process.exit(0), 100).unref();
 });
 
 test('Admin Repository - getOverviewStats returns structured data', async () => {
@@ -43,15 +46,47 @@ test('Admin Repository - getSettings and updateSetting', async () => {
   assert.ok(settings.system_status, 'Should contain system_status');
 });
 
-test('Admin Authentication - Turjo5892@gmail.com logs in as Admin', async () => {
+test('Admin Authentication - Portal separation and role enforcement', async () => {
+  // 1. Admin login with mode: 'admin' succeeds
   const result = await authService.login({
     email: 'Turjo5892@gmail.com',
-    password: 'Turjo1244'
+    password: 'Turjo1244',
+    mode: 'admin'
   });
 
   assert.ok(result.token, 'Token should be returned');
   assert.equal(result.user.email, 'turjo5892@gmail.com');
   assert.equal(result.user.role, 'admin');
+
+  // 2. Admin attempting user portal login is blocked
+  await assert.rejects(
+    async () => {
+      await authService.login({
+        email: 'Turjo5892@gmail.com',
+        password: 'Turjo1244',
+        mode: 'user'
+      });
+    },
+    (err) => err.statusCode === 403 && err.code === 'AUTH_ADMIN_PORTAL_REQUIRED'
+  );
+
+  // 3. Normal commuter attempting admin portal login is blocked
+  const commuterSession = await authService.register({
+    name: 'Normal Commuter',
+    email: `commuter_test_${Date.now()}@example.com`,
+    password: 'CommuterPass@123'
+  });
+
+  await assert.rejects(
+    async () => {
+      await authService.login({
+        email: commuterSession.user.email,
+        password: 'CommuterPass@123',
+        mode: 'admin'
+      });
+    },
+    (err) => err.statusCode === 403 && err.code === 'AUTH_ADMIN_ACCESS_DENIED'
+  );
 });
 
 test('Admin Repository - listGuestUsers returns database guest sessions', async () => {

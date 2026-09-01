@@ -42,7 +42,7 @@ export function Header({ authUser, onLogout }) {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const isAuthPage = ['/login', '/register', '/forgot-password', '/verify-code', '/reset-password'].includes(
+  const isAuthPage = ['/login', '/admin/login', '/register', '/forgot-password', '/verify-code', '/reset-password'].includes(
     location.pathname
   );
 
@@ -155,7 +155,7 @@ export function Header({ authUser, onLogout }) {
             <div className="auth-buttons">
               <button
                 type="button"
-                onClick={() => navigate('/login')}
+                onClick={() => navigate('/admin/login')}
                 className="btn-header-admin"
                 title={lang === 'en' ? 'Admin Portal Sign In' : 'অ্যাডমিন পোর্টাল লগইন'}
               >
@@ -300,7 +300,7 @@ export function Header({ authUser, onLogout }) {
                   type="button"
                   onClick={() => {
                     closeMobileMenu();
-                    navigate('/login');
+                    navigate('/admin/login');
                   }}
                   className="btn-header-admin mobile-btn-full"
                   style={{ gridColumn: '1 / -1' }}

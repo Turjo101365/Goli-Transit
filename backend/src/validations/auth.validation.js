@@ -35,7 +35,8 @@ export const registerValidation = z
 
 export const loginValidation = z.object({
 	email: emailSchema,
-	password: z.string().min(1, 'Password is required.')
+	password: z.string().min(1, 'Password is required.'),
+	mode: z.enum(['admin', 'user']).optional()
 });
 
 export const googleLoginValidation = z.object({

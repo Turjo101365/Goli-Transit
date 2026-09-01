@@ -309,6 +309,7 @@ export const authService = {
 
 	async login(payload) {
 		const email = normalizeEmail(payload.email);
+		const mode = payload.mode || null;
 		const dbAvailable = await hasLiveDatabase();
 
 		if (dbAvailable) {
@@ -319,6 +320,16 @@ export const authService = {
 
 			if (user.status === 'banned' || user.status === 'suspended') {
 				throw createHttpError(403, 'AUTH_ACCOUNT_SUSPENDED', `Your account is ${user.status}. Please contact system administrator.`);
+			}
+
+			const isAdmin = user.role === 'admin' || user.role === 'moderator';
+
+			if (mode === 'admin' && !isAdmin) {
+				throw createHttpError(403, 'AUTH_ADMIN_ACCESS_DENIED', 'Access denied. The Admin Portal is strictly restricted to system administrators.');
+			}
+
+			if (mode === 'user' && isAdmin) {
+				throw createHttpError(403, 'AUTH_ADMIN_PORTAL_REQUIRED', 'Admin accounts must sign in through the Admin Portal (🛡️ Admin Sign In).');
 			}
 
 			userRepository.updateLastLogin(user.id).catch(() => {});
@@ -332,6 +343,16 @@ export const authService = {
 
 		if (memoryUser.status === 'banned' || memoryUser.status === 'suspended') {
 			throw createHttpError(403, 'AUTH_ACCOUNT_SUSPENDED', `Your account is ${memoryUser.status}. Please contact system administrator.`);
+		}
+
+		const isMemAdmin = memoryUser.role === 'admin' || memoryUser.role === 'moderator';
+
+		if (mode === 'admin' && !isMemAdmin) {
+			throw createHttpError(403, 'AUTH_ADMIN_ACCESS_DENIED', 'Access denied. The Admin Portal is strictly restricted to system administrators.');
+		}
+
+		if (mode === 'user' && isMemAdmin) {
+			throw createHttpError(403, 'AUTH_ADMIN_PORTAL_REQUIRED', 'Admin accounts must sign in through the Admin Portal (🛡️ Admin Sign In).');
 		}
 
 		return createSessionResponse(memoryUser);
