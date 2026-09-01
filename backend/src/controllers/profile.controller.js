@@ -1,4 +1,4 @@
-import { dbQuery } from '../config/db.js';
+import { authService } from '../services/auth.service.js';
 import { profileRepository } from '../repositories/profile.repository.js';
 import { userRepository } from '../repositories/user.repository.js';
 
@@ -8,7 +8,7 @@ export async function getProfileController(req, res, next) {
 		const user = (await userRepository.findById(userId).catch(() => null)) || req.user;
 
 		const [trips, savedRoutes, favoriteStops, stats] = await Promise.all([
-			profileRepository.getTrips(userId, 20).catch(() => []),
+			profileRepository.getTrips(userId, 50).catch(() => []),
 			profileRepository.getSavedRoutes(userId).catch(() => []),
 			profileRepository.getFavoriteStops(userId).catch(() => []),
 			profileRepository.getStats(userId).catch(() => ({
@@ -24,11 +24,18 @@ export async function getProfileController(req, res, next) {
 			ok: true,
 			data: {
 				user: {
-					id: user.id,
+					id: String(user.id),
 					name: user.name,
 					email: user.email,
-					createdAt: user.createdAt,
-					updatedAt: user.updatedAt,
+					role: user.role || 'user',
+					status: user.status || 'active',
+					phone: user.phone || null,
+					avatarUrl: user.avatarUrl || user.avatar_url || null,
+					bio: user.bio || null,
+					hasPassword: Boolean(user.passwordHash || user.password_hash),
+					lastLoginAt: user.lastLoginAt || user.last_login_at || null,
+					createdAt: user.createdAt || user.created_at,
+					updatedAt: user.updatedAt || user.updated_at,
 					isGuest: Boolean(req.user.isGuest || (user.email && user.email.includes('guest.ezzgo.local')))
 				},
 				trips,
@@ -39,7 +46,70 @@ export async function getProfileController(req, res, next) {
 			requestId: req.id
 		});
 	} catch (error) {
-		next(error);
+		return next(error);
+	}
+}
+
+export async function updateProfileController(req, res, next) {
+	try {
+		const userId = req.user.id;
+		const updatedUser = await authService.updateProfile(userId, req.body);
+
+		return res.status(200).json({
+			ok: true,
+			data: {
+				user: updatedUser
+			},
+			requestId: req.id
+		});
+	} catch (error) {
+		return next(error);
+	}
+}
+
+export async function changePasswordController(req, res, next) {
+	try {
+		const userId = req.user.id;
+		const result = await authService.changePassword(userId, req.body);
+
+		return res.status(200).json({
+			ok: true,
+			data: result,
+			requestId: req.id
+		});
+	} catch (error) {
+		return next(error);
+	}
+}
+
+export async function deleteAccountController(req, res, next) {
+	try {
+		const userId = req.user.id;
+		const result = await authService.deleteAccount(userId, req.body);
+
+		return res.status(200).json({
+			ok: true,
+			data: result,
+			requestId: req.id
+		});
+	} catch (error) {
+		return next(error);
+	}
+}
+
+export async function getTripsController(req, res, next) {
+	try {
+		const userId = req.user.id;
+		const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+		const trips = await profileRepository.getTrips(userId, limit);
+
+		return res.status(200).json({
+			ok: true,
+			data: { trips },
+			requestId: req.id
+		});
+	} catch (error) {
+		return next(error);
 	}
 }
 
@@ -48,24 +118,13 @@ export async function createTripController(req, res, next) {
 		const userId = req.user.id;
 		const { fromLocation, toLocation, mode, distanceKm, durationMinutes, status } = req.body;
 
-		if (!fromLocation || !toLocation) {
-			return res.status(400).json({
-				ok: false,
-				error: {
-					code: 'PROFILE_INVALID_INPUT',
-					message: 'fromLocation and toLocation are required'
-				},
-				requestId: req.id
-			});
-		}
-
 		const tripId = await profileRepository.createTrip({
 			userId,
 			fromLocation,
 			toLocation,
 			mode: mode || 'bus',
-			distanceKm: distanceKm ? Number(distanceKm) : null,
-			durationMinutes: durationMinutes ? Number(durationMinutes) : null,
+			distanceKm: distanceKm != null ? Number(distanceKm) : null,
+			durationMinutes: durationMinutes != null ? Number(durationMinutes) : null,
 			status: status || 'completed'
 		});
 
@@ -75,47 +134,37 @@ export async function createTripController(req, res, next) {
 			requestId: req.id
 		});
 	} catch (error) {
-		next(error);
+		return next(error);
 	}
 }
 
-export async function updateProfileController(req, res, next) {
+export async function deleteTripController(req, res, next) {
 	try {
 		const userId = req.user.id;
-		const { name, email } = req.body;
+		const { tripId } = req.params;
 
-		if (!name || !email) {
-			return res.status(400).json({
-				ok: false,
-				error: {
-					code: 'PROFILE_INVALID_INPUT',
-					message: 'Name and email are required'
-				},
-				requestId: req.id
-			});
-		}
-
-		await dbQuery(
-			`UPDATE users SET name = :name, email = :email, updated_at = CURRENT_TIMESTAMP WHERE id = :userId`,
-			{ name, email, userId }
-		);
-
-		const user = await userRepository.findById(userId);
+		await profileRepository.deleteTrip(userId, parseInt(tripId));
 		return res.status(200).json({
 			ok: true,
-			data: {
-				user: {
-					id: user.id,
-					name: user.name,
-					email: user.email,
-					createdAt: user.createdAt,
-					updatedAt: user.updatedAt
-				}
-			},
+			data: { success: true },
 			requestId: req.id
 		});
 	} catch (error) {
-		next(error);
+		return next(error);
+	}
+}
+
+export async function clearTripsController(req, res, next) {
+	try {
+		const userId = req.user.id;
+		await profileRepository.clearTrips(userId);
+		return res.status(200).json({
+			ok: true,
+			data: { success: true },
+			requestId: req.id
+		});
+	} catch (error) {
+		return next(error);
 	}
 }
 
@@ -124,24 +173,13 @@ export async function saveRouteController(req, res, next) {
 		const userId = req.user.id;
 		const { name, fromLocation, toLocation, mode, durationMinutes } = req.body;
 
-		if (!name || !fromLocation || !toLocation) {
-			return res.status(400).json({
-				ok: false,
-				error: {
-					code: 'PROFILE_INVALID_INPUT',
-					message: 'Name, from location, and to location are required'
-				},
-				requestId: req.id
-			});
-		}
-
 		const routeId = await profileRepository.createSavedRoute({
 			userId,
 			name,
 			fromLocation,
 			toLocation,
-			mode,
-			durationMinutes
+			mode: mode || 'metro',
+			durationMinutes: durationMinutes != null ? Number(durationMinutes) : null
 		});
 
 		return res.status(201).json({
@@ -150,7 +188,7 @@ export async function saveRouteController(req, res, next) {
 			requestId: req.id
 		});
 	} catch (error) {
-		next(error);
+		return next(error);
 	}
 }
 
@@ -166,7 +204,7 @@ export async function deleteSavedRouteController(req, res, next) {
 			requestId: req.id
 		});
 	} catch (error) {
-		next(error);
+		return next(error);
 	}
 }
 
@@ -175,23 +213,12 @@ export async function addFavoriteStopController(req, res, next) {
 		const userId = req.user.id;
 		const { name, nodeId, latitude, longitude } = req.body;
 
-		if (!name) {
-			return res.status(400).json({
-				ok: false,
-				error: {
-					code: 'PROFILE_INVALID_INPUT',
-					message: 'Name is required'
-				},
-				requestId: req.id
-			});
-		}
-
 		const stopId = await profileRepository.createFavoriteStop({
 			userId,
 			name,
-			nodeId,
-			latitude,
-			longitude
+			nodeId: nodeId || null,
+			latitude: latitude != null ? Number(latitude) : null,
+			longitude: longitude != null ? Number(longitude) : null
 		});
 
 		return res.status(201).json({
@@ -200,7 +227,7 @@ export async function addFavoriteStopController(req, res, next) {
 			requestId: req.id
 		});
 	} catch (error) {
-		next(error);
+		return next(error);
 	}
 }
 
@@ -216,6 +243,6 @@ export async function deleteFavoriteStopController(req, res, next) {
 			requestId: req.id
 		});
 	} catch (error) {
-		next(error);
+		return next(error);
 	}
 }

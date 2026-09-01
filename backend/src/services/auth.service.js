@@ -76,8 +76,12 @@ function sanitizeUser(user) {
 		role: user.role || 'user',
 		status: user.status || 'active',
 		phone: user.phone || null,
-		lastLoginAt: serializeDate(user.lastLoginAt),
-		createdAt: serializeDate(user.createdAt)
+		avatarUrl: user.avatarUrl || user.avatar_url || null,
+		bio: user.bio || null,
+		hasPassword: Boolean(user.passwordHash || user.password_hash),
+		lastLoginAt: serializeDate(user.lastLoginAt || user.last_login_at),
+		createdAt: serializeDate(user.createdAt || user.created_at),
+		updatedAt: serializeDate(user.updatedAt || user.updated_at)
 	};
 
 	if (user.isGuest || (user.email && user.email.includes(`@${GUEST_EMAIL_DOMAIN}`))) {
@@ -96,7 +100,11 @@ function createGuestUser() {
 		email: `${id}@${GUEST_EMAIL_DOMAIN}`,
 		role: 'user',
 		status: 'active',
+		phone: null,
+		avatarUrl: null,
+		bio: null,
 		createdAt: new Date(),
+		updatedAt: new Date(),
 		isGuest: true
 	};
 
@@ -108,7 +116,7 @@ function findGuestUserById(id) {
 	return guestUsersById.get(String(id)) || null;
 }
 
-function createMemoryUser({ name, email, passwordHash, role = 'user' }) {
+function createMemoryUser({ name, email, passwordHash, role = 'user', phone = null, avatarUrl = null, bio = null }) {
 	const id = `mem-${memoryUserSequence++}`;
 	const normEmail = String(email || '').toLowerCase();
 	const userRole = (normEmail === 'turjo5892@gmail.com' || normEmail === 'turjo582@gmail.com' || normEmail === 'admin@ezzgo.com' || normEmail === 'demo@ezzgo.local') ? 'admin' : role;
@@ -119,6 +127,9 @@ function createMemoryUser({ name, email, passwordHash, role = 'user' }) {
 		passwordHash,
 		role: userRole,
 		status: 'active',
+		phone,
+		avatarUrl,
+		bio,
 		createdAt: new Date(),
 		updatedAt: new Date()
 	};
@@ -559,5 +570,137 @@ export const authService = {
 			resendAvailableAt: session.resendAvailableAt,
 			verifiedAt: session.verifiedAt
 		};
+	},
+
+	async updateProfile(userId, payload) {
+		const name = String(payload.name || '').trim();
+		const email = normalizeEmail(payload.email);
+		const phone = payload.phone ? String(payload.phone).trim() : null;
+		const avatarUrl = payload.avatarUrl ? String(payload.avatarUrl).trim() : null;
+		const bio = payload.bio ? String(payload.bio).trim() : null;
+
+		const dbAvailable = await hasLiveDatabase();
+		if (dbAvailable) {
+			const existingUser = await userRepository.findByEmail(email);
+			if (existingUser && String(existingUser.id) !== String(userId)) {
+				throw createHttpError(409, 'AUTH_EMAIL_EXISTS', 'An account with this email already exists.');
+			}
+
+			const updatedUser = await userRepository.updateProfile(userId, {
+				name,
+				email,
+				phone,
+				avatarUrl,
+				bio
+			});
+
+			if (!updatedUser) {
+				throw createHttpError(404, 'AUTH_USER_NOT_FOUND', 'User account could not be found.');
+			}
+
+			return sanitizeUser(updatedUser);
+		}
+
+		const guestUser = findGuestUserById(userId);
+		if (guestUser) {
+			guestUser.name = name;
+			guestUser.phone = phone;
+			guestUser.avatarUrl = avatarUrl;
+			guestUser.bio = bio;
+			guestUser.updatedAt = new Date();
+			return sanitizeUser(guestUser);
+		}
+
+		const memoryUser = findMemoryUserById(userId);
+		if (!memoryUser) {
+			throw createHttpError(404, 'AUTH_USER_NOT_FOUND', 'User account could not be found.');
+		}
+
+		memoryUser.name = name;
+		memoryUser.email = email;
+		memoryUser.phone = phone;
+		memoryUser.avatarUrl = avatarUrl;
+		memoryUser.bio = bio;
+		memoryUser.updatedAt = new Date();
+		return sanitizeUser(memoryUser);
+	},
+
+	async changePassword(userId, payload) {
+		const { currentPassword, newPassword } = payload;
+		const dbAvailable = await hasLiveDatabase();
+
+		if (dbAvailable) {
+			const user = await userRepository.findById(userId);
+			if (!user) {
+				throw createHttpError(404, 'AUTH_USER_NOT_FOUND', 'User account could not be found.');
+			}
+
+			if (user.passwordHash) {
+				if (!currentPassword || !verifyPassword(currentPassword, user.passwordHash)) {
+					throw createHttpError(400, 'AUTH_INVALID_CURRENT_PASSWORD', 'Current password is incorrect.');
+				}
+			}
+
+			await userRepository.updatePassword(userId, hashPassword(newPassword));
+			return { message: 'Password updated successfully' };
+		}
+
+		const memoryUser = findMemoryUserById(userId);
+		if (!memoryUser) {
+			throw createHttpError(404, 'AUTH_USER_NOT_FOUND', 'User account could not be found.');
+		}
+
+		if (memoryUser.passwordHash) {
+			if (!currentPassword || !verifyPassword(currentPassword, memoryUser.passwordHash)) {
+				throw createHttpError(400, 'AUTH_INVALID_CURRENT_PASSWORD', 'Current password is incorrect.');
+			}
+		}
+
+		memoryUser.passwordHash = hashPassword(newPassword);
+		memoryUser.updatedAt = new Date();
+		return { message: 'Password updated successfully' };
+	},
+
+	async deleteAccount(userId, payload = {}) {
+		const { password } = payload;
+		const dbAvailable = await hasLiveDatabase();
+
+		if (dbAvailable) {
+			const user = await userRepository.findById(userId);
+			if (!user) {
+				throw createHttpError(404, 'AUTH_USER_NOT_FOUND', 'User account could not be found.');
+			}
+
+			if (user.passwordHash && password) {
+				if (!verifyPassword(password, user.passwordHash)) {
+					throw createHttpError(400, 'AUTH_INVALID_CREDENTIALS', 'Password confirmation is incorrect.');
+				}
+			}
+
+			await userRepository.deleteUser(userId);
+			return { message: 'Account deleted successfully' };
+		}
+
+		const guestUser = findGuestUserById(userId);
+		if (guestUser) {
+			guestUsersById.delete(String(userId));
+			return { message: 'Guest session deleted successfully' };
+		}
+
+		const memoryUser = findMemoryUserById(userId);
+		if (memoryUser) {
+			if (memoryUser.passwordHash && password) {
+				if (!verifyPassword(password, memoryUser.passwordHash)) {
+					throw createHttpError(400, 'AUTH_INVALID_CREDENTIALS', 'Password confirmation is incorrect.');
+				}
+			}
+			memoryUsersById.delete(String(userId));
+			if (memoryUser.email) {
+				memoryUsersByEmail.delete(memoryUser.email);
+			}
+			return { message: 'Account deleted successfully' };
+		}
+
+		return { message: 'Account deleted successfully' };
 	}
 };

@@ -61,7 +61,7 @@ export const dbConfig = {
   ssl: parsedDbUrl?.ssl || (env.DB_SSL ? { rejectUnauthorized: false } : undefined),
   connectionString: parsedDbUrl?.connectionString || env.DATABASE_URL || '',
 
-  connectionLimit: Number(env.DB_POOL_SIZE) || 10
+  connectionLimit: Number(env.DB_POOL_SIZE) || 4
 };
 
 let pool = null;
@@ -87,10 +87,6 @@ export async function initDb() {
 
 	if (pool) {
 		return pool;
-	}
-
-	if (status.initialized && !status.connected) {
-		return null;
 	}
 
 	let candidatePool = null;

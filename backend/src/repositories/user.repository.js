@@ -12,6 +12,8 @@ function mapUserRow(row) {
 		role: row.role || 'user',
 		status: row.status || 'active',
 		phone: row.phone || null,
+		avatarUrl: row.avatar_url || null,
+		bio: row.bio || null,
 		lastLoginAt: row.last_login_at || null,
 		passwordHash: row.password_hash,
 		createdAt: row.created_at,
@@ -22,7 +24,7 @@ function mapUserRow(row) {
 async function findById(id) {
 	const rows = await dbQuery(
 		[
-			'SELECT id, name, email, role, status, phone, last_login_at, password_hash, created_at, updated_at',
+			'SELECT id, name, email, role, status, phone, avatar_url, bio, last_login_at, password_hash, created_at, updated_at',
 			'FROM users',
 			'WHERE id = :id',
 			'LIMIT 1'
@@ -37,7 +39,7 @@ export const userRepository = {
 	async listUsers() {
 		const rows = await dbQuery(
 			[
-				'SELECT id, name, email, role, status, phone, last_login_at, password_hash, created_at, updated_at',
+				'SELECT id, name, email, role, status, phone, avatar_url, bio, last_login_at, password_hash, created_at, updated_at',
 				'FROM users',
 				'ORDER BY id DESC'
 			].join(' ')
@@ -49,7 +51,7 @@ export const userRepository = {
 	async findByEmail(email) {
 		const rows = await dbQuery(
 			[
-				'SELECT id, name, email, role, status, phone, last_login_at, password_hash, created_at, updated_at',
+				'SELECT id, name, email, role, status, phone, avatar_url, bio, last_login_at, password_hash, created_at, updated_at',
 				'FROM users',
 				'WHERE LOWER(email) = LOWER(:email)',
 				'LIMIT 1'
@@ -197,5 +199,29 @@ export const userRepository = {
 			{ userId, status }
 		);
 		return findById(userId);
+	},
+
+	async updateProfile(userId, { name, email, phone = null, avatarUrl = null, bio = null }) {
+		await dbQuery(
+			[
+				'UPDATE users',
+				'SET name = :name, email = :email, phone = :phone, avatar_url = :avatarUrl, bio = :bio, updated_at = CURRENT_TIMESTAMP',
+				'WHERE id = :userId'
+			].join(' '),
+			{
+				userId,
+				name: String(name).trim(),
+				email: String(email).trim().toLowerCase(),
+				phone: phone ? String(phone).trim() : null,
+				avatarUrl: avatarUrl ? String(avatarUrl).trim() : null,
+				bio: bio ? String(bio).trim() : null
+			}
+		);
+		return findById(userId);
+	},
+
+	async deleteUser(userId) {
+		await dbQuery('DELETE FROM users WHERE id = :userId', { userId });
+		return true;
 	}
 };
