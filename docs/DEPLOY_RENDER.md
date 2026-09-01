@@ -18,8 +18,8 @@ Deploy backend as a Node Web Service and frontend as a Static Site with 1 click 
    - **`goli-transit-frontend`** (Static Site)
 6. Configure the required environment variables in Render:
    - In `goli-transit-backend`:
-     - `DATABASE_URL`: Your MySQL connection string (e.g. from Railway, TiDB, Aiven, or PlanetScale: `mysql://user:password@host:port/database`).
-     - `DB_SSL`: `true` (if using cloud-hosted MySQL that requires SSL).
+     - `DATABASE_URL`: Your database connection string (e.g. Supabase PostgreSQL `postgresql://postgres.[REF]:[PASS]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres` or MySQL `mysql://user:pass@host:port/db`).
+     - `DB_SSL`: `true` (required for Supabase and cloud-hosted databases).
      - `FRONTEND_URL`: Your deployed frontend URL (e.g. `https://goli-transit-frontend.onrender.com`).
      - `APP_URL`: Your deployed backend URL (e.g. `https://goli-transit-backend.onrender.com`).
      - `GOOGLE_CLIENT_ID`: (Optional) Your Google OAuth client ID.
@@ -47,8 +47,8 @@ Deploy backend and frontend bundled together in a single Render Web Service to c
 5. Add Environment Variables:
    - `NODE_ENV`: `production`
    - `DB_ENABLED`: `true`
-   - `DATABASE_URL`: Your MySQL URL
-   - `DB_SSL`: `true` (if required by your database provider)
+   - `DATABASE_URL`: Your Supabase PostgreSQL or MySQL URL
+   - `DB_SSL`: `true` (for Supabase and cloud databases)
    - `JWT_SECRET`: A random 32+ character string
    - `REDIS_ENABLED`: `false`
 6. Click **Deploy Web Service**.
@@ -63,9 +63,9 @@ Deploy backend and frontend bundled together in a single Render Web Service to c
 | :--- | :--- | :--- | :--- |
 | `NODE_ENV` | Yes | `production` | Application environment (`production`) |
 | `PORT` | Auto | `8080` | Port assigned by Render automatically |
-| `DATABASE_URL` | Optional | `""` | MySQL connection string (`mysql://user:pass@host:port/db`) |
-| `DB_ENABLED` | Yes | `true` | Enable MySQL database |
-| `DB_SSL` | Optional | `false` | Enable SSL for remote MySQL connections |
+| `DATABASE_URL` | Optional | `""` | Supabase PostgreSQL or MySQL connection string |
+| `DB_ENABLED` | Yes | `true` | Enable database persistence |
+| `DB_SSL` | Optional | `false` | Enable SSL for Supabase / remote databases |
 | `JWT_SECRET` | Yes | Auto | 32+ character secret for JWT auth |
 | `FRONTEND_URL` | Recommended | `""` | Frontend origin for CORS |
 | `APP_URL` | Recommended | `""` | Public backend URL |

@@ -48,10 +48,36 @@ async function runSingleMigration(connection, migrationName, sql) {
   }
 }
 
+import pg from 'pg';
+
+const { Client: PgClient } = pg;
+
+async function runPostgresMigrations() {
+  const client = new PgClient({
+    connectionString: dbConfig.connectionString || `postgresql://${encodeURIComponent(dbConfig.user)}:${encodeURIComponent(dbConfig.password)}@${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`,
+    ssl: dbConfig.ssl || { rejectUnauthorized: false }
+  });
+
+  await client.connect();
+  try {
+    const schemaPath = path.resolve(__dirname, '../../supabase/schema.sql');
+    const sql = await fs.readFile(schemaPath, 'utf8');
+    await client.query(sql);
+    console.log('Applied PostgreSQL (Supabase/Render) schema and seed successfully');
+    return { applied: 1, skipped: 0 };
+  } finally {
+    await client.end();
+  }
+}
+
 export async function runMigrations() {
   if (!dbConfig.enabled) {
     console.log('Migrations skipped because DB_ENABLED is false');
     return { applied: 0, skipped: 0 };
+  }
+
+  if (dbConfig.dialect === 'postgres') {
+    return runPostgresMigrations();
   }
 
   const connection = await mysql.createConnection({

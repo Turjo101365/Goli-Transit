@@ -203,52 +203,52 @@ body {
 .main-header {
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 1000;
   background: var(--nav-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--line);
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
 }
 
 .header-container {
-  max-width: 1200px;
+  max-width: 1240px;
   margin: 0 auto;
   padding: 0 20px;
-  height: 64px;
+  height: 68px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
 }
 
+/* Brand logo */
 .header-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
   text-decoration: none;
   color: var(--cream);
   flex-shrink: 0;
+  transition: opacity 0.15s ease;
 }
 
-/* Full EZZ GO logo (wordmark + tagline baked into the artwork) — shown at
-   native aspect ratio, sized fluidly between the tablet and desktop target
-   widths the brand spec calls for, using the header's one existing
-   breakpoint (860px) rather than adding a new one. Hidden below it in
-   favor of the compact icon-only mark, since there isn't room to shrink
-   the full logo without its tagline becoming unreadable. */
+.header-brand:hover {
+  opacity: 0.9;
+}
+
 .header-logo-full {
   display: none;
-  width: clamp(135px, 14vw, 188px);
-  height: auto;
+  height: 46px;
+  width: auto;
+  max-width: 200px;
   object-fit: contain;
   flex-shrink: 0;
 }
 
 .header-logo-compact {
   display: block;
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   object-fit: contain;
   flex-shrink: 0;
 }
@@ -257,100 +257,185 @@ body {
   .header-logo-full {
     display: block;
   }
-
   .header-logo-compact {
     display: none;
   }
 }
 
+/* Desktop Navigation */
 .header-nav {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-left: 20px;
+  gap: 4px;
+  margin-left: 14px;
 }
 
 .header-nav-link {
   font-family: var(--data);
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--c70);
   text-decoration: none;
-  padding: 8px 14px;
-  border-radius: 6px;
-  transition: color 0.15s ease, background-color 0.15s ease;
+  padding: 7px 13px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
 }
 
 .header-nav-link:hover {
   color: var(--cream);
   background: var(--c10);
+  border-color: var(--line);
 }
 
 .header-nav-link--active {
   color: var(--metro);
   background: rgba(0, 103, 71, 0.08);
+  border-color: rgba(0, 103, 71, 0.22);
+  font-weight: 700;
 }
 
 :root[data-theme="dark"] .header-nav-link--active {
   color: #27B97A;
   background: rgba(39, 185, 122, 0.12);
+  border-color: rgba(39, 185, 122, 0.28);
 }
 
+.header-nav-link--admin {
+  color: var(--metro);
+  font-weight: 700;
+}
+
+.admin-badge-shield {
+  font-size: 12px;
+}
+
+/* Header Right Actions */
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   margin-left: auto;
+  flex-shrink: 0;
 }
 
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.header-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--line);
+  margin: 0 4px;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+/* Shared Action Buttons */
+.header-action-btn,
 .action-chip {
   font-family: var(--data);
   font-size: 13px;
   font-weight: 600;
-  padding: 6px 12px;
-  border-radius: 6px;
+  height: 34px;
+  padding: 0 11px;
+  border-radius: 8px;
   border: 1px solid var(--line);
   background: var(--ground2);
   color: var(--cream);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   transition: all 0.15s ease;
+  user-select: none;
+  white-space: nowrap;
 }
 
+.header-action-btn:hover,
 .action-chip:hover {
   border-color: var(--c45);
   background: var(--c10);
+  transform: translateY(-1px);
 }
 
+.header-icon-btn,
+.chip {
+  height: 34px;
+  width: 34px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--ground2);
+  color: var(--cream);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.header-icon-btn:hover,
+.chip:hover {
+  border-color: var(--c45);
+  background: var(--c10);
+  transform: translateY(-1px);
+}
+
+.header-lang-btn {
+  min-width: 44px;
+  padding: 0 8px;
+  font-weight: 700;
+  font-size: 12.5px;
+}
+
+.header-action-btn--highlight,
 .action-chip--highlight {
   border-color: var(--stamp);
   color: var(--stamp);
-  background: rgba(199, 54, 43, 0.06);
+  background: rgba(199, 54, 43, 0.08);
 }
 
+.header-action-btn--logout,
 .action-chip--logout {
   border-color: var(--line);
   color: var(--c70);
 }
 
+.header-action-btn--logout:hover,
+.action-chip--logout:hover {
+  border-color: var(--stamp);
+  color: var(--stamp);
+  background: rgba(199, 54, 43, 0.08);
+}
+
 /* Weather Badge in Header */
 .weather-badge {
   font-family: var(--data);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
-  padding: 6px 11px;
-  border-radius: 6px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
   border: 1px solid var(--line);
   background: var(--ground2);
   color: var(--cream);
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   user-select: none;
   cursor: default;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .weather-badge:hover {
@@ -371,20 +456,11 @@ body {
 
 .weather-badge__condition {
   color: var(--c70);
-  font-size: 12.5px;
+  font-size: 12px;
 }
 
 .weather-badge--compact .weather-badge__condition {
   display: none;
-}
-
-@media (max-width: 580px) {
-  .weather-badge__condition {
-    display: none;
-  }
-  .weather-badge {
-    padding: 6px 8px;
-  }
 }
 
 /* Hero Live Weather Pill */
@@ -416,33 +492,50 @@ body {
   background: var(--ground2);
 }
 
+/* User Controls */
 .user-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .user-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
-  border-radius: 6px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
   background: var(--c10);
   border: 1px solid var(--line);
+  font-family: var(--data);
   font-size: 13px;
   font-weight: 600;
   color: var(--cream);
   max-width: 140px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.user-badge-avatar {
+  display: inline-flex;
+  align-items: center;
+  color: var(--metro);
+  flex-shrink: 0;
+}
+
+.user-badge-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  transition: all 0.15s ease;
 }
 
 .user-badge:hover {
   background: var(--ground2);
   border-color: var(--c45);
+  transform: translateY(-1px);
 }
 
 .user-badge--active {
@@ -451,58 +544,91 @@ body {
   color: var(--metro);
 }
 
+:root[data-theme="dark"] .user-badge--active {
+  color: #27B97A;
+  border-color: #27B97A;
+  background: rgba(39, 185, 122, 0.14);
+}
+
+/* Auth Buttons */
 .auth-buttons {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .btn-header-login {
   font-family: var(--data);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
-  padding: 6px 14px;
-  border-radius: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
   border: 1px solid var(--line);
   background: transparent;
   color: var(--cream);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .btn-header-login:hover {
   background: var(--c10);
   border-color: var(--c45);
+  transform: translateY(-1px);
 }
 
 .btn-header-register {
   font-family: var(--data);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
-  padding: 6px 14px;
-  border-radius: 6px;
+  height: 34px;
+  padding: 0 15px;
+  border-radius: 8px;
   border: 1px solid var(--metro);
   background: var(--metro);
   color: #ffffff;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.15s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 103, 71, 0.25);
 }
 
 .btn-header-register:hover {
-  opacity: 0.92;
+  opacity: 0.94;
   transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 103, 71, 0.35);
 }
 
+/* Mobile Hamburger Button */
 .mobile-hamburger-btn {
   display: none;
-  background: transparent;
-  border: none;
+  height: 34px;
+  width: 34px;
+  padding: 0;
+  border-radius: 8px;
+  background: var(--ground2);
+  border: 1px solid var(--line);
   color: var(--cream);
-  padding: 6px;
   cursor: pointer;
-  border-radius: 6px;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
 }
 
+.mobile-hamburger-btn:hover,
+.mobile-hamburger-btn.is-active {
+  background: var(--c10);
+  border-color: var(--c45);
+}
+
+/* Mobile Menu Drawer */
 .mobile-menu-drawer {
   display: none;
 }
@@ -511,15 +637,21 @@ body {
   .header-nav {
     display: none;
   }
-  
+
   .auth-buttons {
+    display: none;
+  }
+
+  .user-controls {
+    display: none;
+  }
+
+  .header-divider {
     display: none;
   }
 
   .mobile-hamburger-btn {
     display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
   .mobile-menu-drawer {
@@ -529,27 +661,130 @@ body {
     background: var(--ground2);
     border-bottom: 1px solid var(--line);
     box-shadow: var(--card-shadow-hover);
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .mobile-user-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--c10);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin-bottom: 14px;
+  }
+
+  .mobile-user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(0, 103, 71, 0.12);
+    color: var(--metro);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .mobile-user-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .mobile-user-name {
+    font-family: var(--data);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--cream);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-user-sub {
+    font-family: var(--data);
+    font-size: 12px;
+    color: var(--c70);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .mobile-menu-links {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     margin-bottom: 16px;
   }
 
   .mobile-nav-link {
-    font-size: 15px;
+    font-family: var(--data);
+    font-size: 14.5px;
     font-weight: 600;
     color: var(--cream);
     text-decoration: none;
     padding: 10px 14px;
-    border-radius: 6px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+  }
+
+  .mobile-nav-link:hover {
+    background: var(--c10);
+    border-color: var(--line);
   }
 
   .mobile-nav-link--active {
-    background: rgba(0, 103, 71, 0.08);
+    background: rgba(0, 103, 71, 0.1);
+    border-color: rgba(0, 103, 71, 0.25);
     color: var(--metro);
+    font-weight: 700;
+  }
+
+  :root[data-theme="dark"] .mobile-nav-link--active {
+    background: rgba(39, 185, 122, 0.14);
+    border-color: rgba(39, 185, 122, 0.3);
+    color: #27B97A;
+  }
+
+  .mobile-nav-link--admin {
+    color: var(--metro);
+  }
+
+  .mobile-menu-footer {
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+  }
+
+  .mobile-footer-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .mobile-btn-full {
+    width: 100%;
+    justify-content: center;
+    height: 38px;
+    font-size: 14px;
+  }
+
+  .mobile-auth-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .header-container {
+    padding: 0 14px;
+  }
+
+  .btn-text-responsive {
+    display: none;
   }
 }
 

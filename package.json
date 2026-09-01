@@ -12,6 +12,8 @@
     "start": "node backend/src/server.js",
     "start:backend": "npm --prefix backend start",
     "start:frontend": "npm --prefix frontend start",
+    "db:setup": "node scripts/setup-db.js",
+    "db:supabase": "node scripts/setup-db.js",
     "test": "npm --prefix backend test"
   },
   "dependencies": {

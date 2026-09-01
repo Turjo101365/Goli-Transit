@@ -21,7 +21,7 @@ function MoonIcon() {
 
 // Shows the icon/label for the mode you'd switch TO — same convention as
 // the language toggle chip next to it everywhere this appears.
-export function ThemeToggle() {
+export function ThemeToggle({ className }) {
 	const { theme, toggleTheme } = useTheme();
 	const switchingToLight = theme === 'dark';
 
@@ -29,9 +29,10 @@ export function ThemeToggle() {
 		<button
 			type="button"
 			onClick={toggleTheme}
-			className="chip"
+			className={className || "chip"}
 			aria-label={switchingToLight ? 'Switch to light mode' : 'Switch to dark mode'}
-			style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+			title={switchingToLight ? 'Switch to light mode' : 'Switch to dark mode'}
+			style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
 		>
 			{switchingToLight ? <SunIcon /> : <MoonIcon />}
 		</button>

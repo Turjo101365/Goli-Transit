@@ -61,12 +61,27 @@ function buildRequestUrl(path) {
 }
 
 async function parseResponse(response, auth = true) {
-	let payload;
+	let payload = null;
+	const contentType = response.headers.get('content-type') || '';
 
-	try {
-		payload = await response.json();
-	} catch {
-		payload = null;
+	if (contentType.includes('application/json')) {
+		try {
+			payload = await response.json();
+		} catch {
+			payload = null;
+		}
+	} else {
+		const rawText = await response.text();
+		if (rawText.trim().startsWith('<!DOCTYPE html>') || rawText.includes('<html')) {
+			throw new Error(
+				'Frontend is receiving HTML instead of API data. Please set `VITE_BACKEND_ENDPOINT` in Vercel Settings > Environment Variables to your Render Backend URL (e.g. https://goli-transit-backend.onrender.com) and Redeploy.'
+			);
+		}
+		try {
+			payload = JSON.parse(rawText);
+		} catch {
+			payload = null;
+		}
 	}
 
 	if (!response.ok || (payload && payload.ok === false)) {

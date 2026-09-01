@@ -28,7 +28,7 @@ const allowedOrigins = new Set(
 
 function isAllowedOrigin(origin) {
   if (!origin) {
-    return false;
+    return true;
   }
 
   const normalized = normalizeOrigin(origin);
@@ -41,12 +41,17 @@ function isAllowedOrigin(origin) {
   }
 
   // Allow local dev origins
-  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(normalized)) {
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(normalized)) {
     return true;
   }
 
-  // Allow Render and Vercel cloud preview / production domains
-  if (/^https:\/\/[a-z0-9-]+\.(onrender\.com|vercel\.app)$/i.test(normalized)) {
+  // Allow ANY Vercel production or preview deployment (e.g. *.vercel.app)
+  if (/\.vercel\.app$/i.test(normalized) || /^https?:\/\/[a-zA-Z0-9-._]+vercel\.app/i.test(normalized)) {
+    return true;
+  }
+
+  // Allow ANY Render production or preview deployment (e.g. *.onrender.com)
+  if (/\.onrender\.com$/i.test(normalized) || /^https?:\/\/[a-zA-Z0-9-._]+onrender\.com/i.test(normalized)) {
     return true;
   }
 
@@ -58,17 +63,20 @@ export function corsMiddleware(req, res, next) {
   const requestHeaders = req.headers['access-control-request-headers'];
   const allowOrigin = isAllowedOrigin(origin);
 
-  if (allowOrigin && origin) {
+  if (origin && allowOrigin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else if (!origin) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
   }
 
   res.setHeader(
     'Access-Control-Allow-Headers',
-    requestHeaders || 'Content-Type, Authorization, X-Requested-With'
+    requestHeaders || 'Content-Type, Authorization, X-Requested-With, Accept, Origin, x-request-id'
   );
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Max-Age', '86400');
 
   if (req.method === 'OPTIONS') {
     return res.status(204).end();
@@ -76,4 +84,5 @@ export function corsMiddleware(req, res, next) {
 
   return next();
 }
+
 
