@@ -93,7 +93,20 @@ async function parseResponse(response, auth = true) {
 			}
 		}
 
-		const message = payload?.error?.message || `Request failed with status ${response.status}`;
+		let message = payload?.error?.message || `Request failed with status ${response.status}`;
+		if (payload?.error?.details?.fieldErrors) {
+			const fieldKeys = Object.keys(payload.error.details.fieldErrors);
+			if (fieldKeys.length > 0) {
+				const firstField = fieldKeys[0];
+				const firstMsg = payload.error.details.fieldErrors[firstField]?.[0];
+				if (firstMsg) {
+					message = firstMsg;
+				}
+			}
+		} else if (payload?.error?.details?.formErrors?.length > 0) {
+			message = payload.error.details.formErrors[0];
+		}
+
 		const error = new Error(message);
 		error.status = response.status;
 		error.code = payload?.error?.code || null;

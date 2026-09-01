@@ -89,15 +89,33 @@ function LoginRoute({ onLogin, onGuestLogin, onGoogleLogin }) {
   );
 }
 
-function RegisterRoute({ onRegister }) {
+function RegisterRoute({ onRegister, onGuestLogin, onGoogleLogin }) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   async function handleRegister(payload) {
     await onRegister(payload);
-    navigate('/map', { replace: true });
+    navigate(location.state?.from?.pathname || '/map', { replace: true });
   }
 
-  return <Register onRegister={handleRegister} onSwitchToLogin={() => navigate('/login')} />;
+  async function handleGuestLogin() {
+    await onGuestLogin();
+    navigate(location.state?.from?.pathname || '/map', { replace: true });
+  }
+
+  async function handleGoogleLogin(credential) {
+    await onGoogleLogin(credential);
+    navigate(location.state?.from?.pathname || '/map', { replace: true });
+  }
+
+  return (
+    <Register
+      onRegister={handleRegister}
+      onGuestLogin={handleGuestLogin}
+      onGoogleLogin={handleGoogleLogin}
+      onSwitchToLogin={() => navigate('/login')}
+    />
+  );
 }
 
 function ForgotPasswordRoute({ onForgotPassword }) {
@@ -189,7 +207,16 @@ function AppRoutes({
   return (
     <Routes>
       <Route path="/login" element={<LoginRoute onLogin={onLogin} onGuestLogin={onGuestLogin} onGoogleLogin={onGoogleLogin} />} />
-      <Route path="/register" element={<RegisterRoute onRegister={onRegister} />} />
+      <Route
+        path="/register"
+        element={
+          <RegisterRoute
+            onRegister={onRegister}
+            onGuestLogin={onGuestLogin}
+            onGoogleLogin={onGoogleLogin}
+          />
+        }
+      />
       <Route
         path="/forgot-password"
         element={<ForgotPasswordRoute onForgotPassword={onForgotPassword} />}
