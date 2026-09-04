@@ -33,7 +33,8 @@ const TEXT = {
     guestBusy: 'ঢোকা হচ্ছে…',
     guestNote: 'অ্যাকাউন্ট ছাড়াই ৬ ঘণ্টার জন্য — পরে চাইলে সেভ করা যাবে।',
     googleFailed: 'গুগল দিয়ে সাইন ইন করা যায়নি।',
-    adminNotice: '⚠️ এই পোর্টালটি শুধুমাত্র ঢাকা ট্রানজিট অনুমোদিত অ্যাডমিন ও মডারেটরদের জন্য সংরক্ষিত।'
+    adminNotice: '⚠️ এই পোর্টালটি শুধুমাত্র ঢাকা ট্রানজিট অনুমোদিত অ্যাডমিন ও মডারেটরদের জন্য সংরক্ষিত।',
+    invalidCredentials: 'ভুল ইমেইল বা পাসওয়ার্ড। অনুগ্রহ করে পুনরায় চেষ্টা করুন বা পাসওয়ার্ড রিসেট করুন।'
   },
   en: {
     userTitle: 'Welcome back',
@@ -57,7 +58,8 @@ const TEXT = {
     guestBusy: 'Continuing…',
     guestNote: 'No account, 6-hour session — you can save it as a real account later.',
     googleFailed: 'Unable to sign in with Google.',
-    adminNotice: '⚠️ This portal is strictly restricted to authorized transit system administrators.'
+    adminNotice: '⚠️ This portal is strictly restricted to authorized transit system administrators.',
+    invalidCredentials: 'Invalid email or password. Please try again or reset your password.'
   }
 };
 
@@ -94,7 +96,7 @@ export function Login({
     try {
       await onGoogleLogin(credential);
     } catch (googleError) {
-      setError(googleError.message || t.googleFailed);
+      setError(t.invalidCredentials);
     }
   }
 
@@ -130,8 +132,12 @@ export function Login({
         mode: loginMode
       });
     } catch (authError) {
-      setError(authError.message || 'Unable to log in.');
-      setErrorCode(authError.code || '');
+      const code = authError.code || '';
+      if (code === 'AUTH_ACCOUNT_SUSPENDED') {
+        setError(authError.message);
+      } else {
+        setError(t.invalidCredentials);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -321,34 +327,6 @@ export function Login({
             }}
           >
             <p style={{ margin: 0, fontWeight: 600 }}>⚠️ {error}</p>
-            {errorCode === 'AUTH_ADMIN_PORTAL_REQUIRED' && (
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginMode('admin');
-                  setError('');
-                  setErrorCode('');
-                }}
-                className="action-chip action-chip--highlight"
-                style={{ marginTop: 8, fontSize: 12, padding: '4px 10px', fontWeight: 700 }}
-              >
-                🛡️ {lang === 'bn' ? 'অ্যাডমিন পোর্টাল লগইনে যান' : 'Switch to Admin Portal'}
-              </button>
-            )}
-            {errorCode === 'AUTH_ADMIN_ACCESS_DENIED' && (
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginMode('user');
-                  setError('');
-                  setErrorCode('');
-                }}
-                className="action-chip action-chip--highlight"
-                style={{ marginTop: 8, fontSize: 12, padding: '4px 10px', fontWeight: 700 }}
-              >
-                👤 {lang === 'bn' ? 'সাধারণ যাত্রী লগইনে যান' : 'Switch to Commuter Login'}
-              </button>
-            )}
           </div>
         ) : null}
 
@@ -404,16 +382,18 @@ export function Login({
           </>
         )}
 
-        <p style={{ textAlign: 'center', marginTop: 14 }}>
-          <button
-            type="button"
-            onClick={onSwitchToForgotPassword}
-            className="t-label"
-            style={{ background: 'none', border: 'none', color: 'var(--c45)', cursor: 'pointer' }}
-          >
-            {t.forgot}
-          </button>
-        </p>
+        {!isAdminMode && (
+          <p style={{ textAlign: 'center', marginTop: 14 }}>
+            <button
+              type="button"
+              onClick={onSwitchToForgotPassword}
+              className="t-label"
+              style={{ background: 'none', border: 'none', color: 'var(--c45)', cursor: 'pointer' }}
+            >
+              {t.forgot}
+            </button>
+          </p>
+        )}
       </form>
     </AuthShell>
   );

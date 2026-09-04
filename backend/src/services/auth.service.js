@@ -8,6 +8,7 @@ import { createHttpError } from '../utils/http-error.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import { createAuthToken, verifyAuthToken } from '../utils/token.js';
 import { sendVerificationCodeEmail } from './mail.service.js';
+import { recordUserActivity } from '../utils/userActivity.js';
 
 const resetCodeSessions = new Map();
 const memoryUsersByEmail = new Map();
@@ -278,6 +279,13 @@ export const authService = {
 					throw createHttpError(500, 'AUTH_REGISTER_FAILED', 'Unable to create account right now.');
 				}
 
+				recordUserActivity({
+					userId: user.id,
+					type: 'USER_REGISTER',
+					title: 'New commuter account registered',
+					details: { email: user.email, name: user.name }
+				}).catch(() => {});
+
 				return createSessionResponse(user);
 			} catch (err) {
 				if (
@@ -304,18 +312,25 @@ export const authService = {
 			passwordHash: hashPassword(payload.password)
 		});
 
+		recordUserActivity({
+			userId: user.id,
+			type: 'USER_REGISTER',
+			title: 'New commuter account registered (in-memory)',
+			details: { email: user.email, name: user.name }
+		}).catch(() => {});
+
 		return createSessionResponse(user);
 	},
 
 	async login(payload) {
 		const email = normalizeEmail(payload.email);
-		const mode = payload.mode || null;
+		const mode = payload.mode === 'admin' ? 'admin' : 'user';
 		const dbAvailable = await hasLiveDatabase();
 
 		if (dbAvailable) {
 			const user = await userRepository.findByEmail(email);
 			if (!user || !verifyPassword(payload.password, user.passwordHash)) {
-				throw createHttpError(401, 'AUTH_INVALID_CREDENTIALS', 'Incorrect email or password.');
+				throw createHttpError(401, 'AUTH_INVALID_CREDENTIALS', 'Invalid credentials. Please try again or reset your password.');
 			}
 
 			if (user.status === 'banned' || user.status === 'suspended') {
@@ -325,20 +340,28 @@ export const authService = {
 			const isAdmin = user.role === 'admin' || user.role === 'moderator';
 
 			if (mode === 'admin' && !isAdmin) {
-				throw createHttpError(403, 'AUTH_ADMIN_ACCESS_DENIED', 'Access denied. The Admin Portal is strictly restricted to system administrators.');
+				throw createHttpError(401, 'AUTH_INVALID_CREDENTIALS', 'Invalid credentials. Please try again or reset your password.');
 			}
 
 			if (mode === 'user' && isAdmin) {
-				throw createHttpError(403, 'AUTH_ADMIN_PORTAL_REQUIRED', 'Admin accounts must sign in through the Admin Portal (🛡️ Admin Sign In).');
+				throw createHttpError(401, 'AUTH_INVALID_CREDENTIALS', 'Invalid credentials. Please try again or reset your password.');
 			}
 
 			userRepository.updateLastLogin(user.id).catch(() => {});
+
+			recordUserActivity({
+				userId: user.id,
+				type: 'USER_LOGIN',
+				title: isAdmin ? 'Admin signed in to admin portal' : 'Commuter logged in with email',
+				details: { email: user.email, mode, role: user.role }
+			}).catch(() => {});
+
 			return createSessionResponse(user);
 		}
 
 		const memoryUser = findMemoryUserByEmail(email);
 		if (!memoryUser || !verifyPassword(payload.password, memoryUser.passwordHash)) {
-			throw createHttpError(401, 'AUTH_INVALID_CREDENTIALS', 'Incorrect email or password.');
+			throw createHttpError(401, 'AUTH_INVALID_CREDENTIALS', 'Invalid credentials. Please try again or reset your password.');
 		}
 
 		if (memoryUser.status === 'banned' || memoryUser.status === 'suspended') {
@@ -348,12 +371,19 @@ export const authService = {
 		const isMemAdmin = memoryUser.role === 'admin' || memoryUser.role === 'moderator';
 
 		if (mode === 'admin' && !isMemAdmin) {
-			throw createHttpError(403, 'AUTH_ADMIN_ACCESS_DENIED', 'Access denied. The Admin Portal is strictly restricted to system administrators.');
+			throw createHttpError(401, 'AUTH_INVALID_CREDENTIALS', 'Invalid credentials. Please try again or reset your password.');
 		}
 
 		if (mode === 'user' && isMemAdmin) {
-			throw createHttpError(403, 'AUTH_ADMIN_PORTAL_REQUIRED', 'Admin accounts must sign in through the Admin Portal (🛡️ Admin Sign In).');
+			throw createHttpError(401, 'AUTH_INVALID_CREDENTIALS', 'Invalid credentials. Please try again or reset your password.');
 		}
+
+		recordUserActivity({
+			userId: memoryUser.id,
+			type: 'USER_LOGIN',
+			title: isMemAdmin ? 'Admin signed in (in-memory)' : 'Commuter logged in (in-memory)',
+			details: { email: memoryUser.email, mode, role: memoryUser.role }
+		}).catch(() => {});
 
 		return createSessionResponse(memoryUser);
 	},
@@ -377,11 +407,27 @@ export const authService = {
 					...dbUser,
 					isGuest: true
 				};
+
+				recordUserActivity({
+					userId: dbUser.id,
+					type: 'USER_GUEST_LOGIN',
+					title: 'Guest temporary session started',
+					details: { email: dbUser.email }
+				}).catch(() => {});
+
 				return createSessionResponse(guestUser, { ttlHours: GUEST_SESSION_TTL_HOURS });
 			}
 		}
 
 		const user = createGuestUser();
+
+		recordUserActivity({
+			userId: user.id,
+			type: 'USER_GUEST_LOGIN',
+			title: 'Guest temporary session started',
+			details: { email: user.email }
+		}).catch(() => {});
+
 		return createSessionResponse(user, { ttlHours: GUEST_SESSION_TTL_HOURS });
 	},
 
@@ -396,6 +442,18 @@ export const authService = {
 		if (dbAvailable) {
 			const existingUser = await userRepository.findByEmail(email);
 			if (existingUser) {
+				const isAdmin = existingUser.role === 'admin' || existingUser.role === 'moderator';
+				if (isAdmin) {
+					throw createHttpError(401, 'AUTH_INVALID_CREDENTIALS', 'Invalid credentials. Please try again or reset your password.');
+				}
+
+				recordUserActivity({
+					userId: existingUser.id,
+					type: 'USER_GOOGLE_LOGIN',
+					title: 'Commuter signed in with Google',
+					details: { email: existingUser.email }
+				}).catch(() => {});
+
 				return createSessionResponse(existingUser);
 			}
 
@@ -404,15 +462,42 @@ export const authService = {
 				throw createHttpError(500, 'AUTH_GOOGLE_LOGIN_FAILED', 'Unable to sign in with Google right now.');
 			}
 
+			recordUserActivity({
+				userId: user.id,
+				type: 'USER_REGISTER',
+				title: 'New commuter registered via Google',
+				details: { email: user.email, name: user.name }
+			}).catch(() => {});
+
 			return createSessionResponse(user);
 		}
 
 		const existingMemoryUser = findMemoryUserByEmail(email);
 		if (existingMemoryUser) {
+			const isMemAdmin = existingMemoryUser.role === 'admin' || existingMemoryUser.role === 'moderator';
+			if (isMemAdmin) {
+				throw createHttpError(401, 'AUTH_INVALID_CREDENTIALS', 'Invalid credentials. Please try again or reset your password.');
+			}
+
+			recordUserActivity({
+				userId: existingMemoryUser.id,
+				type: 'USER_GOOGLE_LOGIN',
+				title: 'Commuter signed in with Google (in-memory)',
+				details: { email: existingMemoryUser.email }
+			}).catch(() => {});
+
 			return createSessionResponse(existingMemoryUser);
 		}
 
 		const user = createMemoryUser({ name, email, passwordHash: null });
+
+		recordUserActivity({
+			userId: user.id,
+			type: 'USER_REGISTER',
+			title: 'New commuter registered via Google (in-memory)',
+			details: { email: user.email, name: user.name }
+		}).catch(() => {});
+
 		return createSessionResponse(user);
 	},
 
@@ -636,6 +721,13 @@ export const authService = {
 				throw createHttpError(404, 'AUTH_USER_NOT_FOUND', 'User account could not be found.');
 			}
 
+			recordUserActivity({
+				userId: updatedUser.id,
+				type: 'PROFILE_UPDATED',
+				title: 'Profile information updated',
+				details: { name: updatedUser.name, email: updatedUser.email, phone: updatedUser.phone }
+			}).catch(() => {});
+
 			return sanitizeUser(updatedUser);
 		}
 
@@ -660,6 +752,14 @@ export const authService = {
 		memoryUser.avatarUrl = avatarUrl;
 		memoryUser.bio = bio;
 		memoryUser.updatedAt = new Date();
+
+		recordUserActivity({
+			userId: memoryUser.id,
+			type: 'PROFILE_UPDATED',
+			title: 'Profile information updated (in-memory)',
+			details: { name: memoryUser.name, email: memoryUser.email, phone: memoryUser.phone }
+		}).catch(() => {});
+
 		return sanitizeUser(memoryUser);
 	},
 
@@ -680,6 +780,14 @@ export const authService = {
 			}
 
 			await userRepository.updatePassword(userId, hashPassword(newPassword));
+
+			recordUserActivity({
+				userId: user.id,
+				type: 'PASSWORD_CHANGED',
+				title: 'Account password changed',
+				details: { email: user.email }
+			}).catch(() => {});
+
 			return { message: 'Password updated successfully' };
 		}
 
@@ -696,6 +804,14 @@ export const authService = {
 
 		memoryUser.passwordHash = hashPassword(newPassword);
 		memoryUser.updatedAt = new Date();
+
+		recordUserActivity({
+			userId: memoryUser.id,
+			type: 'PASSWORD_CHANGED',
+			title: 'Account password changed (in-memory)',
+			details: { email: memoryUser.email }
+		}).catch(() => {});
+
 		return { message: 'Password updated successfully' };
 	},
 

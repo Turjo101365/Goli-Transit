@@ -78,16 +78,6 @@ export function Header({ authUser, onLogout }) {
                 {lang === 'en' ? item.en : item.bn}
               </NavLink>
             ))}
-            {(authUser?.role === 'admin' || authUser?.role === 'moderator') && (
-              <NavLink
-                to="/admin"
-                className={({ isActive }) =>
-                  `header-nav-link header-nav-link--admin ${isActive ? 'header-nav-link--active' : ''}`
-                }
-              >
-                <span className="admin-badge-shield">🛡️</span> {lang === 'en' ? 'Admin' : 'অ্যাডমিন'}
-              </NavLink>
-            )}
           </nav>
         ) : null}
 
@@ -114,10 +104,10 @@ export function Header({ authUser, onLogout }) {
           {authUser ? (
             <div className="user-controls">
               <NavLink
-                to="/profile"
+                to={(authUser?.role === 'admin' || authUser?.role === 'moderator') ? '/admin' : '/profile'}
                 className={({ isActive }) => `user-badge ${isActive ? 'user-badge--active' : ''}`}
-                title={authUser.email || authUser.name || 'Profile'}
-                aria-label="View Profile"
+                title={authUser.email || authUser.name || 'Account'}
+                aria-label="Account"
               >
                 <span className="user-badge-avatar">
                   {renderUserAvatar(authUser?.avatarUrl, 15)}
@@ -153,14 +143,6 @@ export function Header({ authUser, onLogout }) {
             </div>
           ) : !isAuthPage ? (
             <div className="auth-buttons">
-              <button
-                type="button"
-                onClick={() => navigate('/admin/login')}
-                className="btn-header-admin"
-                title={lang === 'en' ? 'Admin Portal Sign In' : 'অ্যাডমিন পোর্টাল লগইন'}
-              >
-                <span className="admin-badge-shield">🛡️</span> {lang === 'en' ? 'Admin' : 'অ্যাডমিন'}
-              </button>
               <button
                 type="button"
                 onClick={() => navigate('/login')}
@@ -253,17 +235,6 @@ export function Header({ authUser, onLogout }) {
                 >
                   {lang === 'en' ? 'Profile' : 'প্রোফাইল'}
                 </NavLink>
-                {(authUser?.role === 'admin' || authUser?.role === 'moderator') && (
-                  <NavLink
-                    to="/admin"
-                    onClick={closeMobileMenu}
-                    className={({ isActive }) =>
-                      `mobile-nav-link mobile-nav-link--admin ${isActive ? 'mobile-nav-link--active' : ''}`
-                    }
-                  >
-                    🛡️ {lang === 'en' ? 'Admin Panel' : 'অ্যাডমিন প্যানেল'}
-                  </NavLink>
-                )}
               </>
             ) : null}
           </div>
@@ -296,17 +267,6 @@ export function Header({ authUser, onLogout }) {
               </div>
             ) : (
               <div className="mobile-auth-grid">
-                <button
-                  type="button"
-                  onClick={() => {
-                    closeMobileMenu();
-                    navigate('/admin/login');
-                  }}
-                  className="btn-header-admin mobile-btn-full"
-                  style={{ gridColumn: '1 / -1' }}
-                >
-                  🛡️ {lang === 'en' ? 'Admin Portal Sign In' : 'অ্যাডমিন পোর্টাল লগইন'}
-                </button>
                 <button
                   type="button"
                   onClick={() => {

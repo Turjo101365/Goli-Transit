@@ -115,7 +115,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
-  const [activeTab, setActiveTab] = useState('routes');
+  const [activeTab, setActiveTab] = useState(() => ((user?.role === 'admin' || user?.role === 'moderator') ? 'settings' : 'routes'));
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -196,6 +196,9 @@ export function Profile({ user, onUpdateUser, onLogout }) {
         if (!isMounted) return;
         setProfileData(data);
         const userData = data?.user || user;
+        if (userData?.role === 'admin' || userData?.role === 'moderator') {
+          setActiveTab('settings');
+        }
         setEditForm({
           name: userData?.name || '',
           email: userData?.email || '',
@@ -930,96 +933,100 @@ export function Profile({ user, onUpdateUser, onLogout }) {
           </div>
         )}
 
-        {/* 3. COMMUTER TRAVEL METRICS GRID */}
-        <div className="profile-stats-grid">
-          <div className="profile-stat-box profile-stat-box--metro">
-            <div className="profile-stat-header">
-              <span className="profile-stat-label">{lang === 'bn' ? 'মোট ট্রিপ' : 'Total Trips'}</span>
-              <div className="profile-stat-icon-wrap" style={{ color: 'var(--metro)' }}>🚇</div>
+        {/* 3. COMMUTER TRAVEL METRICS GRID (Only for commuters/non-admin) */}
+        {!isAdmin && (
+          <div className="profile-stats-grid">
+            <div className="profile-stat-box profile-stat-box--metro">
+              <div className="profile-stat-header">
+                <span className="profile-stat-label">{lang === 'bn' ? 'মোট ট্রিপ' : 'Total Trips'}</span>
+                <div className="profile-stat-icon-wrap" style={{ color: 'var(--metro)' }}>🚇</div>
+              </div>
+              <div className="profile-stat-num">{num(stats.totalTrips || trips.length || 0, lang)}</div>
+              <span className="profile-stat-subtext">{lang === 'bn' ? 'সম্পন্ন জার্নি' : 'Completed Journeys'}</span>
             </div>
-            <div className="profile-stat-num">{num(stats.totalTrips || trips.length || 0, lang)}</div>
-            <span className="profile-stat-subtext">{lang === 'bn' ? 'সম্পন্ন জার্নি' : 'Completed Journeys'}</span>
+
+            <div className="profile-stat-box profile-stat-box--distance">
+              <div className="profile-stat-header">
+                <span className="profile-stat-label">{lang === 'bn' ? 'মোট দূরত্ব' : 'Distance'}</span>
+                <div className="profile-stat-icon-wrap" style={{ color: 'var(--mode-rickshaw)' }}>📏</div>
+              </div>
+              <div className="profile-stat-num">
+                {num(stats.totalDistance || 0, lang)} <span style={{ fontSize: 13, color: 'var(--c70)' }}>{lang === 'bn' ? 'কিমি' : 'km'}</span>
+              </div>
+              <span className="profile-stat-subtext">{lang === 'bn' ? 'অতিক্রম করা পথ' : 'Distance in Transit'}</span>
+            </div>
+
+            <div className="profile-stat-box profile-stat-box--time">
+              <div className="profile-stat-header">
+                <span className="profile-stat-label">{lang === 'bn' ? 'যাতায়াত সময়' : 'Transit Time'}</span>
+                <div className="profile-stat-icon-wrap" style={{ color: 'var(--stamp)' }}>⏱️</div>
+              </div>
+              <div className="profile-stat-num">
+                {num(stats.totalMinutes || 0, lang)} <span style={{ fontSize: 13, color: 'var(--c70)' }}>{lang === 'bn' ? 'মিনিট' : 'mins'}</span>
+              </div>
+              <span className="profile-stat-subtext">{lang === 'bn' ? 'রাস্তায় অতিবাহিত' : 'Time Saved & Traveled'}</span>
+            </div>
+
+            <div className="profile-stat-box profile-stat-box--saved">
+              <div className="profile-stat-header">
+                <span className="profile-stat-label">{lang === 'bn' ? 'সংরক্ষিত আইটেম' : 'Saved Items'}</span>
+                <div className="profile-stat-icon-wrap" style={{ color: 'var(--mode-bike)' }}>🔖</div>
+              </div>
+              <div className="profile-stat-num">
+                {num(savedRoutes.length + favoriteStops.length, lang)}
+              </div>
+              <span className="profile-stat-subtext">{lang === 'bn' ? 'রুট ও পিন করা স্টপ' : 'Routes & Pinned Stops'}</span>
+            </div>
           </div>
+        )}
 
-          <div className="profile-stat-box profile-stat-box--distance">
-            <div className="profile-stat-header">
-              <span className="profile-stat-label">{lang === 'bn' ? 'মোট দূরত্ব' : 'Distance'}</span>
-              <div className="profile-stat-icon-wrap" style={{ color: 'var(--mode-rickshaw)' }}>📏</div>
-            </div>
-            <div className="profile-stat-num">
-              {num(stats.totalDistance || 0, lang)} <span style={{ fontSize: 13, color: 'var(--c70)' }}>{lang === 'bn' ? 'কিমি' : 'km'}</span>
-            </div>
-            <span className="profile-stat-subtext">{lang === 'bn' ? 'অতিক্রম করা পথ' : 'Distance in Transit'}</span>
+        {/* 4. NAVIGATION TABS (Only for commuters/non-admin) */}
+        {!isAdmin && (
+          <div className="profile-tabs-nav" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'routes'}
+              className={`profile-tab-btn ${activeTab === 'routes' ? 'profile-tab-btn--active' : ''}`}
+              onClick={() => setActiveTab('routes')}
+            >
+              <span>🛣️ {lang === 'bn' ? 'সংরক্ষিত রুট' : 'Saved Routes'}</span>
+              <span className="profile-tab-badge">{num(savedRoutes.length, lang)}</span>
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'stops'}
+              className={`profile-tab-btn ${activeTab === 'stops' ? 'profile-tab-btn--active' : ''}`}
+              onClick={() => setActiveTab('stops')}
+            >
+              <span>📍 {lang === 'bn' ? 'পছন্দের স্টেশন' : 'Favorite Stops'}</span>
+              <span className="profile-tab-badge">{num(favoriteStops.length, lang)}</span>
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'trips'}
+              className={`profile-tab-btn ${activeTab === 'trips' ? 'profile-tab-btn--active' : ''}`}
+              onClick={() => setActiveTab('trips')}
+            >
+              <span>🕒 {lang === 'bn' ? 'ভ্রমণ ইতিহাস' : 'Trip History'}</span>
+              <span className="profile-tab-badge">{num(trips.length, lang)}</span>
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'settings'}
+              className={`profile-tab-btn ${activeTab === 'settings' ? 'profile-tab-btn--active' : ''}`}
+              onClick={() => setActiveTab('settings')}
+            >
+              <span>⚙️ {lang === 'bn' ? 'সেটিংস ও নিরাপত্তা' : 'Settings & Security'}</span>
+            </button>
           </div>
-
-          <div className="profile-stat-box profile-stat-box--time">
-            <div className="profile-stat-header">
-              <span className="profile-stat-label">{lang === 'bn' ? 'যাতায়াত সময়' : 'Transit Time'}</span>
-              <div className="profile-stat-icon-wrap" style={{ color: 'var(--stamp)' }}>⏱️</div>
-            </div>
-            <div className="profile-stat-num">
-              {num(stats.totalMinutes || 0, lang)} <span style={{ fontSize: 13, color: 'var(--c70)' }}>{lang === 'bn' ? 'মিনিট' : 'mins'}</span>
-            </div>
-            <span className="profile-stat-subtext">{lang === 'bn' ? 'রাস্তায় অতিবাহিত' : 'Time Saved & Traveled'}</span>
-          </div>
-
-          <div className="profile-stat-box profile-stat-box--saved">
-            <div className="profile-stat-header">
-              <span className="profile-stat-label">{lang === 'bn' ? 'সংরক্ষিত আইটেম' : 'Saved Items'}</span>
-              <div className="profile-stat-icon-wrap" style={{ color: 'var(--mode-bike)' }}>🔖</div>
-            </div>
-            <div className="profile-stat-num">
-              {num(savedRoutes.length + favoriteStops.length, lang)}
-            </div>
-            <span className="profile-stat-subtext">{lang === 'bn' ? 'রুট ও পিন করা স্টপ' : 'Routes & Pinned Stops'}</span>
-          </div>
-        </div>
-
-        {/* 4. NAVIGATION TABS */}
-        <div className="profile-tabs-nav" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'routes'}
-            className={`profile-tab-btn ${activeTab === 'routes' ? 'profile-tab-btn--active' : ''}`}
-            onClick={() => setActiveTab('routes')}
-          >
-            <span>🛣️ {lang === 'bn' ? 'সংরক্ষিত রুট' : 'Saved Routes'}</span>
-            <span className="profile-tab-badge">{num(savedRoutes.length, lang)}</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'stops'}
-            className={`profile-tab-btn ${activeTab === 'stops' ? 'profile-tab-btn--active' : ''}`}
-            onClick={() => setActiveTab('stops')}
-          >
-            <span>📍 {lang === 'bn' ? 'পছন্দের স্টেশন' : 'Favorite Stops'}</span>
-            <span className="profile-tab-badge">{num(favoriteStops.length, lang)}</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'trips'}
-            className={`profile-tab-btn ${activeTab === 'trips' ? 'profile-tab-btn--active' : ''}`}
-            onClick={() => setActiveTab('trips')}
-          >
-            <span>🕒 {lang === 'bn' ? 'ভ্রমণ ইতিহাস' : 'Trip History'}</span>
-            <span className="profile-tab-badge">{num(trips.length, lang)}</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'settings'}
-            className={`profile-tab-btn ${activeTab === 'settings' ? 'profile-tab-btn--active' : ''}`}
-            onClick={() => setActiveTab('settings')}
-          >
-            <span>⚙️ {lang === 'bn' ? 'সেটিংস ও নিরাপত্তা' : 'Settings & Security'}</span>
-          </button>
-        </div>
+        )}
 
         {/* 5. TAB PANELS */}
 
