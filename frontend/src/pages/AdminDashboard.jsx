@@ -511,62 +511,150 @@ export function AdminDashboard({ authUser }) {
       )}
 
       <div className="profile-container" style={{ maxWidth: 1240 }}>
-        {/* Header Banner */}
-        <div className="profile-header-card" style={{ borderLeft: '4px solid var(--metro)' }}>
-          <div className="profile-header-main">
-            <div className="profile-avatar" style={{ background: 'var(--ground)', border: '2px solid var(--metro)', color: 'var(--metro)', fontSize: 26 }}>
-              🛡️
+        {/* Admin Command Center Hero Card */}
+        <div className="profile-hero-card" style={{ borderLeft: '5px solid var(--metro)', background: 'linear-gradient(135deg, var(--ground2) 0%, rgba(0, 103, 71, 0.06) 100%)' }}>
+          <div className="profile-hero-left">
+            <div className="profile-avatar-wrap">
+              <div
+                className="profile-avatar"
+                style={{
+                  fontSize: 28,
+                  background: 'linear-gradient(135deg, #006747 0%, #004d34 100%)',
+                  color: '#FFFFFF',
+                  border: '3px solid var(--ground)',
+                  boxShadow: '0 0 0 2px var(--metro)'
+                }}
+              >
+                🛡️
+              </div>
+              <span className="profile-avatar-online-dot" title="Live System Active" />
             </div>
-            <div className="profile-user-info">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <h1 className="profile-user-name" style={{ fontSize: 24 }}>
+
+            <div className="profile-hero-info">
+              <div className="profile-hero-name-row">
+                <h1 className="profile-hero-name" style={{ fontSize: 23, letterSpacing: '-0.01em' }}>
                   {lang === 'bn' ? 'অ্যাডমিন কমান্ড সেন্টার' : 'Transit Admin Command Center'}
                 </h1>
-                <span className="profile-user-badge-guest" style={{ background: 'rgba(39, 185, 122, 0.15)', color: 'var(--metro)', borderColor: 'var(--metro)', textTransform: 'uppercase', letterSpacing: 1 }}>
-                  {authUser?.role === 'admin' ? 'SUPER ADMIN' : 'MODERATOR'}
+                <span className="profile-tag profile-tag--verified" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                  🛡️ {authUser?.role === 'admin' ? 'SUPER ADMIN' : 'MODERATOR'}
+                </span>
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: '2px 8px',
+                  borderRadius: 12,
+                  background: 'rgba(16, 185, 129, 0.12)',
+                  color: '#10B981',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+                  {lang === 'bn' ? 'লাইভ সিস্টেম সচল' : 'Live System Active'}
                 </span>
               </div>
-              <p className="profile-user-email" style={{ margin: '4px 0 0', color: 'var(--c70)' }}>
+
+              <p className="profile-hero-email" style={{ fontSize: 13.5, color: 'var(--c70)', marginTop: 3 }}>
                 {lang === 'bn' ? 'সুপার অ্যাডমিন অধিবেশন • সম্পূর্ণ ডেটাবেজ ও ট্রানজিট নেটওয়ার্ক নিয়ন্ত্রণ' : 'Super Admin Session • Full database and transit network control'}
               </p>
+
+              <div className="profile-meta-row" style={{ marginTop: 6 }}>
+                <span className="profile-id-chip" title="Active Admin Account">
+                  <span>👤</span>
+                  <span>{authUser?.name || 'Administrator'} ({authUser?.email || 'admin@golitransit.com'})</span>
+                </span>
+                <span style={{ color: 'var(--c45)', fontSize: 12 }}>•</span>
+                <span style={{ color: 'var(--c70)', fontSize: 12.5, fontFamily: 'var(--data)' }}>
+                  {lang === 'bn' ? `মোট রেজিস্টার্ড ইউজার: ${num(userTotal, lang)}` : `Total Users: ${userTotal}`}
+                </span>
+              </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 14, flexWrap: 'wrap' }}>
+          <div className="profile-hero-actions">
             <button
               type="button"
               className="action-chip"
               onClick={() => loadDashboardData(true)}
               disabled={refreshing}
-              style={{ fontWeight: 600 }}
+              style={{ fontWeight: 600, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 6 }}
             >
-              {refreshing ? '⟳ Refreshing...' : (lang === 'bn' ? '🔄 রিফ্রেশ' : '🔄 Refresh')}
+              <span>{refreshing ? '⟳' : '🔄'}</span>
+              <span>{refreshing ? (lang === 'bn' ? 'রিফ্রেশ হচ্ছে...' : 'Refreshing...') : (lang === 'bn' ? 'রিফ্রেশ' : 'Refresh Data')}</span>
             </button>
             <button
               type="button"
-              className="action-chip"
+              className="hero-btn-primary"
               onClick={() => setShowInviteModal(true)}
-              style={{ fontWeight: 700, borderColor: 'var(--metro)', color: 'var(--metro)', background: 'rgba(0, 103, 71, 0.08)' }}
+              style={{ padding: '8px 16px', fontSize: 13.5, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
             >
-              {lang === 'bn' ? '✉️ অ্যাডমিন ইনভাইট' : '✉️ Invite Admin'}
+              <span>✉️</span>
+              <span>{lang === 'bn' ? 'অ্যাডমিন ইনভাইট' : 'Invite Admin'}</span>
             </button>
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="profile-tabs-nav" style={{ display: 'flex', overflowX: 'auto', gap: 8, paddingBottom: 6 }}>
-          {TAB_ITEMS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              className={`profile-tab-btn ${activeTab === tab.id ? 'profile-tab-btn--active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
-              style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}
-            >
-              <span>{tab.icon}</span>
-              <span>{lang === 'bn' ? tab.bn : tab.en}</span>
-            </button>
-          ))}
+        {/* Modern Segmented Navigation Tabs */}
+        <div style={{
+          display: 'flex',
+          gap: 8,
+          background: 'var(--ground2)',
+          padding: '6px',
+          borderRadius: 12,
+          border: '1px solid var(--line)',
+          overflowX: 'auto',
+          boxShadow: 'var(--card-shadow)'
+        }}>
+          {TAB_ITEMS.map((tab) => {
+            const isActive = activeTab === tab.id;
+            let countBadge = null;
+            if (tab.id === 'users') countBadge = userTotal;
+
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  flex: '1 1 auto',
+                  minWidth: 160,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  padding: '10px 18px',
+                  borderRadius: 8,
+                  border: isActive ? '1px solid var(--metro)' : '1px solid transparent',
+                  background: isActive ? 'linear-gradient(135deg, rgba(0, 103, 71, 0.15) 0%, rgba(0, 103, 71, 0.08) 100%)' : 'transparent',
+                  color: isActive ? 'var(--metro)' : 'var(--c70)',
+                  fontFamily: 'var(--data)',
+                  fontSize: 14,
+                  fontWeight: isActive ? 700 : 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.18s ease',
+                  whiteSpace: 'nowrap',
+                  boxShadow: isActive ? '0 2px 8px rgba(0, 103, 71, 0.12)' : 'none'
+                }}
+              >
+                <span style={{ fontSize: 16 }}>{tab.icon}</span>
+                <span>{lang === 'bn' ? tab.bn : tab.en}</span>
+                {countBadge !== null && countBadge > 0 && (
+                  <span style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: '1px 7px',
+                    borderRadius: 10,
+                    background: isActive ? 'var(--metro)' : 'var(--ground)',
+                    color: isActive ? '#FFFFFF' : 'var(--c70)',
+                    border: '1px solid var(--line)'
+                  }}>
+                    {num(countBadge, lang)}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {loading ? (
