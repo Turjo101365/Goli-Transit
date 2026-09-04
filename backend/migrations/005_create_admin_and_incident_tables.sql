@@ -137,9 +137,11 @@ VALUES
     'cng_base_taka', 50,
     'cng_per_km', 15.0,
     'rickshaw_base_taka', 25,
-    'rickshaw_per_km', 20.0
+    'rickshaw_per_km', 20.0,
+    'metro_base_taka', 20,
+    'metro_per_km', 5.0
   ),
-  'BRTA & local transit fare calculation parameters'
+  'Transit fare calculation parameters (Bus, CNG, Rickshaw, Metro)'
 ),
 (
   'alert_thresholds',

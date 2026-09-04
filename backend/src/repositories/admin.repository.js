@@ -1,4 +1,5 @@
 import { dbQuery } from '../config/db.js';
+import { invalidateFareRulesCache } from '../services/fare.service.js';
 
 function formatMySqlDateTime(val) {
   if (!val) return null;
@@ -1083,6 +1084,9 @@ export const adminRepository = {
         updatedBy: updatedBy || null
       }
     );
+    if (keyName === 'fare_rules') {
+      invalidateFareRulesCache();
+    }
     return this.getSettings();
   },
 

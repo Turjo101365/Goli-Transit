@@ -4,6 +4,13 @@ import { fetchOsrmRoute } from './osrm.client.js';
 import { distance } from '../utils/distance.js';
 import { config } from '../constants/config.js';
 import { rankRoutesByPreference, PREFERENCES } from '../core/algorithms/preferenceScorer.js';
+import {
+	getFareRules,
+	calculateBusFare,
+	calculateCngFare,
+	calculateRickshawFare,
+	calculateMetroFare
+} from './fare.service.js';
 
 const {
 	WALKING_SPEED_KMH,
@@ -11,8 +18,7 @@ const {
 	METRO_ACCESS_RADIUS_KM,
 	MODE_SPEED_KMH,
 	MODE_WAIT_MINUTES,
-	P90_RATIO,
-	FARE
+	P90_RATIO
 } = config.journey;
 
 const ACCESS_LABEL = {
@@ -32,18 +38,6 @@ const DIRECT_LABEL = {
 function accessMinutes(km, mode) {
 	const speed = mode === 'rickshaw' ? MODE_SPEED_KMH.rickshaw : mode === 'bus' ? MODE_SPEED_KMH.bus : WALKING_SPEED_KMH;
 	return (km / speed) * 60;
-}
-
-function busFare(distanceKm) {
-	return Math.max(FARE.BUS_MIN_FARE_TAKA, Math.round(distanceKm * FARE.BUS_PER_KM_TAKA));
-}
-
-function cngFare(distanceKm) {
-	if (distanceKm <= FARE.CNG_BASE_KM) {
-		return FARE.CNG_BASE_TAKA;
-	}
-
-	return Math.round(FARE.CNG_BASE_TAKA + (distanceKm - FARE.CNG_BASE_KM) * FARE.CNG_PER_KM_TAKA);
 }
 
 function withP90(mode, p50) {
@@ -69,7 +63,7 @@ function sumPathKm(points) {
 }
 
 // Builds a Metro-based multi-modal option with specified access and egress modes
-async function buildMetroVariant(graph, origin, destination, fromMode, toMode, variantId) {
+async function buildMetroVariant(graph, origin, destination, fromMode, toMode, variantId, fareRules) {
 	const fromStation = nearestMetroStation(graph, origin, distance);
 	const toStation = nearestMetroStation(graph, destination, distance);
 
@@ -104,17 +98,21 @@ async function buildMetroVariant(graph, origin, destination, fromMode, toMode, v
 		}
 	}
 
-	let accessFare = 0;
+	const metroDistanceKm = sumPathKm(metroPts);
+	const metroLegFare = calculateMetroFare(metroDistanceKm, path.fareTaka, fareRules);
+
+	let fromAccessFare = 0;
 	if (fromMode === 'bus') {
-		accessFare += busFare(fromStation.km);
+		fromAccessFare = calculateBusFare(fromStation.km, fareRules);
 	} else if (fromMode === 'rickshaw') {
-		accessFare = null; // unmetered rickshaw fare varies
+		fromAccessFare = calculateRickshawFare(fromStation.km, fareRules);
 	}
 
+	let toAccessFare = 0;
 	if (toMode === 'bus') {
-		if (accessFare !== null) accessFare += busFare(toStation.km);
+		toAccessFare = calculateBusFare(toStation.km, fareRules);
 	} else if (toMode === 'rickshaw') {
-		accessFare = null;
+		toAccessFare = calculateRickshawFare(toStation.km, fareRules);
 	}
 
 	const [fromAccessOsrm, toAccessOsrm] = await Promise.all([
@@ -124,11 +122,11 @@ async function buildMetroVariant(graph, origin, destination, fromMode, toMode, v
 
 	const totalDistanceKm = round1(
 		(fromAccessOsrm?.distanceKm ?? fromStation.km) +
-		sumPathKm(metroPts) +
+		metroDistanceKm +
 		(toAccessOsrm?.distanceKm ?? toStation.km)
 	);
 
-	const totalFare = accessFare === null ? null : path.fareTaka + accessFare;
+	const totalFare = fromAccessFare + metroLegFare + toAccessFare;
 
 	return {
 		id: variantId,
@@ -140,21 +138,21 @@ async function buildMetroVariant(graph, origin, destination, fromMode, toMode, v
 			{
 				mode: fromMode,
 				min: Math.round(fromAccessMin),
-				fare: fromMode === 'bus' ? busFare(fromStation.km) : fromMode === 'walk' ? 0 : null,
+				fare: fromAccessFare,
 				label: ACCESS_LABEL[fromMode] || { bn: `${fromMode}-এ স্টেশনে`, en: `${fromMode} to station` },
 				pts: fromAccessOsrm?.geometry || [[origin.lat, origin.lng], [fromStation.coords.lat, fromStation.coords.lng]]
 			},
 			{
 				mode: 'metro',
 				min: Math.round(rideMin),
-				fare: path.fareTaka,
+				fare: metroLegFare,
 				label: { bn: 'মেট্রোতে গন্তব্যের স্টেশনে', en: 'Metro to destination station' },
 				pts: metroPts
 			},
 			{
 				mode: toMode,
 				min: Math.round(toAccessMin),
-				fare: toMode === 'bus' ? busFare(toStation.km) : toMode === 'walk' ? 0 : null,
+				fare: toAccessFare,
 				label: ACCESS_LABEL[toMode] || { bn: `${toMode}-এ গন্তব্যে`, en: `${toMode} to destination` },
 				pts: toAccessOsrm?.geometry || [[toStation.coords.lat, toStation.coords.lng], [destination.lat, destination.lng]]
 			}
@@ -163,7 +161,7 @@ async function buildMetroVariant(graph, origin, destination, fromMode, toMode, v
 }
 
 // Direct single-mode road route
-async function buildDirectOption(mode, origin, destination) {
+async function buildDirectOption(mode, origin, destination, fareRules) {
 	const osrm = await fetchOsrmRoute(mode, origin, destination);
 	if (!osrm) {
 		return null;
@@ -174,9 +172,11 @@ async function buildDirectOption(mode, origin, destination) {
 
 	let fare = null;
 	if (mode === 'bus') {
-		fare = busFare(osrm.distanceKm);
+		fare = calculateBusFare(osrm.distanceKm, fareRules);
 	} else if (mode === 'cng') {
-		fare = cngFare(osrm.distanceKm);
+		fare = calculateCngFare(osrm.distanceKm, fareRules);
+	} else if (mode === 'rickshaw') {
+		fare = calculateRickshawFare(osrm.distanceKm, fareRules);
 	} else if (mode === 'walk') {
 		fare = 0;
 	}
@@ -207,7 +207,10 @@ export async function computeDynamicRouteOptions({
 	preference = PREFERENCES.FASTEST,
 	allowedModes = ['metro', 'bus', 'rickshaw', 'cng', 'walk']
 }) {
-	const graph = await ensureGraphCache();
+	const [graph, fareRules] = await Promise.all([
+		ensureGraphCache(),
+		getFareRules()
+	]);
 	const origin = { lat: originLat, lng: originLng };
 	const destination = { lat: destinationLat, lng: destinationLng };
 
@@ -225,7 +228,7 @@ export async function computeDynamicRouteOptions({
 		// Walking access + egress (Walk -> Metro -> Walk)
 		if (allowedModesSet.has('walk')) {
 			candidatePromises.push(
-				buildMetroVariant(graph, origin, destination, 'walk', 'walk', 'metro_walk')
+				buildMetroVariant(graph, origin, destination, 'walk', 'walk', 'metro_walk', fareRules)
 			);
 		}
 
@@ -238,7 +241,8 @@ export async function computeDynamicRouteOptions({
 					destination,
 					'rickshaw',
 					allowedModesSet.has('walk') ? 'walk' : 'rickshaw',
-					'metro_rickshaw'
+					'metro_rickshaw',
+					fareRules
 				)
 			);
 		}
@@ -247,7 +251,7 @@ export async function computeDynamicRouteOptions({
 		if (allowedModesSet.has('bus') && directDistanceKm > 2.5) {
 			const egressMode = allowedModesSet.has('walk') ? 'walk' : allowedModesSet.has('rickshaw') ? 'rickshaw' : 'bus';
 			candidatePromises.push(
-				buildMetroVariant(graph, origin, destination, 'bus', egressMode, 'bus_metro')
+				buildMetroVariant(graph, origin, destination, 'bus', egressMode, 'bus_metro', fareRules)
 			);
 		}
 	}
@@ -260,7 +264,7 @@ export async function computeDynamicRouteOptions({
 			if (mode === 'walk' && directDistanceKm > 4 && allowedModesSet.size > 1) {
 				continue;
 			}
-			candidatePromises.push(buildDirectOption(mode, origin, destination));
+			candidatePromises.push(buildDirectOption(mode, origin, destination, fareRules));
 		}
 	}
 

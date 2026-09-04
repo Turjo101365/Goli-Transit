@@ -13,10 +13,6 @@ import {
   createAdminNode,
   updateAdminNode,
   deleteAdminNode,
-  getAdminEdges,
-  createAdminEdge,
-  updateAdminEdge,
-  deleteAdminEdge,
   getAdminSettings,
   updateAdminSetting,
   getAdminAuditLogs
@@ -64,7 +60,7 @@ export function AdminDashboard({ authUser }) {
 
   const [activeTab, setActiveTab] = useState('users');
   const [userSubTab, setUserSubTab] = useState('users'); // 'users' or 'guests'
-  const [networkSubTab, setNetworkSubTab] = useState('nodes'); // 'nodes', 'edges', or 'saved_routes'
+  const [networkSubTab, setNetworkSubTab] = useState('nodes'); // 'nodes' or 'saved_routes'
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
@@ -92,19 +88,13 @@ export function AdminDashboard({ authUser }) {
   const [guestTotal, setGuestTotal] = useState(0);
   const [guestSearch, setGuestSearch] = useState('');
 
-  // 2. Transit Network: Nodes, Edges & Saved Routes
+  // 2. Transit Network: Nodes & Saved Routes
   const [nodes, setNodes] = useState([]);
   const [nodeSearch, setNodeSearch] = useState('');
   const [nodeTypeFilter, setNodeTypeFilter] = useState('');
   const [showAddNodeModal, setShowAddNodeModal] = useState(false);
   const [editingNode, setEditingNode] = useState(null);
   const [nodeForm, setNodeForm] = useState({ id: '', nameBn: '', nameEn: '', lat: 23.8103, lng: 90.4125, type: 'metro_station' });
-
-  const [edges, setEdges] = useState([]);
-  const [edgeModeFilter, setEdgeModeFilter] = useState('');
-  const [showAddEdgeModal, setShowAddEdgeModal] = useState(false);
-  const [editingEdge, setEditingEdge] = useState(null);
-  const [edgeForm, setEdgeForm] = useState({ fromNode: 'mrt_mirpur_10', toNode: 'mrt_farmgate', mode: 'metro', baseMinutes: 12, fareTaka: 30 });
 
   const [savedRoutes, setSavedRoutes] = useState([]);
   const [savedRouteTotal, setSavedRouteTotal] = useState(0);
@@ -120,11 +110,8 @@ export function AdminDashboard({ authUser }) {
     cngPerKm: 15,
     rickshawBase: 25,
     rickshawPerKm: 20,
-    minSavingMinutes: 12,
-    cooldownMinutes: 10,
-    maintenanceMode: false,
-    bannerBn: '',
-    bannerEn: ''
+    metroBase: 20,
+    metroPerKm: 5
   });
   const [auditLogs, setAuditLogs] = useState([]);
 
@@ -163,9 +150,6 @@ export function AdminDashboard({ authUser }) {
         if (networkSubTab === 'nodes') {
           const data = await getAdminNodes({ search: nodeSearch, type: nodeTypeFilter });
           setNodes(data || []);
-        } else if (networkSubTab === 'edges') {
-          const data = await getAdminEdges({ mode: edgeModeFilter });
-          setEdges(data || []);
         } else if (networkSubTab === 'saved_routes') {
           const data = await getAdminSavedRoutes({
             search: savedRouteSearch,
@@ -184,8 +168,6 @@ export function AdminDashboard({ authUser }) {
 
         if (settingsData?.fare_rules?.value) {
           const fr = settingsData.fare_rules.value;
-          const at = settingsData.alert_thresholds?.value || {};
-          const ss = settingsData.system_status?.value || {};
           setSettingsForm({
             brtaBusBase: fr.brta_bus_base_taka ?? 10,
             brtaBusPerKm: fr.brta_bus_per_km ?? 2.5,
@@ -193,11 +175,8 @@ export function AdminDashboard({ authUser }) {
             cngPerKm: fr.cng_per_km ?? 15,
             rickshawBase: fr.rickshaw_base_taka ?? 25,
             rickshawPerKm: fr.rickshaw_per_km ?? 20,
-            minSavingMinutes: at.min_saving_minutes ?? 12,
-            cooldownMinutes: at.cooldown_minutes ?? 10,
-            maintenanceMode: Boolean(ss.maintenance_mode),
-            bannerBn: ss.active_broadcast_banner_bn || '',
-            bannerEn: ss.active_broadcast_banner_en || ''
+            metroBase: fr.metro_base_taka ?? 20,
+            metroPerKm: fr.metro_per_km ?? 5
           });
         }
       }
@@ -218,7 +197,6 @@ export function AdminDashboard({ authUser }) {
     userRoleFilter,
     userStatusFilter,
     nodeTypeFilter,
-    edgeModeFilter,
     savedRouteModeFilter
   ]);
 
@@ -367,86 +345,23 @@ export function AdminDashboard({ authUser }) {
     }
   };
 
-  // Edge Actions
-  const handleCreateEdge = async (e) => {
-    e.preventDefault();
-    try {
-      await createAdminEdge({
-        fromNode: edgeForm.fromNode,
-        toNode: edgeForm.toNode,
-        mode: edgeForm.mode,
-        baseMinutes: Number(edgeForm.baseMinutes),
-        fareTaka: Number(edgeForm.fareTaka)
-      });
-      showToast(lang === 'bn' ? 'রুট সংযোগ যুক্ত করা হয়েছে।' : 'Route connection added.');
-      setShowAddEdgeModal(false);
-      loadDashboardData(true);
-    } catch (err) {
-      showError(err.message);
-    }
-  };
-
-  const handleUpdateEdge = async (e) => {
-    e.preventDefault();
-    if (!editingEdge) return;
-    try {
-      await updateAdminEdge(editingEdge.id, {
-        baseMinutes: Number(edgeForm.baseMinutes),
-        fareTaka: Number(edgeForm.fareTaka),
-        mode: edgeForm.mode
-      });
-      showToast(lang === 'bn' ? 'রুট সংযোগ আপডেট হয়েছে।' : 'Route connection updated.');
-      setEditingEdge(null);
-      loadDashboardData(true);
-    } catch (err) {
-      showError(err.message);
-    }
-  };
-
-  const handleDeleteEdge = async (edgeId) => {
-    if (!window.confirm(lang === 'bn' ? 'এই রুট এজটি ডিলিট করতে চান?' : 'Delete this route edge?')) return;
-    try {
-      await deleteAdminEdge(edgeId);
-      showToast(lang === 'bn' ? 'রুট এজ ডিলিট করা হয়েছে।' : 'Route edge deleted.');
-      loadDashboardData(true);
-    } catch (err) {
-      showError(err.message);
-    }
-  };
-
   // Settings Actions
   const handleSaveSettings = async (e) => {
     e.preventDefault();
     try {
-      await Promise.all([
-        updateAdminSetting('fare_rules', {
-          value: {
-            brta_bus_base_taka: Number(settingsForm.brtaBusBase),
-            brta_bus_per_km: Number(settingsForm.brtaBusPerKm),
-            cng_base_taka: Number(settingsForm.cngBase),
-            cng_per_km: Number(settingsForm.cngPerKm),
-            rickshaw_base_taka: Number(settingsForm.rickshawBase),
-            rickshaw_per_km: Number(settingsForm.rickshawPerKm)
-          },
-          description: 'BRTA & local transit fare calculation parameters'
-        }),
-        updateAdminSetting('alert_thresholds', {
-          value: {
-            min_saving_minutes: Number(settingsForm.minSavingMinutes),
-            cooldown_minutes: Number(settingsForm.cooldownMinutes),
-            anomaly_multiplier_threshold: 1.4
-          },
-          description: 'Commuter departure & route anomaly notification rules'
-        }),
-        updateAdminSetting('system_status', {
-          value: {
-            maintenance_mode: Boolean(settingsForm.maintenanceMode),
-            active_broadcast_banner_bn: settingsForm.bannerBn,
-            active_broadcast_banner_en: settingsForm.bannerEn
-          },
-          description: 'System maintenance state and live broadcast banner message'
-        })
-      ]);
+      await updateAdminSetting('fare_rules', {
+        value: {
+          brta_bus_base_taka: Number(settingsForm.brtaBusBase),
+          brta_bus_per_km: Number(settingsForm.brtaBusPerKm),
+          cng_base_taka: Number(settingsForm.cngBase),
+          cng_per_km: Number(settingsForm.cngPerKm),
+          rickshaw_base_taka: Number(settingsForm.rickshawBase),
+          rickshaw_per_km: Number(settingsForm.rickshawPerKm),
+          metro_base_taka: Number(settingsForm.metroBase),
+          metro_per_km: Number(settingsForm.metroPerKm)
+        },
+        description: 'BRTA, Metro & local transit fare calculation parameters'
+      });
 
       showToast(lang === 'bn' ? 'সিস্টেম সেটিংস সফলভাবে সংরক্ষিত হয়েছে।' : 'System settings saved successfully.');
       loadDashboardData(true);
@@ -943,564 +858,6 @@ export function AdminDashboard({ authUser }) {
                     </div>
                   </>
                 )}
-
-                {/* Comprehensive User Profile, Saved Routes & Activity Modal */}
-                {(viewingUserDetails || loadingUserDetails) && (
-                  <div style={{
-                    position: 'fixed',
-                    inset: 0,
-                    background: 'rgba(0,0,0,0.82)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 10000,
-                    padding: 16
-                  }}>
-                    <div className="profile-card" style={{ maxWidth: 840, width: '100%', maxHeight: '92vh', overflowY: 'auto', border: '1px solid var(--metro)', padding: 22 }}>
-                      {loadingUserDetails && !viewingUserDetails ? (
-                        <div style={{ padding: '50px 0', textAlign: 'center' }}>
-                          <Loader />
-                          <p style={{ marginTop: 14, color: 'var(--c70)', fontFamily: 'var(--data)' }}>
-                            {lang === 'bn' ? 'ব্যবহারকারীর বিস্তারিত তথ্য ও অ্যাক্টিভিটি লোড হচ্ছে...' : 'Loading commuter profile & activity timeline...'}
-                          </p>
-                        </div>
-                      ) : viewingUserDetails && (
-                        <div>
-                          {/* Modal Header */}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, borderBottom: '1px solid var(--line)', paddingBottom: 14 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                              <div style={{
-                                width: 44,
-                                height: 44,
-                                borderRadius: '50%',
-                                background: 'var(--ground2)',
-                                border: '2px solid var(--metro)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: 20
-                              }}>
-                                {viewingUserDetails.user.role === 'admin' ? '🛡️' : (viewingUserDetails.user.role === 'guest' ? '🎟️' : '👤')}
-                              </div>
-                              <div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <h3 style={{ margin: 0, fontSize: 19, color: 'var(--cream)' }}>
-                                    {viewingUserDetails.user.name}
-                                  </h3>
-                                  <span style={{
-                                    padding: '2px 8px',
-                                    borderRadius: 3,
-                                    fontSize: 11,
-                                    fontWeight: 700,
-                                    textTransform: 'uppercase',
-                                    background: viewingUserDetails.user.role === 'admin' ? 'rgba(39, 185, 122, 0.2)' : 'var(--ground2)',
-                                    color: viewingUserDetails.user.role === 'admin' ? 'var(--metro)' : 'var(--cream)'
-                                  }}>
-                                    {viewingUserDetails.user.role}
-                                  </span>
-                                  <span style={{
-                                    padding: '2px 8px',
-                                    borderRadius: 3,
-                                    fontSize: 11,
-                                    fontWeight: 600,
-                                    background: viewingUserDetails.user.status === 'active' ? 'rgba(39, 185, 122, 0.15)' : 'rgba(224, 90, 58, 0.15)',
-                                    color: viewingUserDetails.user.status === 'active' ? 'var(--metro)' : 'var(--stamp)'
-                                  }}>
-                                    {viewingUserDetails.user.status}
-                                  </span>
-                                </div>
-                                <code style={{ fontSize: 12.5, color: 'var(--metro)' }}>{viewingUserDetails.user.email}</code>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              className="action-chip"
-                              onClick={() => setViewingUserDetails(null)}
-                              style={{ padding: '6px 12px', fontSize: 13 }}
-                            >
-                              ✕ {lang === 'bn' ? 'বন্ধ করুন' : 'Close'}
-                            </button>
-                          </div>
-
-                          {/* Modal Tabs */}
-                          <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '1px solid var(--line)', paddingBottom: 8, overflowX: 'auto' }}>
-                            <button
-                              type="button"
-                              className={`action-chip ${userModalTab === 'overview' ? 'action-chip--highlight' : ''}`}
-                              onClick={() => setUserModalTab('overview')}
-                              style={{ fontWeight: 600 }}
-                            >
-                              📊 {lang === 'bn' ? 'প্রোফাইল বিবরণী' : 'Overview & Stats'}
-                            </button>
-                            <button
-                              type="button"
-                              className={`action-chip ${userModalTab === 'routes' ? 'action-chip--highlight' : ''}`}
-                              onClick={() => setUserModalTab('routes')}
-                              style={{ fontWeight: 600 }}
-                            >
-                              🧭 {lang === 'bn' ? 'সংরক্ষিত রুটসমূহ' : 'Saved Routes'} ({num(viewingUserDetails.savedRoutes?.length || 0, lang)})
-                            </button>
-                            <button
-                              type="button"
-                              className={`action-chip ${userModalTab === 'trips' ? 'action-chip--highlight' : ''}`}
-                              onClick={() => setUserModalTab('trips')}
-                              style={{ fontWeight: 600 }}
-                            >
-                              🚗 {lang === 'bn' ? 'সম্পন্ন করা ট্রিপ' : 'Completed Trips'} ({num(viewingUserDetails.trips?.length || 0, lang)})
-                            </button>
-                            <button
-                              type="button"
-                              className={`action-chip ${userModalTab === 'timeline' ? 'action-chip--highlight' : ''}`}
-                              onClick={() => setUserModalTab('timeline')}
-                              style={{ fontWeight: 600 }}
-                            >
-                              ⚡ {lang === 'bn' ? 'অ্যাক্টিভিটি টাইমলাইন' : 'Activity Timeline'} ({num(viewingUserDetails.activities?.length || 0, lang)})
-                            </button>
-                          </div>
-
-                          {/* TAB 1: USER OVERVIEW & METRICS */}
-                          {userModalTab === 'overview' && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                              {/* Key Stats Counter Tiles */}
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
-                                <div style={{ background: 'var(--ground)', padding: '12px 14px', borderRadius: 6, border: '1px solid var(--line)' }}>
-                                  <div style={{ fontSize: 11.5, color: 'var(--c70)' }}>{lang === 'bn' ? 'মোট ট্রিপ' : 'Total Trips'}</div>
-                                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--cream)', marginTop: 4 }}>
-                                    {num(viewingUserDetails.stats?.totalTrips || 0, lang)}
-                                  </div>
-                                </div>
-                                <div style={{ background: 'var(--ground)', padding: '12px 14px', borderRadius: 6, border: '1px solid var(--line)' }}>
-                                  <div style={{ fontSize: 11.5, color: 'var(--c70)' }}>{lang === 'bn' ? 'মোট দূরত্ব' : 'Total Distance'}</div>
-                                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--metro)', marginTop: 4 }}>
-                                    {num(viewingUserDetails.stats?.totalDistanceKm || 0, lang)} km
-                                  </div>
-                                </div>
-                                <div style={{ background: 'var(--ground)', padding: '12px 14px', borderRadius: 6, border: '1px solid var(--line)' }}>
-                                  <div style={{ fontSize: 11.5, color: 'var(--c70)' }}>{lang === 'bn' ? 'সংরক্ষিত রুট' : 'Saved Routes'}</div>
-                                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--cream)', marginTop: 4 }}>
-                                    {num(viewingUserDetails.stats?.totalSavedRoutes || 0, lang)}
-                                  </div>
-                                </div>
-                                <div style={{ background: 'var(--ground)', padding: '12px 14px', borderRadius: 6, border: '1px solid var(--line)' }}>
-                                  <div style={{ fontSize: 11.5, color: 'var(--c70)' }}>{lang === 'bn' ? 'প্রিয় স্টেশন' : 'Favorite Stops'}</div>
-                                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--cream)', marginTop: 4 }}>
-                                    {num(viewingUserDetails.stats?.totalFavoriteStops || 0, lang)}
-                                  </div>
-                                </div>
-                                <div style={{ background: 'var(--ground)', padding: '12px 14px', borderRadius: 6, border: '1px solid var(--line)' }}>
-                                  <div style={{ fontSize: 11.5, color: 'var(--c70)' }}>{lang === 'bn' ? 'যাত্রী রিপোর্ট' : 'Reports Filed'}</div>
-                                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--cream)', marginTop: 4 }}>
-                                    {num(viewingUserDetails.stats?.totalIncidentReports || 0, lang)}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Detailed User Attributes */}
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, fontSize: 13.5, fontFamily: 'var(--data)' }}>
-                                <div style={{ background: 'var(--ground)', padding: 14, borderRadius: 6, border: '1px solid var(--line)' }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
-                                    <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'ডাটাবেজ ইউজার আইডি:' : 'Database User ID:'}</span>
-                                    <strong>#{viewingUserDetails.user.id}</strong>
-                                  </div>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
-                                    <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'পুরো নাম:' : 'Full Name:'}</span>
-                                    <strong>{viewingUserDetails.user.name}</strong>
-                                  </div>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
-                                    <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'ইমেইল অ্যাড্রেস:' : 'Email Address:'}</span>
-                                    <code>{viewingUserDetails.user.email}</code>
-                                  </div>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
-                                    <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'ফোন নম্বর:' : 'Phone Number:'}</span>
-                                    <span>{viewingUserDetails.user.phone || 'N/A'}</span>
-                                  </div>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'বায়ো / বিবরণ:' : 'Bio:'}</span>
-                                    <span>{viewingUserDetails.user.bio || '—'}</span>
-                                  </div>
-                                </div>
-
-                                <div style={{ background: 'var(--ground)', padding: 14, borderRadius: 6, border: '1px solid var(--line)' }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
-                                    <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'সিস্টেম রোল:' : 'System Role:'}</span>
-                                    <span style={{ textTransform: 'uppercase', fontWeight: 700, color: 'var(--metro)' }}>{viewingUserDetails.user.role}</span>
-                                  </div>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
-                                    <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'অ্যাকাউন্ট স্ট্যাটাস:' : 'Account Status:'}</span>
-                                    <span style={{ fontWeight: 600, color: viewingUserDetails.user.status === 'active' ? 'var(--metro)' : 'var(--stamp)' }}>{viewingUserDetails.user.status}</span>
-                                  </div>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
-                                    <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'রেজিস্ট্রেশন তারিখ:' : 'Registered On:'}</span>
-                                    <span>{formatDate(viewingUserDetails.user.createdAt, lang)}</span>
-                                  </div>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
-                                    <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'সর্বশেষ লগইন:' : 'Last Login:'}</span>
-                                    <span>{viewingUserDetails.user.lastLoginAt ? formatDate(viewingUserDetails.user.lastLoginAt, lang) : (lang === 'bn' ? 'তথ্য নেই' : 'N/A')}</span>
-                                  </div>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'কমিউটার লেভেল:' : 'Commuter Tier:'}</span>
-                                    <span style={{ color: 'var(--sev-3)', fontWeight: 600 }}>{viewingUserDetails.user.role === 'admin' ? 'System Administrator' : 'Dhaka Explorer'}</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
-                                <button
-                                  type="button"
-                                  className="action-chip"
-                                  onClick={() => {
-                                    const u = viewingUserDetails.user;
-                                    setEditingUser(u);
-                                    setEditUserForm({
-                                      name: u.name,
-                                      role: u.role,
-                                      status: u.status,
-                                      phone: u.phone || ''
-                                    });
-                                  }}
-                                >
-                                  ✏️ {lang === 'bn' ? 'এই ব্যবহারকারী এডিট করুন' : 'Edit User Profile'}
-                                </button>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* TAB 2: USER'S SAVED ROUTES */}
-                          {userModalTab === 'routes' && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                              <div style={{ fontSize: 13, color: 'var(--c70)' }}>
-                                {lang === 'bn'
-                                  ? `এই ব্যবহারকারীর দ্বারা সংরক্ষিত মোট ${num(viewingUserDetails.savedRoutes?.length || 0, lang)} টি রুট:`
-                                  : `Total ${viewingUserDetails.savedRoutes?.length || 0} routes saved by this commuter:`}
-                              </div>
-
-                              {(!viewingUserDetails.savedRoutes || viewingUserDetails.savedRoutes.length === 0) ? (
-                                <div style={{ padding: '30px 14px', textAlign: 'center', background: 'var(--ground)', borderRadius: 6, color: 'var(--c70)' }}>
-                                  {lang === 'bn' ? 'এই ব্যবহারকারী এখনও কোনো রুট সংরক্ষণ করেননি।' : 'This commuter has not saved any routes yet.'}
-                                </div>
-                              ) : (
-                                <div style={{ overflowX: 'auto', background: 'var(--ground)', borderRadius: 6, border: '1px solid var(--line)' }}>
-                                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontFamily: 'var(--data)' }}>
-                                    <thead>
-                                      <tr style={{ borderBottom: '1px solid var(--line)', color: 'var(--c70)', textAlign: 'left' }}>
-                                        <th style={{ padding: '8px 10px' }}>ID</th>
-                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'রুটের নাম' : 'Route Name'}</th>
-                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'শুরু (Origin)' : 'Origin'}</th>
-                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'গন্তব্য (Destination)' : 'Destination'}</th>
-                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'মোড' : 'Mode'}</th>
-                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'সময়' : 'Duration'}</th>
-                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'তারিখ' : 'Saved On'}</th>
-                                        <th style={{ padding: '8px 10px', textAlign: 'right' }}>{lang === 'bn' ? 'অ্যাকশন' : 'Action'}</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {viewingUserDetails.savedRoutes.map((r) => (
-                                        <tr key={r.id} style={{ borderBottom: '1px solid var(--line)' }}>
-                                          <td style={{ padding: '8px 10px', color: 'var(--c70)' }}>#{r.id}</td>
-                                          <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--cream)' }}>
-                                            🧭 {r.name}
-                                          </td>
-                                          <td style={{ padding: '8px 10px', color: 'var(--cream)' }}>📍 {r.fromLocation}</td>
-                                          <td style={{ padding: '8px 10px', color: 'var(--cream)' }}>🏁 {r.toLocation}</td>
-                                          <td style={{ padding: '8px 10px' }}>
-                                            <span style={{ padding: '2px 6px', borderRadius: 3, fontSize: 11, background: 'var(--ground2)', color: 'var(--cream)', textTransform: 'uppercase' }}>
-                                              {r.mode}
-                                            </span>
-                                          </td>
-                                          <td style={{ padding: '8px 10px', color: 'var(--metro)', fontWeight: 600 }}>
-                                            {r.durationMinutes ? `${num(r.durationMinutes, lang)} min` : '—'}
-                                          </td>
-                                          <td style={{ padding: '8px 10px', color: 'var(--c70)', fontSize: 12 }}>
-                                            {formatDate(r.createdAt, lang)}
-                                          </td>
-                                          <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                                            <button
-                                              type="button"
-                                              className="action-chip action-chip--logout"
-                                              onClick={() => handleDeleteSavedRoute(r.id, r.name)}
-                                              title={lang === 'bn' ? 'রুট মুছে ফেলুন' : 'Delete Route'}
-                                              style={{ padding: '3px 8px', fontSize: 11 }}
-                                            >
-                                              🗑️
-                                            </button>
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* TAB 3: USER'S COMPLETED TRIPS */}
-                          {userModalTab === 'trips' && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                              <div style={{ fontSize: 13, color: 'var(--c70)' }}>
-                                {lang === 'bn'
-                                  ? `এই ব্যবহারকারীর দ্বারা সম্পন্ন মোট ${num(viewingUserDetails.trips?.length || 0, lang)} টি ট্রিপ:`
-                                  : `Total ${viewingUserDetails.trips?.length || 0} trips logged by this commuter:`}
-                              </div>
-
-                              {(!viewingUserDetails.trips || viewingUserDetails.trips.length === 0) ? (
-                                <div style={{ padding: '30px 14px', textAlign: 'center', background: 'var(--ground)', borderRadius: 6, color: 'var(--c70)' }}>
-                                  {lang === 'bn' ? 'এই ব্যবহারকারী এখনও কোনো ট্রিপ সম্পন্ন করেননি।' : 'No trips logged by this commuter yet.'}
-                                </div>
-                              ) : (
-                                <div style={{ overflowX: 'auto', background: 'var(--ground)', borderRadius: 6, border: '1px solid var(--line)' }}>
-                                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontFamily: 'var(--data)' }}>
-                                    <thead>
-                                      <tr style={{ borderBottom: '1px solid var(--line)', color: 'var(--c70)', textAlign: 'left' }}>
-                                        <th style={{ padding: '8px 10px' }}>ID</th>
-                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'যাত্রা শুরু (From)' : 'Origin'}</th>
-                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'গন্তব্য (To)' : 'Destination'}</th>
-                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'মোড' : 'Mode'}</th>
-                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'দূরত্ব' : 'Distance'}</th>
-                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'সময়' : 'Duration'}</th>
-                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'তারিখ' : 'Date'}</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {viewingUserDetails.trips.map((t) => (
-                                        <tr key={t.id} style={{ borderBottom: '1px solid var(--line)' }}>
-                                          <td style={{ padding: '8px 10px', color: 'var(--c70)' }}>#{t.id}</td>
-                                          <td style={{ padding: '8px 10px', color: 'var(--cream)', fontWeight: 600 }}>📍 {t.fromLocation}</td>
-                                          <td style={{ padding: '8px 10px', color: 'var(--cream)', fontWeight: 600 }}>🏁 {t.toLocation}</td>
-                                          <td style={{ padding: '8px 10px' }}>
-                                            <span style={{ padding: '2px 6px', borderRadius: 3, fontSize: 11, background: 'var(--ground2)', color: 'var(--cream)', textTransform: 'uppercase' }}>
-                                              {t.mode}
-                                            </span>
-                                          </td>
-                                          <td style={{ padding: '8px 10px', color: 'var(--metro)', fontWeight: 600 }}>
-                                            {t.distanceKm ? `${num(t.distanceKm, lang)} km` : '—'}
-                                          </td>
-                                          <td style={{ padding: '8px 10px', color: 'var(--cream)' }}>
-                                            {t.durationMinutes ? `${num(t.durationMinutes, lang)} min` : '—'}
-                                          </td>
-                                          <td style={{ padding: '8px 10px', color: 'var(--c70)', fontSize: 12 }}>
-                                            {formatDate(t.createdAt, lang)}
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* TAB 4: USER ACTIVITY TIMELINE */}
-                          {userModalTab === 'timeline' && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                              <div style={{ fontSize: 13, color: 'var(--c70)' }}>
-                                {lang === 'bn'
-                                  ? `ব্যবহারকারীর সাম্প্রতিক সকল কার্যক্রম ও কর্মকাণ্ডের বিবরণী:`
-                                  : `Chronological activity stream of everything this user did:`}
-                              </div>
-
-                              {(!viewingUserDetails.activities || viewingUserDetails.activities.length === 0) ? (
-                                <div style={{ padding: '30px 14px', textAlign: 'center', background: 'var(--ground)', borderRadius: 6, color: 'var(--c70)' }}>
-                                  {lang === 'bn' ? 'কোনো সাম্প্রতিক কার্যক্রম পাওয়া যায়নি।' : 'No recorded activity found for this user.'}
-                                </div>
-                              ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                  {viewingUserDetails.activities.map((act) => {
-                                    let icon = '⚡';
-                                    let tagColor = 'var(--cream)';
-                                    if (act.type.includes('login') || act.type.includes('auth')) {
-                                      icon = '🔑';
-                                      tagColor = 'var(--metro)';
-                                    } else if (act.type.includes('route')) {
-                                      icon = '🧭';
-                                      tagColor = '#38bdf8';
-                                    } else if (act.type.includes('trip')) {
-                                      icon = '🚗';
-                                      tagColor = 'var(--sev-3)';
-                                    } else if (act.type.includes('stop')) {
-                                      icon = '📍';
-                                      tagColor = '#f59e0b';
-                                    } else if (act.type.includes('incident')) {
-                                      icon = '📢';
-                                      tagColor = 'var(--stamp)';
-                                    } else if (act.type.includes('profile')) {
-                                      icon = '✏️';
-                                      tagColor = '#a855f7';
-                                    }
-
-                                    return (
-                                      <div
-                                        key={act.id}
-                                        style={{
-                                          background: 'var(--ground)',
-                                          padding: '12px 14px',
-                                          borderRadius: 6,
-                                          border: '1px solid var(--line)',
-                                          display: 'flex',
-                                          alignItems: 'flex-start',
-                                          gap: 12
-                                        }}
-                                      >
-                                        <div style={{
-                                          width: 32,
-                                          height: 32,
-                                          borderRadius: 4,
-                                          background: 'var(--ground2)',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          fontSize: 16,
-                                          flexShrink: 0
-                                        }}>
-                                          {icon}
-                                        </div>
-
-                                        <div style={{ flex: 1 }}>
-                                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                                            <div style={{ fontWeight: 600, color: 'var(--cream)', fontSize: 13.5 }}>
-                                              {act.title}
-                                            </div>
-                                            <span style={{ fontSize: 11.5, color: 'var(--c70)' }}>
-                                              🕒 {formatDate(act.createdAt, lang)}
-                                            </span>
-                                          </div>
-
-                                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-                                            <span style={{
-                                              padding: '1px 6px',
-                                              borderRadius: 3,
-                                              fontSize: 10.5,
-                                              fontWeight: 700,
-                                              textTransform: 'uppercase',
-                                              background: 'var(--ground2)',
-                                              color: tagColor
-                                            }}>
-                                              {act.type}
-                                            </span>
-
-                                            {act.details && Object.keys(act.details).length > 0 && (
-                                              <span style={{ fontSize: 12, color: 'var(--c70)' }}>
-                                                {act.details.from && act.details.to
-                                                  ? `(📍 ${act.details.from} ➔ 🏁 ${act.details.to} • ${act.details.mode || ''})`
-                                                  : (act.details.name ? `"${act.details.name}"` : '')
-                                                }
-                                              </span>
-                                            )}
-
-                                            {act.ipAddress && (
-                                              <span style={{ fontSize: 11, color: 'var(--c45)', marginLeft: 'auto' }}>
-                                                IP: {act.ipAddress}
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Footer Close Button */}
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
-                            <button
-                              type="button"
-                              className="action-chip action-chip--highlight"
-                              onClick={() => setViewingUserDetails(null)}
-                              style={{ fontWeight: 700, padding: '8px 18px' }}
-                            >
-                              {lang === 'bn' ? 'সম্পন্ন (বন্ধ করুন)' : 'Done (Close)'}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Edit User Modal */}
-                {editingUser && (
-                  <div style={{
-                    position: 'fixed',
-                    inset: 0,
-                    background: 'rgba(0,0,0,0.7)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 10000,
-                    padding: 16
-                  }}>
-                    <div className="profile-card" style={{ maxWidth: 480, width: '100%', border: '1px solid var(--metro)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                        <h3 style={{ margin: 0, fontSize: 18, color: 'var(--cream)' }}>
-                          {lang === 'bn' ? 'ব্যবহারকারী এডিট করুন' : 'Edit User Profile & Role'}
-                        </h3>
-                        <button type="button" className="action-chip" onClick={() => setEditingUser(null)}>✕</button>
-                      </div>
-
-                      <form onSubmit={handleSaveUser} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                        <div className="profile-form-group">
-                          <label className="profile-form-label">{lang === 'bn' ? 'নাম' : 'Full Name'}</label>
-                          <input
-                            type="text"
-                            className="profile-form-input"
-                            value={editUserForm.name}
-                            onChange={(e) => setEditUserForm({ ...editUserForm, name: e.target.value })}
-                            required
-                          />
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                          <div className="profile-form-group">
-                            <label className="profile-form-label">{lang === 'bn' ? 'রোল (Role)' : 'Role'}</label>
-                            <select
-                              className="profile-form-input"
-                              value={editUserForm.role}
-                              onChange={(e) => setEditUserForm({ ...editUserForm, role: e.target.value })}
-                            >
-                              <option value="user">User / Commuter</option>
-                              <option value="moderator">Moderator</option>
-                              <option value="admin">Admin</option>
-                            </select>
-                          </div>
-
-                          <div className="profile-form-group">
-                            <label className="profile-form-label">{lang === 'bn' ? 'স্ট্যাটাস (Status)' : 'Status'}</label>
-                            <select
-                              className="profile-form-input"
-                              value={editUserForm.status}
-                              onChange={(e) => setEditUserForm({ ...editUserForm, status: e.target.value })}
-                            >
-                              <option value="active">Active</option>
-                              <option value="suspended">Suspended</option>
-                              <option value="banned">Banned</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        <div className="profile-form-group">
-                          <label className="profile-form-label">{lang === 'bn' ? 'মোবাইল নম্বর (ঐচ্ছিক)' : 'Phone (Optional)'}</label>
-                          <input
-                            type="text"
-                            className="profile-form-input"
-                            value={editUserForm.phone}
-                            onChange={(e) => setEditUserForm({ ...editUserForm, phone: e.target.value })}
-                            placeholder="+8801700000000"
-                          />
-                        </div>
-
-                        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 10 }}>
-                          <button type="button" className="action-chip" onClick={() => setEditingUser(null)}>
-                            {lang === 'bn' ? 'বাতিল' : 'Cancel'}
-                          </button>
-                          <button type="submit" className="action-chip action-chip--highlight" style={{ fontWeight: 700 }}>
-                            {lang === 'bn' ? '✓ সংরক্ষণ করুন' : '✓ Save Changes'}
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
@@ -1517,14 +874,6 @@ export function AdminDashboard({ authUser }) {
                       style={{ fontWeight: 700 }}
                     >
                       🚇 {lang === 'bn' ? 'স্টেশন ও ট্রানজিট নোড' : 'Stations & Nodes'} ({num(nodes.length, lang)})
-                    </button>
-                    <button
-                      type="button"
-                      className={`action-chip ${networkSubTab === 'edges' ? 'action-chip--highlight' : ''}`}
-                      onClick={() => setNetworkSubTab('edges')}
-                      style={{ fontWeight: 700 }}
-                    >
-                      ⚡ {lang === 'bn' ? 'রুট সংযোগ এজ' : 'Route Graph Edges'} ({num(edges.length, lang)})
                     </button>
                     <button
                       type="button"
@@ -1547,19 +896,6 @@ export function AdminDashboard({ authUser }) {
                       style={{ fontWeight: 700 }}
                     >
                       + {lang === 'bn' ? 'নতুন নোড যোগ করুন' : 'Add Station / Node'}
-                    </button>
-                  )}
-                  {networkSubTab === 'edges' && (
-                    <button
-                      type="button"
-                      className="action-chip action-chip--highlight"
-                      onClick={() => {
-                        setEdgeForm({ fromNode: 'mrt_mirpur_10', toNode: 'mrt_farmgate', mode: 'metro', baseMinutes: 12, fareTaka: 30 });
-                        setShowAddEdgeModal(true);
-                      }}
-                      style={{ fontWeight: 700 }}
-                    >
-                      + {lang === 'bn' ? 'নতুন রুট এজ যোগ করুন' : 'Add Route Edge'}
                     </button>
                   )}
                 </div>
@@ -1657,98 +993,7 @@ export function AdminDashboard({ authUser }) {
                   </div>
                 )}
 
-                {/* 2. EDGES SUB-VIEW */}
-                {networkSubTab === 'edges' && (
-                  <div className="profile-card" style={{ overflowX: 'auto' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <select
-                        className="profile-form-input"
-                        style={{ width: 'auto', minWidth: 160 }}
-                        value={edgeModeFilter}
-                        onChange={(e) => setEdgeModeFilter(e.target.value)}
-                      >
-                        <option value="">{lang === 'bn' ? 'সকল মোড' : 'All Modes'}</option>
-                        <option value="metro">Metro</option>
-                        <option value="bus">Bus</option>
-                        <option value="cng">CNG</option>
-                        <option value="rickshaw">Rickshaw</option>
-                        <option value="walk">Walk</option>
-                      </select>
-                      <span style={{ fontSize: 12, color: 'var(--c70)' }}>
-                        {num(edges.length, lang)} {lang === 'bn' ? 'সংযোগ' : 'connections'}
-                      </span>
-                    </div>
-
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5, fontFamily: 'var(--data)' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid var(--line)', color: 'var(--c70)', textAlign: 'left' }}>
-                          <th style={{ padding: '8px 10px' }}>ID</th>
-                          <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'শুরু (From)' : 'From Node'}</th>
-                          <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'গন্তব্য (To)' : 'To Node'}</th>
-                          <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'মোড' : 'Mode'}</th>
-                          <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'সময় (মিনিট)' : 'Base Min'}</th>
-                          <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'ভাড়া (টাকা)' : 'Fare (৳)'}</th>
-                          <th style={{ padding: '8px 10px', textAlign: 'right' }}>{lang === 'bn' ? 'অ্যাকশন' : 'Action'}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {edges.map((e) => (
-                          <tr key={e.id} style={{ borderBottom: '1px solid var(--line)' }}>
-                            <td style={{ padding: '8px 10px', color: 'var(--c70)' }}>#{e.id}</td>
-                            <td style={{ padding: '8px 10px', color: 'var(--cream)', fontWeight: 600 }}>
-                              {lang === 'bn' ? e.fromNodeNameBn : e.fromNodeNameEn}
-                            </td>
-                            <td style={{ padding: '8px 10px', color: 'var(--cream)', fontWeight: 600 }}>
-                              {lang === 'bn' ? e.toNodeNameBn : e.toNodeNameEn}
-                            </td>
-                            <td style={{ padding: '8px 10px' }}>
-                              <span style={{ padding: '2px 6px', borderRadius: 3, fontSize: 11, background: 'var(--ground2)', color: 'var(--cream)', textTransform: 'uppercase' }}>
-                                {e.mode}
-                              </span>
-                            </td>
-                            <td style={{ padding: '8px 10px', color: 'var(--cream)' }}>
-                              {num(e.baseMinutes, lang)} {lang === 'bn' ? 'মি.' : 'min'}
-                            </td>
-                            <td style={{ padding: '8px 10px', color: 'var(--metro)', fontWeight: 700 }}>
-                              ৳{num(e.fareTaka, lang)}
-                            </td>
-                            <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                              <div style={{ display: 'inline-flex', gap: 6 }}>
-                                <button
-                                  type="button"
-                                  className="action-chip"
-                                  onClick={() => {
-                                    setEditingEdge(e);
-                                    setEdgeForm({
-                                      fromNode: e.fromNode,
-                                      toNode: e.toNode,
-                                      mode: e.mode,
-                                      baseMinutes: e.baseMinutes,
-                                      fareTaka: e.fareTaka
-                                    });
-                                  }}
-                                  style={{ padding: '2px 8px', fontSize: 11 }}
-                                >
-                                  ✏️
-                                </button>
-                                <button
-                                  type="button"
-                                  className="action-chip action-chip--logout"
-                                  onClick={() => handleDeleteEdge(e.id)}
-                                  style={{ padding: '2px 8px', fontSize: 11 }}
-                                >
-                                  🗑️
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {/* 3. SAVED ROUTES SUB-VIEW */}
+                {/* 2. SAVED ROUTES SUB-VIEW */}
                 {networkSubTab === 'saved_routes' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                     <div className="profile-card" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -2082,203 +1327,6 @@ export function AdminDashboard({ authUser }) {
                   </div>
                 )}
 
-                {/* Add Edge Modal */}
-                {showAddEdgeModal && (
-                  <div style={{
-                    position: 'fixed',
-                    inset: 0,
-                    background: 'rgba(0,0,0,0.7)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 10000,
-                    padding: 16
-                  }}>
-                    <div className="profile-card" style={{ maxWidth: 480, width: '100%', border: '1px solid var(--metro)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                        <h3 style={{ margin: 0, fontSize: 18, color: 'var(--cream)' }}>
-                          {lang === 'bn' ? 'নতুন রুট সংযোগ (Edge) যুক্ত করুন' : 'Add Route Connection Edge'}
-                        </h3>
-                        <button type="button" className="action-chip" onClick={() => setShowAddEdgeModal(false)}>✕</button>
-                      </div>
-
-                      <form onSubmit={handleCreateEdge} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                          <div className="profile-form-group">
-                            <label className="profile-form-label">{lang === 'bn' ? 'শুরু (From Node ID)' : 'From Node ID'}</label>
-                            <input
-                              type="text"
-                              className="profile-form-input"
-                              value={edgeForm.fromNode}
-                              onChange={(e) => setEdgeForm({ ...edgeForm, fromNode: e.target.value })}
-                              required
-                            />
-                          </div>
-
-                          <div className="profile-form-group">
-                            <label className="profile-form-label">{lang === 'bn' ? 'গন্তব্য (To Node ID)' : 'To Node ID'}</label>
-                            <input
-                              type="text"
-                              className="profile-form-input"
-                              value={edgeForm.toNode}
-                              onChange={(e) => setEdgeForm({ ...edgeForm, toNode: e.target.value })}
-                              required
-                            />
-                          </div>
-                        </div>
-
-                        <div className="profile-form-group">
-                          <label className="profile-form-label">{lang === 'bn' ? 'পরিবহন মোড' : 'Transit Mode'}</label>
-                          <select
-                            className="profile-form-input"
-                            value={edgeForm.mode}
-                            onChange={(e) => setEdgeForm({ ...edgeForm, mode: e.target.value })}
-                          >
-                            <option value="metro">Metro</option>
-                            <option value="bus">Bus</option>
-                            <option value="cng">CNG</option>
-                            <option value="rickshaw">Rickshaw</option>
-                            <option value="walk">Walk</option>
-                          </select>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                          <div className="profile-form-group">
-                            <label className="profile-form-label">{lang === 'bn' ? 'যাত্রার সময় (মিনিট)' : 'Base Minutes'}</label>
-                            <input
-                              type="number"
-                              className="profile-form-input"
-                              value={edgeForm.baseMinutes}
-                              onChange={(e) => setEdgeForm({ ...edgeForm, baseMinutes: parseInt(e.target.value, 10) })}
-                              min="1"
-                              required
-                            />
-                          </div>
-
-                          <div className="profile-form-group">
-                            <label className="profile-form-label">{lang === 'bn' ? 'ভাড়া (টাকা)' : 'Fare (Taka)'}</label>
-                            <input
-                              type="number"
-                              className="profile-form-input"
-                              value={edgeForm.fareTaka}
-                              onChange={(e) => setEdgeForm({ ...edgeForm, fareTaka: parseInt(e.target.value, 10) })}
-                              min="0"
-                              required
-                            />
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 10 }}>
-                          <button type="button" className="action-chip" onClick={() => setShowAddEdgeModal(false)}>
-                            {lang === 'bn' ? 'বাতিল' : 'Cancel'}
-                          </button>
-                          <button type="submit" className="action-chip action-chip--highlight" style={{ fontWeight: 700 }}>
-                            {lang === 'bn' ? '✓ রুট সেভ করুন' : '✓ Save Connection'}
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                )}
-
-                {/* Edit Edge Modal */}
-                {editingEdge && (
-                  <div style={{
-                    position: 'fixed',
-                    inset: 0,
-                    background: 'rgba(0,0,0,0.7)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 10000,
-                    padding: 16
-                  }}>
-                    <div className="profile-card" style={{ maxWidth: 480, width: '100%', border: '1px solid var(--metro)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                        <h3 style={{ margin: 0, fontSize: 18, color: 'var(--cream)' }}>
-                          {lang === 'bn' ? 'রুট এজ সংযোগ এডিট করুন' : 'Edit Route Connection Edge'}
-                        </h3>
-                        <button type="button" className="action-chip" onClick={() => setEditingEdge(null)}>✕</button>
-                      </div>
-
-                      <form onSubmit={handleUpdateEdge} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                          <div className="profile-form-group">
-                            <label className="profile-form-label">From Node</label>
-                            <input
-                              type="text"
-                              className="profile-form-input"
-                              value={editingEdge.fromNode}
-                              disabled
-                              style={{ opacity: 0.7 }}
-                            />
-                          </div>
-
-                          <div className="profile-form-group">
-                            <label className="profile-form-label">To Node</label>
-                            <input
-                              type="text"
-                              className="profile-form-input"
-                              value={editingEdge.toNode}
-                              disabled
-                              style={{ opacity: 0.7 }}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="profile-form-group">
-                          <label className="profile-form-label">{lang === 'bn' ? 'পরিবহন মোড' : 'Transit Mode'}</label>
-                          <select
-                            className="profile-form-input"
-                            value={edgeForm.mode}
-                            onChange={(e) => setEdgeForm({ ...edgeForm, mode: e.target.value })}
-                          >
-                            <option value="metro">Metro</option>
-                            <option value="bus">Bus</option>
-                            <option value="cng">CNG</option>
-                            <option value="rickshaw">Rickshaw</option>
-                            <option value="walk">Walk</option>
-                          </select>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                          <div className="profile-form-group">
-                            <label className="profile-form-label">{lang === 'bn' ? 'যাত্রার সময় (মিনিট)' : 'Base Minutes'}</label>
-                            <input
-                              type="number"
-                              className="profile-form-input"
-                              value={edgeForm.baseMinutes}
-                              onChange={(e) => setEdgeForm({ ...edgeForm, baseMinutes: parseInt(e.target.value, 10) })}
-                              min="1"
-                              required
-                            />
-                          </div>
-
-                          <div className="profile-form-group">
-                            <label className="profile-form-label">{lang === 'bn' ? 'ভাড়া (টাকা)' : 'Fare (Taka)'}</label>
-                            <input
-                              type="number"
-                              className="profile-form-input"
-                              value={edgeForm.fareTaka}
-                              onChange={(e) => setEdgeForm({ ...edgeForm, fareTaka: parseInt(e.target.value, 10) })}
-                              min="0"
-                              required
-                            />
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 10 }}>
-                          <button type="button" className="action-chip" onClick={() => setEditingEdge(null)}>
-                            {lang === 'bn' ? 'বাতিল' : 'Cancel'}
-                          </button>
-                          <button type="submit" className="action-chip action-chip--highlight" style={{ fontWeight: 700 }}>
-                            {lang === 'bn' ? '✓ পরিবর্তন সংরক্ষণ' : '✓ Save Changes'}
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
@@ -2341,55 +1389,56 @@ export function AdminDashboard({ authUser }) {
                       </div>
                     </div>
 
-                    <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--metro)', borderBottom: '1px solid var(--line)', paddingBottom: 4, marginTop: 6 }}>
-                      🔔 {lang === 'bn' ? 'ডিপার্চার ও জ্যাম অ্যালার্ট থ্রেশহোল্ড' : 'Commuter Departure Thresholds'}
+                    <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--metro)', borderBottom: '1px solid var(--line)', paddingBottom: 4, marginTop: 4 }}>
+                       🚲 {lang === 'bn' ? 'রিকশা ভাড়া' : 'Rickshaw Fare Rules'}
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                       <div className="profile-form-group">
-                        <label className="profile-form-label">{lang === 'bn' ? 'ন্যূনতম সাশ্রয় (মিনিট)' : 'Min Saving (Min)'}</label>
+                        <label className="profile-form-label">{lang === 'bn' ? 'রিকশা বেস ভাড়া (৳)' : 'Rickshaw Base Fare (৳)'}</label>
                         <input
                           type="number"
                           className="profile-form-input"
-                          value={settingsForm.minSavingMinutes}
-                          onChange={(e) => setSettingsForm({ ...settingsForm, minSavingMinutes: e.target.value })}
+                          value={settingsForm.rickshawBase}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, rickshawBase: e.target.value })}
                         />
                       </div>
                       <div className="profile-form-group">
-                        <label className="profile-form-label">{lang === 'bn' ? 'কুলডাউন বিরতি (মিনিট)' : 'Alert Cooldown (Min)'}</label>
+                        <label className="profile-form-label">{lang === 'bn' ? 'রিকশা প্রতি কিমি (৳)' : 'Rickshaw Per Km (৳)'}</label>
                         <input
                           type="number"
+                          step="0.5"
                           className="profile-form-input"
-                          value={settingsForm.cooldownMinutes}
-                          onChange={(e) => setSettingsForm({ ...settingsForm, cooldownMinutes: e.target.value })}
+                          value={settingsForm.rickshawPerKm}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, rickshawPerKm: e.target.value })}
                         />
                       </div>
                     </div>
 
-                    <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--stamp)', borderBottom: '1px solid var(--line)', paddingBottom: 4, marginTop: 6 }}>
-                      📢 {lang === 'bn' ? 'জরুরি সিস্টেম ব্রডকাস্ট ব্যানার' : 'Emergency System Broadcast Banner'}
+                    <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--metro)', borderBottom: '1px solid var(--line)', paddingBottom: 4, marginTop: 4 }}>
+                       🚇 {lang === 'bn' ? 'মেট্রোরেল ভাড়া' : 'Metro Rail Fare Rules'}
                     </div>
 
-                    <div className="profile-form-group">
-                      <label className="profile-form-label">{lang === 'bn' ? 'ব্যানার বার্তা (বাংলা)' : 'Banner Notice (Bangla)'}</label>
-                      <input
-                        type="text"
-                        className="profile-form-input"
-                        placeholder="যেমন: মতিঝিল-মিরপুর রুটে মেট্রোরেল শিডিউল স্বাভাবিক আছে।"
-                        value={settingsForm.bannerBn}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, bannerBn: e.target.value })}
-                      />
-                    </div>
-
-                    <div className="profile-form-group">
-                      <label className="profile-form-label">{lang === 'bn' ? 'ব্যানার বার্তা (English)' : 'Banner Notice (English)'}</label>
-                      <input
-                        type="text"
-                        className="profile-form-input"
-                        placeholder="e.g. MRT-6 schedule operating on full frequency."
-                        value={settingsForm.bannerEn}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, bannerEn: e.target.value })}
-                      />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <div className="profile-form-group">
+                        <label className="profile-form-label">{lang === 'bn' ? 'মেট্রো বেস ভাড়া (৳)' : 'Metro Base Fare (৳)'}</label>
+                        <input
+                          type="number"
+                          className="profile-form-input"
+                          value={settingsForm.metroBase}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, metroBase: e.target.value })}
+                        />
+                      </div>
+                      <div className="profile-form-group">
+                        <label className="profile-form-label">{lang === 'bn' ? 'মেট্রো প্রতি কিমি (৳)' : 'Metro Per Km (৳)'}</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          className="profile-form-input"
+                          value={settingsForm.metroPerKm}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, metroPerKm: e.target.value })}
+                        />
+                      </div>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
@@ -2404,6 +1453,563 @@ export function AdminDashboard({ authUser }) {
           </div>
         )}
       </div>
+      {/* Comprehensive User Profile, Saved Routes & Activity Modal */}
+      {(viewingUserDetails || loadingUserDetails) && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.82)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: 16
+        }}>
+          <div className="profile-card" style={{ maxWidth: 840, width: '100%', maxHeight: '92vh', overflowY: 'auto', border: '1px solid var(--metro)', padding: 22 }}>
+            {loadingUserDetails && !viewingUserDetails ? (
+              <div style={{ padding: '50px 0', textAlign: 'center' }}>
+                <Loader />
+                <p style={{ marginTop: 14, color: 'var(--c70)', fontFamily: 'var(--data)' }}>
+                  {lang === 'bn' ? 'ব্যবহারকারীর বিস্তারিত তথ্য ও অ্যাক্টিভিটি লোড হচ্ছে...' : 'Loading commuter profile & activity timeline...'}
+                </p>
+              </div>
+            ) : viewingUserDetails && (
+              <div>
+                {/* Modal Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, borderBottom: '1px solid var(--line)', paddingBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: '50%',
+                      background: 'var(--ground2)',
+                      border: '2px solid var(--metro)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 20
+                    }}>
+                      {viewingUserDetails.user.role === 'admin' ? '🛡️' : (viewingUserDetails.user.role === 'guest' ? '🎟️' : '👤')}
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <h3 style={{ margin: 0, fontSize: 19, color: 'var(--cream)' }}>
+                          {viewingUserDetails.user.name}
+                        </h3>
+                        <span style={{
+                          padding: '2px 8px',
+                          borderRadius: 3,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          background: viewingUserDetails.user.role === 'admin' ? 'rgba(39, 185, 122, 0.2)' : 'var(--ground2)',
+                          color: viewingUserDetails.user.role === 'admin' ? 'var(--metro)' : 'var(--cream)'
+                        }}>
+                          {viewingUserDetails.user.role}
+                        </span>
+                        <span style={{
+                          padding: '2px 8px',
+                          borderRadius: 3,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          background: viewingUserDetails.user.status === 'active' ? 'rgba(39, 185, 122, 0.15)' : 'rgba(224, 90, 58, 0.15)',
+                          color: viewingUserDetails.user.status === 'active' ? 'var(--metro)' : 'var(--stamp)'
+                        }}>
+                          {viewingUserDetails.user.status}
+                        </span>
+                      </div>
+                      <code style={{ fontSize: 12.5, color: 'var(--metro)' }}>{viewingUserDetails.user.email}</code>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="action-chip"
+                    onClick={() => setViewingUserDetails(null)}
+                    style={{ padding: '6px 12px', fontSize: 13 }}
+                  >
+                    ✕ {lang === 'bn' ? 'বন্ধ করুন' : 'Close'}
+                  </button>
+                </div>
+
+                {/* Modal Tabs */}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '1px solid var(--line)', paddingBottom: 8, overflowX: 'auto' }}>
+                  <button
+                    type="button"
+                    className={`action-chip ${userModalTab === 'overview' ? 'action-chip--highlight' : ''}`}
+                    onClick={() => setUserModalTab('overview')}
+                    style={{ fontWeight: 600 }}
+                  >
+                    📊 {lang === 'bn' ? 'প্রোফাইল বিবরণী' : 'Overview & Stats'}
+                  </button>
+                  <button
+                    type="button"
+                    className={`action-chip ${userModalTab === 'routes' ? 'action-chip--highlight' : ''}`}
+                    onClick={() => setUserModalTab('routes')}
+                    style={{ fontWeight: 600 }}
+                  >
+                    🧭 {lang === 'bn' ? 'সংরক্ষিত রুটসমূহ' : 'Saved Routes'} ({num(viewingUserDetails.savedRoutes?.length || 0, lang)})
+                  </button>
+                  <button
+                    type="button"
+                    className={`action-chip ${userModalTab === 'trips' ? 'action-chip--highlight' : ''}`}
+                    onClick={() => setUserModalTab('trips')}
+                    style={{ fontWeight: 600 }}
+                  >
+                    🚗 {lang === 'bn' ? 'সম্পন্ন করা ট্রিপ' : 'Completed Trips'} ({num(viewingUserDetails.trips?.length || 0, lang)})
+                  </button>
+                  <button
+                    type="button"
+                    className={`action-chip ${userModalTab === 'timeline' ? 'action-chip--highlight' : ''}`}
+                    onClick={() => setUserModalTab('timeline')}
+                    style={{ fontWeight: 600 }}
+                  >
+                    ⚡ {lang === 'bn' ? 'অ্যাক্টিভিটি টাইমলাইন' : 'Activity Timeline'} ({num(viewingUserDetails.activities?.length || 0, lang)})
+                  </button>
+                </div>
+
+                {/* TAB 1: USER OVERVIEW & METRICS */}
+                {userModalTab === 'overview' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {/* Key Stats Counter Tiles */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+                      <div style={{ background: 'var(--ground)', padding: '12px 14px', borderRadius: 6, border: '1px solid var(--line)' }}>
+                        <div style={{ fontSize: 11.5, color: 'var(--c70)' }}>{lang === 'bn' ? 'মোট ট্রিপ' : 'Total Trips'}</div>
+                        <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--cream)', marginTop: 4 }}>
+                          {num(viewingUserDetails.stats?.totalTrips || 0, lang)}
+                        </div>
+                      </div>
+                      <div style={{ background: 'var(--ground)', padding: '12px 14px', borderRadius: 6, border: '1px solid var(--line)' }}>
+                        <div style={{ fontSize: 11.5, color: 'var(--c70)' }}>{lang === 'bn' ? 'মোট দূরত্ব' : 'Total Distance'}</div>
+                        <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--metro)', marginTop: 4 }}>
+                          {num(viewingUserDetails.stats?.totalDistanceKm || 0, lang)} km
+                        </div>
+                      </div>
+                      <div style={{ background: 'var(--ground)', padding: '12px 14px', borderRadius: 6, border: '1px solid var(--line)' }}>
+                        <div style={{ fontSize: 11.5, color: 'var(--c70)' }}>{lang === 'bn' ? 'সংরক্ষিত রুট' : 'Saved Routes'}</div>
+                        <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--cream)', marginTop: 4 }}>
+                          {num(viewingUserDetails.stats?.totalSavedRoutes || 0, lang)}
+                        </div>
+                      </div>
+                      <div style={{ background: 'var(--ground)', padding: '12px 14px', borderRadius: 6, border: '1px solid var(--line)' }}>
+                        <div style={{ fontSize: 11.5, color: 'var(--c70)' }}>{lang === 'bn' ? 'প্রিয় স্টেশন' : 'Favorite Stops'}</div>
+                        <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--cream)', marginTop: 4 }}>
+                          {num(viewingUserDetails.stats?.totalFavoriteStops || 0, lang)}
+                        </div>
+                      </div>
+                      <div style={{ background: 'var(--ground)', padding: '12px 14px', borderRadius: 6, border: '1px solid var(--line)' }}>
+                        <div style={{ fontSize: 11.5, color: 'var(--c70)' }}>{lang === 'bn' ? 'যাত্রী রিপোর্ট' : 'Reports Filed'}</div>
+                        <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--cream)', marginTop: 4 }}>
+                          {num(viewingUserDetails.stats?.totalIncidentReports || 0, lang)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Detailed User Attributes */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, fontSize: 13.5, fontFamily: 'var(--data)' }}>
+                      <div style={{ background: 'var(--ground)', padding: 14, borderRadius: 6, border: '1px solid var(--line)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
+                          <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'ডাটাবেজ ইউজার আইডি:' : 'Database User ID:'}</span>
+                          <strong>#{viewingUserDetails.user.id}</strong>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
+                          <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'পুরো নাম:' : 'Full Name:'}</span>
+                          <strong>{viewingUserDetails.user.name}</strong>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
+                          <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'ইমেইল অ্যাড্রেস:' : 'Email Address:'}</span>
+                          <code>{viewingUserDetails.user.email}</code>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
+                          <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'ফোন নম্বর:' : 'Phone Number:'}</span>
+                          <span>{viewingUserDetails.user.phone || 'N/A'}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'বায়ো / বিবরণ:' : 'Bio:'}</span>
+                          <span>{viewingUserDetails.user.bio || '—'}</span>
+                        </div>
+                      </div>
+
+                      <div style={{ background: 'var(--ground)', padding: 14, borderRadius: 6, border: '1px solid var(--line)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
+                          <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'সিস্টেম রোল:' : 'System Role:'}</span>
+                          <span style={{ textTransform: 'uppercase', fontWeight: 700, color: 'var(--metro)' }}>{viewingUserDetails.user.role}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
+                          <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'অ্যাকাউন্ট স্ট্যাটাস:' : 'Account Status:'}</span>
+                          <span style={{ fontWeight: 600, color: viewingUserDetails.user.status === 'active' ? 'var(--metro)' : 'var(--stamp)' }}>{viewingUserDetails.user.status}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
+                          <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'রেজিস্ট্রেশন তারিখ:' : 'Registered On:'}</span>
+                          <span>{formatDate(viewingUserDetails.user.createdAt, lang)}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
+                          <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'সর্বশেষ লগইন:' : 'Last Login:'}</span>
+                          <span>{viewingUserDetails.user.lastLoginAt ? formatDate(viewingUserDetails.user.lastLoginAt, lang) : (lang === 'bn' ? 'তথ্য নেই' : 'N/A')}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'কমিউটার লেভেল:' : 'Commuter Tier:'}</span>
+                          <span style={{ color: 'var(--sev-3)', fontWeight: 600 }}>{viewingUserDetails.user.role === 'admin' ? 'System Administrator' : 'Dhaka Explorer'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
+                      <button
+                        type="button"
+                        className="action-chip"
+                        onClick={() => {
+                          const u = viewingUserDetails.user;
+                          setEditingUser(u);
+                          setEditUserForm({
+                            name: u.name,
+                            role: u.role,
+                            status: u.status,
+                            phone: u.phone || ''
+                          });
+                        }}
+                      >
+                        ✏️ {lang === 'bn' ? 'এই ব্যবহারকারী এডিট করুন' : 'Edit User Profile'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 2: USER'S SAVED ROUTES */}
+                {userModalTab === 'routes' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ fontSize: 13, color: 'var(--c70)' }}>
+                      {lang === 'bn'
+                        ? `এই ব্যবহারকারীর দ্বারা সংরক্ষিত মোট ${num(viewingUserDetails.savedRoutes?.length || 0, lang)} টি রুট:`
+                        : `Total ${viewingUserDetails.savedRoutes?.length || 0} routes saved by this commuter:`}
+                    </div>
+
+                    {(!viewingUserDetails.savedRoutes || viewingUserDetails.savedRoutes.length === 0) ? (
+                      <div style={{ padding: '30px 14px', textAlign: 'center', background: 'var(--ground)', borderRadius: 6, color: 'var(--c70)' }}>
+                        {lang === 'bn' ? 'এই ব্যবহারকারী এখনও কোনো রুট সংরক্ষণ করেননি।' : 'This commuter has not saved any routes yet.'}
+                      </div>
+                    ) : (
+                      <div style={{ overflowX: 'auto', background: 'var(--ground)', borderRadius: 6, border: '1px solid var(--line)' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontFamily: 'var(--data)' }}>
+                          <thead>
+                            <tr style={{ borderBottom: '1px solid var(--line)', color: 'var(--c70)', textAlign: 'left' }}>
+                              <th style={{ padding: '8px 10px' }}>ID</th>
+                              <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'রুটের নাম' : 'Route Name'}</th>
+                              <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'শুরু (Origin)' : 'Origin'}</th>
+                              <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'গন্তব্য (Destination)' : 'Destination'}</th>
+                              <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'মোড' : 'Mode'}</th>
+                              <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'সময়' : 'Duration'}</th>
+                              <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'তারিখ' : 'Saved On'}</th>
+                              <th style={{ padding: '8px 10px', textAlign: 'right' }}>{lang === 'bn' ? 'অ্যাকশন' : 'Action'}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {viewingUserDetails.savedRoutes.map((r) => (
+                              <tr key={r.id} style={{ borderBottom: '1px solid var(--line)' }}>
+                                <td style={{ padding: '8px 10px', color: 'var(--c70)' }}>#{r.id}</td>
+                                <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--cream)' }}>
+                                  🧭 {r.name}
+                                </td>
+                                <td style={{ padding: '8px 10px', color: 'var(--cream)' }}>📍 {r.fromLocation}</td>
+                                <td style={{ padding: '8px 10px', color: 'var(--cream)' }}>🏁 {r.toLocation}</td>
+                                <td style={{ padding: '8px 10px' }}>
+                                  <span style={{ padding: '2px 6px', borderRadius: 3, fontSize: 11, background: 'var(--ground2)', color: 'var(--cream)', textTransform: 'uppercase' }}>
+                                    {r.mode}
+                                  </span>
+                                </td>
+                                <td style={{ padding: '8px 10px', color: 'var(--metro)', fontWeight: 600 }}>
+                                  {r.durationMinutes ? `${num(r.durationMinutes, lang)} min` : '—'}
+                                </td>
+                                <td style={{ padding: '8px 10px', color: 'var(--c70)', fontSize: 12 }}>
+                                  {formatDate(r.createdAt, lang)}
+                                </td>
+                                <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                                  <button
+                                    type="button"
+                                    className="action-chip action-chip--logout"
+                                    onClick={() => handleDeleteSavedRoute(r.id, r.name)}
+                                    title={lang === 'bn' ? 'রুট মুছে ফেলুন' : 'Delete Route'}
+                                    style={{ padding: '3px 8px', fontSize: 11 }}
+                                  >
+                                    🗑️
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* TAB 3: USER'S COMPLETED TRIPS */}
+                {userModalTab === 'trips' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ fontSize: 13, color: 'var(--c70)' }}>
+                      {lang === 'bn'
+                        ? `এই ব্যবহারকারীর দ্বারা সম্পন্ন মোট ${num(viewingUserDetails.trips?.length || 0, lang)} টি ট্রিপ:`
+                        : `Total ${viewingUserDetails.trips?.length || 0} trips logged by this commuter:`}
+                    </div>
+
+                    {(!viewingUserDetails.trips || viewingUserDetails.trips.length === 0) ? (
+                      <div style={{ padding: '30px 14px', textAlign: 'center', background: 'var(--ground)', borderRadius: 6, color: 'var(--c70)' }}>
+                        {lang === 'bn' ? 'এই ব্যবহারকারী এখনও কোনো ট্রিপ সম্পন্ন করেননি।' : 'No trips logged by this commuter yet.'}
+                      </div>
+                    ) : (
+                      <div style={{ overflowX: 'auto', background: 'var(--ground)', borderRadius: 6, border: '1px solid var(--line)' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontFamily: 'var(--data)' }}>
+                          <thead>
+                            <tr style={{ borderBottom: '1px solid var(--line)', color: 'var(--c70)', textAlign: 'left' }}>
+                              <th style={{ padding: '8px 10px' }}>ID</th>
+                              <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'যাত্রা শুরু (From)' : 'Origin'}</th>
+                              <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'গন্তব্য (To)' : 'Destination'}</th>
+                              <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'মোড' : 'Mode'}</th>
+                              <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'দূরত্ব' : 'Distance'}</th>
+                              <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'সময়' : 'Duration'}</th>
+                              <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'তারিখ' : 'Date'}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {viewingUserDetails.trips.map((t) => (
+                              <tr key={t.id} style={{ borderBottom: '1px solid var(--line)' }}>
+                                <td style={{ padding: '8px 10px', color: 'var(--c70)' }}>#{t.id}</td>
+                                <td style={{ padding: '8px 10px', color: 'var(--cream)', fontWeight: 600 }}>📍 {t.fromLocation}</td>
+                                <td style={{ padding: '8px 10px', color: 'var(--cream)', fontWeight: 600 }}>🏁 {t.toLocation}</td>
+                                <td style={{ padding: '8px 10px' }}>
+                                  <span style={{ padding: '2px 6px', borderRadius: 3, fontSize: 11, background: 'var(--ground2)', color: 'var(--cream)', textTransform: 'uppercase' }}>
+                                    {t.mode}
+                                  </span>
+                                </td>
+                                <td style={{ padding: '8px 10px', color: 'var(--metro)', fontWeight: 600 }}>
+                                  {t.distanceKm ? `${num(t.distanceKm, lang)} km` : '—'}
+                                </td>
+                                <td style={{ padding: '8px 10px', color: 'var(--cream)' }}>
+                                  {t.durationMinutes ? `${num(t.durationMinutes, lang)} min` : '—'}
+                                </td>
+                                <td style={{ padding: '8px 10px', color: 'var(--c70)', fontSize: 12 }}>
+                                  {formatDate(t.createdAt, lang)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* TAB 4: USER ACTIVITY TIMELINE */}
+                {userModalTab === 'timeline' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ fontSize: 13, color: 'var(--c70)' }}>
+                      {lang === 'bn'
+                        ? `ব্যবহারকারীর সাম্প্রতিক সকল কার্যক্রম ও কর্মকাণ্ডের বিবরণী:`
+                        : `Chronological activity stream of everything this user did:`}
+                    </div>
+
+                    {(!viewingUserDetails.activities || viewingUserDetails.activities.length === 0) ? (
+                      <div style={{ padding: '30px 14px', textAlign: 'center', background: 'var(--ground)', borderRadius: 6, color: 'var(--c70)' }}>
+                        {lang === 'bn' ? 'কোনো সাম্প্রতিক কার্যক্রম পাওয়া যায়নি।' : 'No recorded activity found for this user.'}
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {viewingUserDetails.activities.map((act) => {
+                          let icon = '⚡';
+                          let tagColor = 'var(--cream)';
+                          if (act.type.includes('login') || act.type.includes('auth')) {
+                            icon = '🔑';
+                            tagColor = 'var(--metro)';
+                          } else if (act.type.includes('route')) {
+                            icon = '🧭';
+                            tagColor = '#38bdf8';
+                          } else if (act.type.includes('trip')) {
+                            icon = '🚗';
+                            tagColor = 'var(--sev-3)';
+                          } else if (act.type.includes('stop')) {
+                            icon = '📍';
+                            tagColor = '#f59e0b';
+                          } else if (act.type.includes('incident')) {
+                            icon = '📢';
+                            tagColor = 'var(--stamp)';
+                          } else if (act.type.includes('profile')) {
+                            icon = '✏️';
+                            tagColor = '#a855f7';
+                          }
+
+                          return (
+                            <div
+                              key={act.id}
+                              style={{
+                                background: 'var(--ground)',
+                                padding: '12px 14px',
+                                borderRadius: 6,
+                                border: '1px solid var(--line)',
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: 12
+                              }}
+                            >
+                              <div style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: 4,
+                                background: 'var(--ground2)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 16,
+                                flexShrink: 0
+                              }}>
+                                {icon}
+                              </div>
+
+                              <div style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                                  <div style={{ fontWeight: 600, color: 'var(--cream)', fontSize: 13.5 }}>
+                                    {act.title}
+                                  </div>
+                                  <span style={{ fontSize: 11.5, color: 'var(--c70)' }}>
+                                    🕒 {formatDate(act.createdAt, lang)}
+                                  </span>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+                                  <span style={{
+                                    padding: '1px 6px',
+                                    borderRadius: 3,
+                                    fontSize: 10.5,
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    background: 'var(--ground2)',
+                                    color: tagColor
+                                  }}>
+                                    {act.type}
+                                  </span>
+
+                                  {act.details && Object.keys(act.details).length > 0 && (
+                                    <span style={{ fontSize: 12, color: 'var(--c70)' }}>
+                                      {act.details.from && act.details.to
+                                        ? `(📍 ${act.details.from} ➔ 🏁 ${act.details.to} • ${act.details.mode || ''})`
+                                        : (act.details.name ? `"${act.details.name}"` : '')
+                                      }
+                                    </span>
+                                  )}
+
+                                  {act.ipAddress && (
+                                    <span style={{ fontSize: 11, color: 'var(--c45)', marginLeft: 'auto' }}>
+                                      IP: {act.ipAddress}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Footer Close Button */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
+                  <button
+                    type="button"
+                    className="action-chip action-chip--highlight"
+                    onClick={() => setViewingUserDetails(null)}
+                    style={{ fontWeight: 700, padding: '8px 18px' }}
+                  >
+                    {lang === 'bn' ? 'সম্পন্ন (বন্ধ করুন)' : 'Done (Close)'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: 16
+        }}>
+          <div className="profile-card" style={{ maxWidth: 480, width: '100%', border: '1px solid var(--metro)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ margin: 0, fontSize: 18, color: 'var(--cream)' }}>
+                {lang === 'bn' ? 'ব্যবহারকারী এডিট করুন' : 'Edit User Profile & Role'}
+              </h3>
+              <button type="button" className="action-chip" onClick={() => setEditingUser(null)}>✕</button>
+            </div>
+
+            <form onSubmit={handleSaveUser} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div className="profile-form-group">
+                <label className="profile-form-label">{lang === 'bn' ? 'নাম' : 'Full Name'}</label>
+                <input
+                  type="text"
+                  className="profile-form-input"
+                  value={editUserForm.name}
+                  onChange={(e) => setEditUserForm({ ...editUserForm, name: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="profile-form-group">
+                  <label className="profile-form-label">{lang === 'bn' ? 'রোল (Role)' : 'Role'}</label>
+                  <select
+                    className="profile-form-input"
+                    value={editUserForm.role}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, role: e.target.value })}
+                  >
+                    <option value="user">User / Commuter</option>
+                    <option value="moderator">Moderator</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+
+                <div className="profile-form-group">
+                  <label className="profile-form-label">{lang === 'bn' ? 'স্ট্যাটাস (Status)' : 'Status'}</label>
+                  <select
+                    className="profile-form-input"
+                    value={editUserForm.status}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, status: e.target.value })}
+                  >
+                    <option value="active">Active</option>
+                    <option value="suspended">Suspended</option>
+                    <option value="banned">Banned</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="profile-form-group">
+                <label className="profile-form-label">{lang === 'bn' ? 'মোবাইল নম্বর (ঐচ্ছিক)' : 'Phone (Optional)'}</label>
+                <input
+                  type="text"
+                  className="profile-form-input"
+                  value={editUserForm.phone}
+                  onChange={(e) => setEditUserForm({ ...editUserForm, phone: e.target.value })}
+                  placeholder="+8801700000000"
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 10 }}>
+                <button type="button" className="action-chip" onClick={() => setEditingUser(null)}>
+                  {lang === 'bn' ? 'বাতিল' : 'Cancel'}
+                </button>
+                <button type="submit" className="action-chip action-chip--highlight" style={{ fontWeight: 700 }}>
+                  {lang === 'bn' ? '✓ সংরক্ষণ করুন' : '✓ Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Invite Admin Modal */}
       {showInviteModal && (

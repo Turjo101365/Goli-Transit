@@ -2,20 +2,17 @@ import { ensureGraphCache } from '../cache/graph.cache.js';
 import { astarMetroPath, nearestMetroStation, nodeCoords } from '../core/algorithms/metroPath.js';
 import { distance } from '../utils/distance.js';
 import { config } from '../constants/config.js';
+import { getFareRules, calculateMetroFare } from './fare.service.js';
 
 const { METRO_ACCESS_RADIUS_KM } = config.journey;
 
 // Real A* search over the real MRT-6 station graph, for a caller to replay
-// as an animation — see docs/API.md "POST /route/simulate". `possible:
-// false` (not a thrown error, not a bare null) when either point is too
-// far from any station or no metro path exists, so the route computes
-// gracefully falls back the same way dynamicRoute.service.js does
-// elsewhere — and so apiRequest's `payload?.data ?? payload` unwrapping on
-// the frontend can't mistake a real "no" for "no data at all" the way a
-// bare `data: null` would (null is nullish, so `??` would fall through to
-// the whole envelope instead of the null).
+// as an animation — see docs/API.md "POST /route/simulate".
 export async function simulateAstarRoute({ originLat, originLng, destinationLat, destinationLng }) {
-	const graph = await ensureGraphCache();
+	const [graph, fareRules] = await Promise.all([
+		ensureGraphCache(),
+		getFareRules()
+	]);
 	const origin = { lat: originLat, lng: originLng };
 	const destination = { lat: destinationLat, lng: destinationLng };
 
@@ -55,6 +52,18 @@ export async function simulateAstarRoute({ originLat, originLng, destinationLat,
 		});
 	}
 
+	let metroKm = 0;
+	let prevCoords = fromStation.coords;
+	for (const edge of result.edges) {
+		const node = graph.nodes.get(edge.to);
+		const coords = nodeCoords(node);
+		if (coords && prevCoords) {
+			metroKm += distance(prevCoords, coords);
+			prevCoords = coords;
+		}
+	}
+	const computedFare = calculateMetroFare(metroKm, result.fareTaka, fareRules);
+
 	const path = [fromStation.nodeId, ...result.edges.map((edge) => edge.to)];
 
 	return {
@@ -65,6 +74,6 @@ export async function simulateAstarRoute({ originLat, originLng, destinationLat,
 		path,
 		trace: result.trace,
 		minutes: result.minutes,
-		fareTaka: result.fareTaka
+		fareTaka: computedFare
 	};
 }

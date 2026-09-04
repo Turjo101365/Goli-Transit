@@ -6,6 +6,7 @@ import { distance } from '../utils/distance.js';
 import { config } from '../constants/config.js';
 import { createHttpError } from '../utils/http-error.js';
 import { errors } from '../constants/errors.js';
+import { getFareRules, calculateMetroFare } from './fare.service.js';
 
 const {
 	SWITCH_SEARCH_RADIUS_KM,
@@ -38,44 +39,53 @@ function buildWalkSegment(fromCoords, toCoords, minutes, label) {
 	return {
 		mode: 'walk',
 		min: Math.round(minutes),
-		fare: 0,
 		label,
-		pts: [[fromCoords.lat, fromCoords.lng], [toCoords.lat, toCoords.lng]]
+		pts: [
+			[fromCoords.lat, fromCoords.lng],
+			[toCoords.lat, toCoords.lng]
+		]
 	};
 }
 
-function buildMetroSegment(graph, candidateCoords, path) {
-	const pts = [[candidateCoords.lat, candidateCoords.lng]];
+function buildMetroSegment(graph, fromCoords, path) {
+	const pts = [[fromCoords.lat, fromCoords.lng]];
 	for (const edge of path.edges) {
-		const coords = nodeCoords(graph.nodes.get(edge.to));
-		if (coords) {
-			pts.push([coords.lat, coords.lng]);
+		const node = graph.nodes.get(edge.to);
+		const lat = Number(node?.metadata?.lat);
+		const lng = Number(node?.metadata?.lng);
+		if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+			pts.push([lat, lng]);
 		}
 	}
 
 	return {
 		mode: 'metro',
-		min: Math.round(path.minutes + MODE_WAIT_MINUTES.metro),
-		fare: path.fareTaka,
-		label: { bn: 'মেট্রোতে গন্তব্যে', en: 'Metro to destination' },
+		min: Math.round(path.minutes),
+		label: { bn: 'মেট্রোতে গন্তব্যের স্টেশনে', en: 'Metro to destination station' },
 		pts
 	};
 }
 
 function isCooledDown(userId, now) {
-	const lastAlertAt = lastAlertAtByUser.get(userId);
-	if (!lastAlertAt) {
+	const last = lastAlertAtByUser.get(userId);
+	if (!last) {
 		return true;
 	}
 
-	return now - lastAlertAt >= ALERT_COOLDOWN_MINUTES * 60 * 1000;
+	const elapsedMin = (now.getTime() - last) / (1000 * 60);
+	return elapsedMin >= ALERT_COOLDOWN_MINUTES;
 }
 
-export async function evaluateJourney({ userId, lat, lng, currentMode, destinationNodeId, now = new Date() }) {
-	const graph = await ensureGraphCache();
+export async function evaluateJourney({ userId, currentMode, lat, lng, destinationNodeId, at = new Date() }) {
+	const [graph, fareRules] = await Promise.all([
+		ensureGraphCache(),
+		getFareRules()
+	]);
+	const now = at instanceof Date ? at : new Date(at);
+
 	const destinationNode = graph.nodes.get(destinationNodeId);
 	if (!destinationNode) {
-		throw createHttpError(404, errors.GRAPH_NODE_NOT_FOUND, `Unknown destination node: ${destinationNodeId}`);
+		throw createHttpError(404, errors.GRAPH_NODE_NOT_FOUND, `Destination node does not exist in graph: ${destinationNodeId}`);
 	}
 
 	const destinationCoords = nodeCoords(destinationNode);
@@ -151,6 +161,18 @@ export async function evaluateJourney({ userId, lat, lng, currentMode, destinati
 	let bestSwitch = null;
 	let minutesSaved = 0;
 	if (best) {
+		let metroKm = 0;
+		let prevCoords = best.candidate.coords;
+		for (const edge of best.path.edges) {
+			const node = graph.nodes.get(edge.to);
+			const coords = nodeCoords(node);
+			if (coords && prevCoords) {
+				metroKm += distance(prevCoords, coords);
+				prevCoords = coords;
+			}
+		}
+		const switchFare = calculateMetroFare(metroKm, best.path.fareTaka, fareRules);
+
 		minutesSaved = Math.round(stayEta - best.eta);
 		bestSwitch = {
 			atNode: best.candidate.nodeId,
@@ -165,7 +187,7 @@ export async function evaluateJourney({ userId, lat, lng, currentMode, destinati
 			],
 			eta: Math.round(best.eta),
 			minutesSaved,
-			fare: best.path.fareTaka
+			fare: switchFare
 		};
 	}
 
