@@ -1,15 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  getAdminOverview,
   getAdminUsers,
   getAdminUserDetails,
   getAdminGuests,
   getAdminSavedRoutes,
   deleteAdminSavedRoute,
-  getAdminUserActivities,
-  getAdminTrips,
-  deleteAdminTrip,
   updateAdminUser,
   deleteAdminUser,
   inviteAdminUser,
@@ -21,11 +17,6 @@ import {
   createAdminEdge,
   updateAdminEdge,
   deleteAdminEdge,
-  getAdminAnomalies,
-  broadcastAdminAnomaly,
-  resolveAdminAnomaly,
-  getAdminIncidents,
-  updateAdminIncidentStatus,
   getAdminSettings,
   updateAdminSetting,
   getAdminAuditLogs
@@ -66,19 +57,12 @@ function formatDate(value, lang) {
   return `${day} ${monthNamesEn[date.getMonth()]} ${year}, ${hours}:${minutes}`;
 }
 
-const MRT6_STATIONS_LIST = [
-  'mrt_uttara_north', 'mrt_uttara_center', 'mrt_uttara_south', 'mrt_pallabi',
-  'mrt_mirpur_11', 'mrt_mirpur_10', 'mrt_kazipara', 'mrt_shewrapara',
-  'mrt_agargaon', 'mrt_bijoy_sarani', 'mrt_farmgate', 'mrt_karwan_bazar',
-  'mrt_shahbagh', 'mrt_dhaka_university', 'mrt_secretariat', 'mrt_motijheel'
-];
-
 export function AdminDashboard({ authUser }) {
   const { lang } = useLanguage();
   const { theme } = useTheme();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('users');
   const [userSubTab, setUserSubTab] = useState('users'); // 'users' or 'guests'
   const [networkSubTab, setNetworkSubTab] = useState('nodes'); // 'nodes', 'edges', or 'saved_routes'
   const [loading, setLoading] = useState(true);
@@ -86,10 +70,7 @@ export function AdminDashboard({ authUser }) {
   const [toastMessage, setToastMessage] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
 
-  // 1. Overview Data
-  const [overview, setOverview] = useState(null);
-
-  // 2. Users Data & Rich Profile Modal
+  // 1. Users Data & Rich Profile Modal
   const [users, setUsers] = useState([]);
   const [userTotal, setUserTotal] = useState(0);
   const [userSearch, setUserSearch] = useState('');
@@ -111,13 +92,7 @@ export function AdminDashboard({ authUser }) {
   const [guestTotal, setGuestTotal] = useState(0);
   const [guestSearch, setGuestSearch] = useState('');
 
-  // 3. User Activities Data (Platform-wide activity timeline)
-  const [userActivities, setUserActivities] = useState([]);
-  const [activityTotal, setActivityTotal] = useState(0);
-  const [activitySearch, setActivitySearch] = useState('');
-  const [activityTypeFilter, setActivityTypeFilter] = useState('');
-
-  // 4. Transit Network: Nodes, Edges & Saved Routes
+  // 2. Transit Network: Nodes, Edges & Saved Routes
   const [nodes, setNodes] = useState([]);
   const [nodeSearch, setNodeSearch] = useState('');
   const [nodeTypeFilter, setNodeTypeFilter] = useState('');
@@ -136,31 +111,7 @@ export function AdminDashboard({ authUser }) {
   const [savedRouteSearch, setSavedRouteSearch] = useState('');
   const [savedRouteModeFilter, setSavedRouteModeFilter] = useState('');
 
-  // 5. Commuter Trips & Search Logs
-  const [trips, setTrips] = useState([]);
-  const [tripTotal, setTripTotal] = useState(0);
-  const [tripSearch, setTripSearch] = useState('');
-  const [tripModeFilter, setTripModeFilter] = useState('');
-  const [tripStatusFilter, setTripStatusFilter] = useState('');
-
-  // 6. Anomalies Data
-  const [anomalies, setAnomalies] = useState([]);
-  const [anomalyFilter, setAnomalyFilter] = useState('');
-  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
-  const [anomalyForm, setAnomalyForm] = useState({
-    type: 'waterlogging',
-    reason: '',
-    durationMinutes: 60,
-    multiplier: 1.8,
-    affectedFrom: 'mrt_kazipara',
-    affectedTo: 'mrt_shewrapara'
-  });
-
-  // 6. Incidents Data
-  const [incidents, setIncidents] = useState([]);
-  const [incidentStatusFilter, setIncidentStatusFilter] = useState('');
-
-  // 7. Settings Data & Audit Logs
+  // 3. Settings Data & Audit Logs
   const [settings, setSettings] = useState(null);
   const [settingsForm, setSettingsForm] = useState({
     brtaBusBase: 10,
@@ -194,10 +145,7 @@ export function AdminDashboard({ authUser }) {
     setErrorMessage(null);
 
     try {
-      if (activeTab === 'overview') {
-        const data = await getAdminOverview();
-        setOverview(data);
-      } else if (activeTab === 'users') {
+      if (activeTab === 'users') {
         if (userSubTab === 'users') {
           const data = await getAdminUsers({
             query: userSearch,
@@ -211,13 +159,6 @@ export function AdminDashboard({ authUser }) {
           setGuests(data?.guests || []);
           setGuestTotal(data?.total || 0);
         }
-      } else if (activeTab === 'activities') {
-        const data = await getAdminUserActivities({
-          query: activitySearch,
-          type: activityTypeFilter
-        });
-        setUserActivities(data?.activities || []);
-        setActivityTotal(data?.total || 0);
       } else if (activeTab === 'network') {
         if (networkSubTab === 'nodes') {
           const data = await getAdminNodes({ search: nodeSearch, type: nodeTypeFilter });
@@ -233,20 +174,6 @@ export function AdminDashboard({ authUser }) {
           setSavedRoutes(data?.routes || []);
           setSavedRouteTotal(data?.total || 0);
         }
-      } else if (activeTab === 'trips') {
-        const data = await getAdminTrips({
-          search: tripSearch,
-          mode: tripModeFilter,
-          status: tripStatusFilter
-        });
-        setTrips(data?.trips || []);
-        setTripTotal(data?.total || 0);
-      } else if (activeTab === 'anomalies') {
-        const data = await getAdminAnomalies({ status: anomalyFilter });
-        setAnomalies(data || []);
-      } else if (activeTab === 'incidents') {
-        const data = await getAdminIncidents({ status: incidentStatusFilter });
-        setIncidents(data || []);
       } else if (activeTab === 'settings') {
         const [settingsData, logsData] = await Promise.all([
           getAdminSettings().catch(() => ({})),
@@ -290,14 +217,9 @@ export function AdminDashboard({ authUser }) {
     networkSubTab,
     userRoleFilter,
     userStatusFilter,
-    activityTypeFilter,
     nodeTypeFilter,
     edgeModeFilter,
-    savedRouteModeFilter,
-    tripModeFilter,
-    tripStatusFilter,
-    anomalyFilter,
-    incidentStatusFilter
+    savedRouteModeFilter
   ]);
 
   // Debounced search
@@ -309,13 +231,6 @@ export function AdminDashboard({ authUser }) {
   }, [userSearch, guestSearch]);
 
   useEffect(() => {
-    if (activeTab === 'activities') {
-      const timer = setTimeout(() => loadDashboardData(true), 350);
-      return () => clearTimeout(timer);
-    }
-  }, [activitySearch]);
-
-  useEffect(() => {
     if (activeTab === 'network' && networkSubTab === 'nodes') {
       const timer = setTimeout(() => loadDashboardData(true), 350);
       return () => clearTimeout(timer);
@@ -325,13 +240,6 @@ export function AdminDashboard({ authUser }) {
       return () => clearTimeout(timer);
     }
   }, [nodeSearch, savedRouteSearch]);
-
-  useEffect(() => {
-    if (activeTab === 'trips') {
-      const timer = setTimeout(() => loadDashboardData(true), 350);
-      return () => clearTimeout(timer);
-    }
-  }, [tripSearch]);
 
   // User details modal opener
   const handleViewUserDetails = async (userId) => {
@@ -506,77 +414,6 @@ export function AdminDashboard({ authUser }) {
     }
   };
 
-  // Trip Actions
-  const handleDeleteTrip = async (tripId) => {
-    const promptText = lang === 'bn' ? 'এই ট্রিপ রেকর্ডটি ডেটাবেজ থেকে মুছে ফেলতে চান?' : 'Delete this trip record from database?';
-    if (!window.confirm(promptText)) return;
-    try {
-      await deleteAdminTrip(tripId);
-      showToast(lang === 'bn' ? 'ট্রিপ রেকর্ড সফলভাবে মুছে ফেলা হয়েছে।' : 'Trip record deleted successfully.');
-      loadDashboardData(true);
-    } catch (err) {
-      showError(err.message);
-    }
-  };
-
-  // Anomaly Actions
-  const handleBroadcastAnomaly = async (e) => {
-    e.preventDefault();
-    if (!anomalyForm.reason.trim()) {
-      showError(lang === 'bn' ? 'ডিজরাপশনের কারণ উল্লেখ করুন।' : 'Reason is required.');
-      return;
-    }
-
-    try {
-      await broadcastAdminAnomaly({
-        type: anomalyForm.type,
-        reason: anomalyForm.reason,
-        durationMinutes: Number(anomalyForm.durationMinutes),
-        affectedEdges: [
-          {
-            from: anomalyForm.affectedFrom,
-            to: anomalyForm.affectedTo,
-            multiplier: Number(anomalyForm.multiplier)
-          }
-        ]
-      });
-      showToast(lang === 'bn' ? 'লাইভ ট্রাফিক ডিজরাপশন ব্রডকাস্ট করা হয়েছে।' : 'Live anomaly broadcasted successfully!');
-      setShowBroadcastModal(false);
-      setAnomalyForm({
-        type: 'waterlogging',
-        reason: '',
-        durationMinutes: 60,
-        multiplier: 1.8,
-        affectedFrom: 'mrt_kazipara',
-        affectedTo: 'mrt_shewrapara'
-      });
-      loadDashboardData(true);
-    } catch (err) {
-      showError(err.message);
-    }
-  };
-
-  const handleResolveAnomaly = async (anomalyId) => {
-    try {
-      await resolveAdminAnomaly(anomalyId);
-      showToast(lang === 'bn' ? 'ডিজরাপশন অ্যালার্ট সমাধান করা হয়েছে।' : 'Disruption alert resolved.');
-      loadDashboardData(true);
-    } catch (err) {
-      showError(err.message);
-    }
-  };
-
-  // Incident Actions
-  const handleUpdateIncident = async (incidentId, newStatus) => {
-    try {
-      await updateAdminIncidentStatus(incidentId, { status: newStatus });
-      showToast(lang === 'bn' ? `রিপোর্টের স্ট্যাটাস "${newStatus}" করা হয়েছে।` : `Incident report marked as ${newStatus}.`);
-      loadDashboardData(true);
-    } catch (err) {
-      showError(err.message);
-    }
-  };
-
   // Settings Actions
   const handleSaveSettings = async (e) => {
     e.preventDefault();
@@ -619,13 +456,8 @@ export function AdminDashboard({ authUser }) {
   };
 
   const TAB_ITEMS = [
-    { id: 'overview', bn: 'সারসংক্ষেপ', en: 'Overview', icon: '📊' },
     { id: 'users', bn: 'ইউজার ও গেস্ট সেশন', en: 'Users & Guests', icon: '👥' },
-    { id: 'activities', bn: 'ইউজার অ্যাক্টিভিটি লগ', en: 'User Activities', icon: '⚡' },
     { id: 'network', bn: 'ট্রানজিট নেটওয়ার্ক ও রুট', en: 'Transit Network', icon: '🚇' },
-    { id: 'trips', bn: 'ট্রিপ ও সার্চ লগ', en: 'Trips & Searches', icon: '🧭' },
-    { id: 'anomalies', bn: 'জ্যাম ও ডিজরাপশন', en: 'Live Anomalies', icon: '⚠️' },
-    { id: 'incidents', bn: 'যাত্রীদের রিপোর্ট', en: 'Incident Reports', icon: '📢' },
     { id: 'settings', bn: 'অডিট ও সেটিংস', en: 'Audit & Settings', icon: '⚙️' }
   ];
 
@@ -718,17 +550,6 @@ export function AdminDashboard({ authUser }) {
             >
               {lang === 'bn' ? '✉️ অ্যাডমিন ইনভাইট' : '✉️ Invite Admin'}
             </button>
-            <button
-              type="button"
-              className="action-chip action-chip--highlight"
-              onClick={() => {
-                setActiveTab('anomalies');
-                setShowBroadcastModal(true);
-              }}
-              style={{ fontWeight: 700 }}
-            >
-              {lang === 'bn' ? '+ ডিজরাপশন ব্রডকাস্ট' : '+ Broadcast Alert'}
-            </button>
           </div>
         </div>
 
@@ -757,164 +578,7 @@ export function AdminDashboard({ authUser }) {
           </div>
         ) : (
           <div>
-            {/* ----------------- TAB 1: OVERVIEW ----------------- */}
-            {activeTab === 'overview' && overview && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginTop: 16 }}>
-                {/* Metric Summary Cards */}
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                  gap: 14
-                }}>
-                  <div className="profile-stat-card">
-                    <div className="profile-stat-icon">👥</div>
-                    <div className="profile-stat-number">{num(overview.users.total, lang)}</div>
-                    <div className="profile-stat-label">
-                      {lang === 'bn' ? `মোট ইউজার (${num(overview.users.guests, lang)} গেস্ট)` : `Total Users (${overview.users.guests} Guests)`}
-                    </div>
-                  </div>
-
-                  <div className="profile-stat-card">
-                    <div className="profile-stat-icon">🧭</div>
-                    <div className="profile-stat-number">{num(overview.trips?.total || 0, lang)}</div>
-                    <div className="profile-stat-label">
-                      {lang === 'bn' ? 'মোট ট্রিপ ও সার্চ লগ' : 'Total Commuter Trips'}
-                    </div>
-                  </div>
-
-                  <div className="profile-stat-card">
-                    <div className="profile-stat-icon">🚇</div>
-                    <div className="profile-stat-number">{num(overview.nodes.total, lang)}</div>
-                    <div className="profile-stat-label">
-                      {lang === 'bn' ? `ট্রানজিট নোড (${num(overview.nodes.metroStations, lang)} মেট্রো)` : `Transit Nodes (${overview.nodes.metroStations} MRT-6)`}
-                    </div>
-                  </div>
-
-                  <div className="profile-stat-card" style={{ borderColor: overview.anomalies.active > 0 ? 'var(--stamp)' : 'var(--line)' }}>
-                    <div className="profile-stat-icon">⚠️</div>
-                    <div className="profile-stat-number" style={{ color: overview.anomalies.active > 0 ? 'var(--stamp)' : 'var(--cream)' }}>
-                      {num(overview.anomalies.active, lang)}
-                    </div>
-                    <div className="profile-stat-label">
-                      {lang === 'bn' ? 'সক্রিয় ট্রাফিক ডিজরাপশন' : 'Active Live Disruptions'}
-                    </div>
-                  </div>
-
-                  <div className="profile-stat-card">
-                    <div className="profile-stat-icon">📢</div>
-                    <div className="profile-stat-number" style={{ color: overview.incidents.pending > 0 ? 'var(--sev-3)' : 'var(--cream)' }}>
-                      {num(overview.incidents.pending, lang)}
-                    </div>
-                    <div className="profile-stat-label">
-                      {lang === 'bn' ? 'অমীমাংসিত যাত্রী রিপোর্ট' : 'Pending Incident Reports'}
-                    </div>
-                  </div>
-
-                  <div className="profile-stat-card">
-                    <div className="profile-stat-icon">⚡</div>
-                    <div className="profile-stat-number">{num(overview.edges.total, lang)}</div>
-                    <div className="profile-stat-label">
-                      {lang === 'bn' ? 'গ্রাফ নেটওয়ার্ক এজ' : 'Graph Network Edges'}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Mode Breakdown & Corridors Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
-                  {/* Transit Mode Share Card */}
-                  <div className="profile-card">
-                    <h3 style={{ margin: '0 0 14px', fontSize: 16, color: 'var(--cream)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span>🚊</span>
-                      <span>{lang === 'bn' ? 'ঢাকা ট্রানজিট মোড ডিস্ট্রিবিউশন' : 'Dhaka Transit Mode Graph Coverage'}</span>
-                    </h3>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {[
-                        { mode: 'metro', nameBn: 'মেট্রোরেল (MRT-6)', nameEn: 'Metro (MRT-6)', color: 'var(--mode-metro)', count: 30 },
-                        { mode: 'bus', nameBn: 'পাবলিক বাস (BRTA)', nameEn: 'Public Bus (BRTA)', color: 'var(--mode-bus)', count: 18 },
-                        { mode: 'cng', nameBn: 'সিএনজি অটো-রিকশা', nameEn: 'CNG Auto-rickshaw', color: 'var(--mode-cng)', count: 14 },
-                        { mode: 'rickshaw', nameBn: 'সাইকেল ও রিকশা', nameEn: 'Rickshaw & Cycle', color: 'var(--mode-rickshaw)', count: 10 },
-                        { mode: 'walk', nameBn: 'হাঁটা (Walkway)', nameEn: 'Walking / Access', color: 'var(--mode-walk)', count: 8 }
-                      ].map((item) => (
-                        <div key={item.mode}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4, color: 'var(--cream)' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ width: 8, height: 8, borderRadius: '50%', background: item.color }} />
-                              {lang === 'bn' ? item.nameBn : item.nameEn}
-                            </span>
-                            <span style={{ fontFamily: 'var(--data)', color: 'var(--c70)' }}>
-                              {num(item.count, lang)} {lang === 'bn' ? 'রুট' : 'routes'}
-                            </span>
-                          </div>
-                          <div style={{ height: 6, background: 'var(--ground2)', borderRadius: 3, overflow: 'hidden' }}>
-                            <div style={{ width: `${Math.min(100, item.count * 3)}%`, height: '100%', background: item.color }} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Active Disruptions & System Status */}
-                  <div className="profile-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                      <h3 style={{ margin: 0, fontSize: 16, color: 'var(--cream)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span>⚠️</span>
-                        <span>{lang === 'bn' ? 'সাম্প্রতিক ট্রাফিক ডিজরাপশন' : 'Recent Disruption Feeds'}</span>
-                      </h3>
-                      <button
-                        type="button"
-                        className="action-chip"
-                        onClick={() => setActiveTab('anomalies')}
-                        style={{ fontSize: 12 }}
-                      >
-                        {lang === 'bn' ? 'সব দেখুন →' : 'View All →'}
-                      </button>
-                    </div>
-
-                    {overview.anomalies.recent.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--c70)' }}>
-                        <p style={{ margin: 0 }}>✓ {lang === 'bn' ? 'বর্তমানে কোনো সক্রিয় ডিজরাপশন নেই' : 'No active disruptions reported'}</p>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {overview.anomalies.recent.slice(0, 4).map((a) => (
-                          <div key={a.id} style={{
-                            padding: '10px 12px',
-                            background: 'var(--ground2)',
-                            borderRadius: 4,
-                            borderLeft: `3px solid ${a.status === 'active' ? 'var(--stamp)' : 'var(--metro)'}`,
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                          }}>
-                            <div>
-                              <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--cream)' }}>
-                                {a.reason}
-                              </div>
-                              <div style={{ fontSize: 11.5, color: 'var(--c70)', marginTop: 2 }}>
-                                {a.type} • {formatDate(a.starts_at || a.created_at, lang)}
-                              </div>
-                            </div>
-                            <span style={{
-                              fontSize: 11,
-                              padding: '2px 8px',
-                              borderRadius: 3,
-                              background: a.status === 'active' ? 'rgba(168, 56, 42, 0.2)' : 'rgba(39, 185, 122, 0.2)',
-                              color: a.status === 'active' ? 'var(--stamp)' : 'var(--metro)',
-                              fontWeight: 600
-                            }}>
-                              {a.status}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ----------------- TAB 2: USERS & GUESTS ----------------- */}
+            {/* ----------------- TAB 1: USERS & GUESTS ----------------- */}
             {activeTab === 'users' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
                 {/* Sub-tab switcher: Regular Registered Users vs Guest Logins */}
@@ -1752,177 +1416,7 @@ export function AdminDashboard({ authUser }) {
               </div>
             )}
 
-            {/* ----------------- TAB: USER ACTIVITIES LOG (Platform-wide Activity Stream) ----------------- */}
-            {activeTab === 'activities' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
-                {/* Search and Category Filter Bar */}
-                <div className="profile-card" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <div style={{ flex: 1, minWidth: 240 }}>
-                    <input
-                      type="text"
-                      className="profile-form-input"
-                      placeholder={lang === 'bn' ? '🔍 যাত্রীর নাম, ইমেইল, শিরোনাম বা আইপি দিয়ে খুঁজুন...' : '🔍 Search user name, email, activity title, IP...'}
-                      value={activitySearch}
-                      onChange={(e) => setActivitySearch(e.target.value)}
-                    />
-                  </div>
-
-                  <select
-                    className="profile-form-input"
-                    style={{ width: 'auto', minWidth: 180 }}
-                    value={activityTypeFilter}
-                    onChange={(e) => setActivityTypeFilter(e.target.value)}
-                  >
-                    <option value="">{lang === 'bn' ? 'সকল অ্যাক্টিভিটি (All Activities)' : 'All Activity Types'}</option>
-                    <option value="auth_login">🔑 {lang === 'bn' ? 'ইউজার লগইন (Login)' : 'User Logins'}</option>
-                    <option value="auth_register">📝 {lang === 'bn' ? 'নতুন রেজিস্ট্রেশন (Register)' : 'New Registrations'}</option>
-                    <option value="auth_guest">🎟️ {lang === 'bn' ? 'গেস্ট সেশন (Guest Access)' : 'Guest Sessions'}</option>
-                    <option value="route_saved">🧭 {lang === 'bn' ? 'রুট সংরক্ষণ (Route Saved)' : 'Saved Routes'}</option>
-                    <option value="route_deleted">🗑️ {lang === 'bn' ? 'রুট মুছে ফেলা (Route Deleted)' : 'Deleted Routes'}</option>
-                    <option value="trip_created">🚗 {lang === 'bn' ? 'ট্রিপ লগ (Trip Logged)' : 'Logged Trips'}</option>
-                    <option value="trip_deleted">🗑️ {lang === 'bn' ? 'ট্রিপ মুছে ফেলা (Trip Deleted)' : 'Deleted Trips'}</option>
-                    <option value="stop_favorited">📍 {lang === 'bn' ? 'প্রিয় স্টেশন (Favorite Stop)' : 'Favorite Stops'}</option>
-                    <option value="incident_reported">📢 {lang === 'bn' ? 'যাত্রী রিপোর্ট (Incident Report)' : 'Incident Reports'}</option>
-                    <option value="profile_updated">✏️ {lang === 'bn' ? 'প্রোফাইল আপডেট (Profile Update)' : 'Profile Updates'}</option>
-                  </select>
-
-                  <span style={{ fontSize: 13, color: 'var(--c70)' }}>
-                    {lang === 'bn' ? `মোট ${num(activityTotal, lang)} টি অ্যাক্টিভিটি লগ` : `Total ${activityTotal} user activities`}
-                  </span>
-                </div>
-
-                {/* Activity Feed Table */}
-                <div className="profile-card" style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5, fontFamily: 'var(--data)' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid var(--line)', color: 'var(--c70)', textAlign: 'left' }}>
-                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'সময়' : 'Timestamp'}</th>
-                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'ব্যবহারকারী / যাত্রী' : 'Commuter / User'}</th>
-                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'অ্যাক্টিভিটি টাইপ' : 'Category'}</th>
-                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'কার্যক্রম বিবরণ' : 'Activity Details'}</th>
-                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'আইপি / উৎস' : 'IP / Client'}</th>
-                        <th style={{ padding: '10px 12px', textAlign: 'right' }}>{lang === 'bn' ? 'প্রোফাইল' : 'Profile'}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {userActivities.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--c70)' }}>
-                            {lang === 'bn' ? 'কোনো ইউজার অ্যাক্টিভিটি পাওয়া যায়নি।' : 'No commuter activities matching filter.'}
-                          </td>
-                        </tr>
-                      ) : (
-                        userActivities.map((act) => {
-                          let icon = '⚡';
-                          let tagColor = 'var(--cream)';
-                          if (act.type.includes('login') || act.type.includes('auth')) {
-                            icon = '🔑';
-                            tagColor = 'var(--metro)';
-                          } else if (act.type.includes('route')) {
-                            icon = '🧭';
-                            tagColor = '#38bdf8';
-                          } else if (act.type.includes('trip')) {
-                            icon = '🚗';
-                            tagColor = 'var(--sev-3)';
-                          } else if (act.type.includes('stop')) {
-                            icon = '📍';
-                            tagColor = '#f59e0b';
-                          } else if (act.type.includes('incident')) {
-                            icon = '📢';
-                            tagColor = 'var(--stamp)';
-                          } else if (act.type.includes('profile')) {
-                            icon = '✏️';
-                            tagColor = '#a855f7';
-                          }
-
-                          return (
-                            <tr key={act.id} style={{ borderBottom: '1px solid var(--line)' }}>
-                              <td style={{ padding: '10px 12px', color: 'var(--c70)', fontSize: 12.5, whiteSpace: 'nowrap' }}>
-                                🕒 {formatDate(act.createdAt, lang)}
-                              </td>
-
-                              <td style={{ padding: '10px 12px' }}>
-                                <div style={{ fontWeight: 600, color: 'var(--cream)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  <span>{act.userName || 'Anonymous Commuter'}</span>
-                                  {act.userRole && (
-                                    <span style={{
-                                      padding: '1px 5px',
-                                      borderRadius: 3,
-                                      fontSize: 10,
-                                      fontWeight: 700,
-                                      textTransform: 'uppercase',
-                                      background: act.userRole === 'admin' ? 'rgba(39, 185, 122, 0.2)' : 'var(--ground2)',
-                                      color: act.userRole === 'admin' ? 'var(--metro)' : 'var(--cream)'
-                                    }}>
-                                      {act.userRole}
-                                    </span>
-                                  )}
-                                </div>
-                                <code style={{ fontSize: 11.5, color: 'var(--c70)' }}>{act.userEmail || `User #${act.userId}`}</code>
-                              </td>
-
-                              <td style={{ padding: '10px 12px' }}>
-                                <span style={{
-                                  padding: '3px 8px',
-                                  borderRadius: 4,
-                                  fontSize: 11,
-                                  fontWeight: 700,
-                                  textTransform: 'uppercase',
-                                  background: 'var(--ground2)',
-                                  color: tagColor,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 4
-                                }}>
-                                  <span>{icon}</span>
-                                  <span>{act.type}</span>
-                                </span>
-                              </td>
-
-                              <td style={{ padding: '10px 12px' }}>
-                                <div style={{ fontWeight: 600, color: 'var(--cream)' }}>
-                                  {act.title}
-                                </div>
-                                {act.details && Object.keys(act.details).length > 0 && (
-                                  <div style={{ fontSize: 12, color: 'var(--c70)', marginTop: 2 }}>
-                                    {act.details.from && act.details.to
-                                      ? `📍 ${act.details.from} ➔ 🏁 ${act.details.to} (${act.details.mode || ''})`
-                                      : (act.details.name ? `"${act.details.name}"` : JSON.stringify(act.details))
-                                    }
-                                  </div>
-                                )}
-                              </td>
-
-                              <td style={{ padding: '10px 12px', color: 'var(--c70)', fontSize: 12, whiteSpace: 'nowrap' }}>
-                                <code>{act.ipAddress || '—'}</code>
-                              </td>
-
-                              <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                                {act.userId ? (
-                                  <button
-                                    type="button"
-                                    className="action-chip"
-                                    onClick={() => handleViewUserDetails(act.userId)}
-                                    title={lang === 'bn' ? 'ইউজার প্রোফাইল ও বিস্তারিত দেখুন' : 'View User Profile & Full History'}
-                                    style={{ padding: '3px 8px', fontSize: 12 }}
-                                  >
-                                    👁️ {lang === 'bn' ? 'প্রোফাইল' : 'View'}
-                                  </button>
-                                ) : (
-                                  <span style={{ color: 'var(--c45)', fontSize: 12 }}>—</span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* ----------------- TAB 3: TRANSIT NETWORK & ROUTE MANAGEMENT ----------------- */}
+            {/* ----------------- TAB 2: TRANSIT NETWORK & ROUTE MANAGEMENT ----------------- */}
             {activeTab === 'network' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
                 {/* Sub-tab selector */}
@@ -2700,473 +2194,7 @@ export function AdminDashboard({ authUser }) {
               </div>
             )}
 
-            {/* ----------------- TAB 4: COMMUTER TRIPS & SEARCH LOGS ----------------- */}
-            {activeTab === 'trips' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
-                {/* Search & Filters */}
-                <div className="profile-card" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <div style={{ flex: 1, minWidth: 220 }}>
-                    <input
-                      type="text"
-                      className="profile-form-input"
-                      placeholder={lang === 'bn' ? '🔍 যাত্রী, ইমেইল, শুরু বা গন্তব্য দিয়ে খুঁজুন...' : '🔍 Search commuter name, email, origin, destination...'}
-                      value={tripSearch}
-                      onChange={(e) => setTripSearch(e.target.value)}
-                    />
-                  </div>
-
-                  <select
-                    className="profile-form-input"
-                    style={{ width: 'auto', minWidth: 140 }}
-                    value={tripModeFilter}
-                    onChange={(e) => setTripModeFilter(e.target.value)}
-                  >
-                    <option value="">{lang === 'bn' ? 'সকল মোড' : 'All Modes'}</option>
-                    <option value="metro">Metro</option>
-                    <option value="bus">Bus</option>
-                    <option value="cng">CNG</option>
-                    <option value="rickshaw">Rickshaw</option>
-                    <option value="walk">Walk</option>
-                  </select>
-
-                  <select
-                    className="profile-form-input"
-                    style={{ width: 'auto', minWidth: 140 }}
-                    value={tripStatusFilter}
-                    onChange={(e) => setTripStatusFilter(e.target.value)}
-                  >
-                    <option value="">{lang === 'bn' ? 'সকল স্ট্যাটাস' : 'All Status'}</option>
-                    <option value="completed">Completed</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
-
-                  <div style={{ fontSize: 13, color: 'var(--c70)', marginLeft: 'auto' }}>
-                    {lang === 'bn' ? `মোট ${num(tripTotal, lang)} টি ট্রিপ রেকর্ড` : `Total Trips Logged: ${tripTotal}`}
-                  </div>
-                </div>
-
-                {/* Trips Data Table */}
-                <div className="profile-card" style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5, fontFamily: 'var(--data)' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid var(--line)', color: 'var(--c70)', textAlign: 'left' }}>
-                        <th style={{ padding: '10px 12px' }}>ID</th>
-                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'যাত্রী (Commuter)' : 'Commuter'}</th>
-                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'শুরু (Origin)' : 'Origin'}</th>
-                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'গন্তব্য (Destination)' : 'Destination'}</th>
-                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'মোড' : 'Mode'}</th>
-                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'দূরত্ব' : 'Distance'}</th>
-                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'সময়' : 'Duration'}</th>
-                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'স্ট্যাটাস' : 'Status'}</th>
-                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'সময়কাল' : 'Completed At'}</th>
-                        <th style={{ padding: '10px 12px', textAlign: 'right' }}>{lang === 'bn' ? 'অ্যাকশন' : 'Action'}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {trips.length === 0 ? (
-                        <tr>
-                          <td colSpan={10} style={{ padding: '28px 12px', textAlign: 'center', color: 'var(--c70)' }}>
-                            {lang === 'bn' ? 'কোনো ট্রিপ লগ পাওয়া যায়নি।' : 'No commuter trips logged in database.'}
-                          </td>
-                        </tr>
-                      ) : (
-                        trips.map((t) => (
-                          <tr key={t.id} style={{ borderBottom: '1px solid var(--line)' }}>
-                            <td style={{ padding: '10px 12px', color: 'var(--c70)' }}>#{t.id}</td>
-                            <td style={{ padding: '10px 12px' }}>
-                              <div style={{ fontWeight: 600, color: 'var(--cream)' }}>{t.userName}</div>
-                              <div style={{ fontSize: 12, color: 'var(--c70)' }}>{t.userEmail}</div>
-                            </td>
-                            <td style={{ padding: '10px 12px', color: 'var(--cream)' }}>
-                              📍 {t.fromLocation}
-                            </td>
-                            <td style={{ padding: '10px 12px', color: 'var(--cream)' }}>
-                              🏁 {t.toLocation}
-                            </td>
-                            <td style={{ padding: '10px 12px' }}>
-                              <span style={{ padding: '2px 6px', borderRadius: 3, fontSize: 11, background: 'var(--ground2)', color: 'var(--cream)', textTransform: 'uppercase' }}>
-                                {t.mode}
-                              </span>
-                            </td>
-                            <td style={{ padding: '10px 12px', color: 'var(--cream)' }}>
-                              {t.distanceKm ? `${num(t.distanceKm, lang)} km` : '—'}
-                            </td>
-                            <td style={{ padding: '10px 12px', color: 'var(--metro)', fontWeight: 600 }}>
-                              {t.durationMinutes ? `${num(t.durationMinutes, lang)} ${lang === 'bn' ? 'মি.' : 'min'}` : '—'}
-                            </td>
-                            <td style={{ padding: '10px 12px' }}>
-                              <span style={{
-                                padding: '2px 6px',
-                                borderRadius: 3,
-                                fontSize: 11,
-                                fontWeight: 600,
-                                background: t.status === 'completed' ? 'rgba(39, 185, 122, 0.15)' : 'var(--ground2)',
-                                color: t.status === 'completed' ? 'var(--metro)' : 'var(--c70)'
-                              }}>
-                                {t.status}
-                              </span>
-                            </td>
-                            <td style={{ padding: '10px 12px', color: 'var(--c70)', fontSize: 12 }}>
-                              {formatDate(t.completedAt || t.createdAt, lang)}
-                            </td>
-                            <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                              <button
-                                type="button"
-                                className="action-chip action-chip--logout"
-                                onClick={() => handleDeleteTrip(t.id)}
-                                style={{ padding: '2px 8px', fontSize: 11 }}
-                              >
-                                🗑️
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* ----------------- TAB 5: ANOMALIES & DISRUPTIONS ----------------- */}
-            {activeTab === 'anomalies' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      type="button"
-                      className={`action-chip ${anomalyFilter === '' ? 'action-chip--highlight' : ''}`}
-                      onClick={() => setAnomalyFilter('')}
-                    >
-                      {lang === 'bn' ? 'সকল' : 'All'}
-                    </button>
-                    <button
-                      type="button"
-                      className={`action-chip ${anomalyFilter === 'active' ? 'action-chip--highlight' : ''}`}
-                      onClick={() => setAnomalyFilter('active')}
-                    >
-                      ⚠️ {lang === 'bn' ? 'সক্রিয়' : 'Active Only'}
-                    </button>
-                    <button
-                      type="button"
-                      className={`action-chip ${anomalyFilter === 'resolved' ? 'action-chip--highlight' : ''}`}
-                      onClick={() => setAnomalyFilter('resolved')}
-                    >
-                      ✓ {lang === 'bn' ? 'সমাধানকৃত' : 'Resolved'}
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    className="action-chip action-chip--highlight"
-                    onClick={() => setShowBroadcastModal(true)}
-                    style={{ fontWeight: 700 }}
-                  >
-                    + {lang === 'bn' ? 'নতুন ডিজরাপশন ব্রডকাস্ট করুন' : '+ Broadcast Live Disruption'}
-                  </button>
-                </div>
-
-                {/* Anomalies List */}
-                <div className="profile-card" style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5, fontFamily: 'var(--data)' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid var(--line)', color: 'var(--c70)', textAlign: 'left' }}>
-                        <th style={{ padding: '10px 12px' }}>ID</th>
-                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'ধরন' : 'Type'}</th>
-                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'কারণ ও বিবরণ' : 'Reason / Details'}</th>
-                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'শুরুর সময়' : 'Started At'}</th>
-                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'মেয়াদ' : 'Expires At'}</th>
-                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'স্ট্যাটাস' : 'Status'}</th>
-                        <th style={{ padding: '10px 12px', textAlign: 'right' }}>{lang === 'bn' ? 'অ্যাকশন' : 'Action'}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {anomalies.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--c70)' }}>
-                            {lang === 'bn' ? 'কোনো ডিজরাপশন অ্যালার্ট পাওয়া যায়নি।' : 'No disruption alerts recorded.'}
-                          </td>
-                        </tr>
-                      ) : (
-                        anomalies.map((a) => (
-                          <tr key={a.id} style={{ borderBottom: '1px solid var(--line)' }}>
-                            <td style={{ padding: '10px 12px', color: 'var(--c70)' }}>#{a.id}</td>
-                            <td style={{ padding: '10px 12px' }}>
-                              <span style={{ padding: '2px 6px', borderRadius: 3, fontSize: 11, background: 'var(--ground2)', color: 'var(--stamp)', fontWeight: 600 }}>
-                                {a.type}
-                              </span>
-                            </td>
-                            <td style={{ padding: '10px 12px', color: 'var(--cream)', fontWeight: 600 }}>
-                              {a.reason}
-                            </td>
-                            <td style={{ padding: '10px 12px', color: 'var(--c70)', fontSize: 12 }}>
-                              {formatDate(a.startsAt || a.createdAt, lang)}
-                            </td>
-                            <td style={{ padding: '10px 12px', color: 'var(--c70)', fontSize: 12 }}>
-                              {a.expiresAt ? formatDate(a.expiresAt, lang) : (lang === 'bn' ? 'ম্যানুয়াল সমাধান' : 'Manual Resolve')}
-                            </td>
-                            <td style={{ padding: '10px 12px' }}>
-                              <span style={{
-                                padding: '3px 8px',
-                                borderRadius: 3,
-                                fontSize: 11,
-                                fontWeight: 700,
-                                background: a.status === 'active' ? 'rgba(168, 56, 42, 0.2)' : 'rgba(39, 185, 122, 0.2)',
-                                color: a.status === 'active' ? 'var(--stamp)' : 'var(--metro)'
-                              }}>
-                                {a.status}
-                              </span>
-                            </td>
-                            <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                              {a.status === 'active' && (
-                                <button
-                                  type="button"
-                                  className="action-chip action-chip--highlight"
-                                  onClick={() => handleResolveAnomaly(a.id)}
-                                  style={{ fontSize: 12, padding: '3px 8px' }}
-                                >
-                                  ✓ {lang === 'bn' ? 'সমাধান করুন' : 'Resolve'}
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Broadcast Disruption Modal */}
-                {showBroadcastModal && (
-                  <div style={{
-                    position: 'fixed',
-                    inset: 0,
-                    background: 'rgba(0,0,0,0.7)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 10000,
-                    padding: 16
-                  }}>
-                    <div className="profile-card" style={{ maxWidth: 520, width: '100%', border: '1px solid var(--stamp)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                        <h3 style={{ margin: 0, fontSize: 18, color: 'var(--stamp)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span>⚠️</span>
-                          <span>{lang === 'bn' ? 'লাইভ ট্রাফিক ডিজরাপশন ব্রডকাস্ট' : 'Broadcast Live Disruption Alert'}</span>
-                        </h3>
-                        <button type="button" className="action-chip" onClick={() => setShowBroadcastModal(false)}>✕</button>
-                      </div>
-
-                      <form onSubmit={handleBroadcastAnomaly} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        <div className="profile-form-group">
-                          <label className="profile-form-label">{lang === 'bn' ? 'ডিজরাপশনের ধরন' : 'Incident Type'}</label>
-                          <select
-                            className="profile-form-input"
-                            value={anomalyForm.type}
-                            onChange={(e) => setAnomalyForm({ ...anomalyForm, type: e.target.value })}
-                          >
-                            <option value="waterlogging">Waterlogging (জলজট / জলাবদ্ধতা)</option>
-                            <option value="traffic_jam">Severe Traffic Jam (তীব্র যানজট)</option>
-                            <option value="road_block">Road Block / Protest (রাস্তা অবরোধ)</option>
-                            <option value="metro_issue">Metro Signal / Technical Issue (মেট্রো বিলম্ব)</option>
-                            <option value="vip_movement">VIP Movement (ভিআইপি প্রটোকল)</option>
-                            <option value="accident">Accident / Vehicle Breakdown (দুর্ঘটনা)</option>
-                          </select>
-                        </div>
-
-                        <div className="profile-form-group">
-                          <label className="profile-form-label">{lang === 'bn' ? 'কারণ ও বিবরণ' : 'Disruption Reason / Notice'}</label>
-                          <textarea
-                            className="profile-form-input"
-                            rows={3}
-                            placeholder={lang === 'bn' ? 'যেমন: কাজীপাড়া মেট্রোরেল স্টেশনের নিচে জলাবদ্ধতা, যান চলাচল ধীরগতির...' : 'e.g. Heavy waterlogging near Kazipara station, delay expected...'}
-                            value={anomalyForm.reason}
-                            onChange={(e) => setAnomalyForm({ ...anomalyForm, reason: e.target.value })}
-                            required
-                          />
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                          <div className="profile-form-group">
-                            <label className="profile-form-label">{lang === 'bn' ? 'শুরুর স্টেশন (From)' : 'From Station'}</label>
-                            <select
-                              className="profile-form-input"
-                              value={anomalyForm.affectedFrom}
-                              onChange={(e) => setAnomalyForm({ ...anomalyForm, affectedFrom: e.target.value })}
-                            >
-                              {MRT6_STATIONS_LIST.map((st) => (
-                                <option key={st} value={st}>{st}</option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div className="profile-form-group">
-                            <label className="profile-form-label">{lang === 'bn' ? 'গন্তব্য স্টেশন (To)' : 'To Station'}</label>
-                            <select
-                              className="profile-form-input"
-                              value={anomalyForm.affectedTo}
-                              onChange={(e) => setAnomalyForm({ ...anomalyForm, affectedTo: e.target.value })}
-                            >
-                              {MRT6_STATIONS_LIST.map((st) => (
-                                <option key={st} value={st}>{st}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                          <div className="profile-form-group">
-                            <label className="profile-form-label">{lang === 'bn' ? 'স্থায়িত্ব (মিনিট)' : 'Duration (Minutes)'}</label>
-                            <select
-                              className="profile-form-input"
-                              value={anomalyForm.durationMinutes}
-                              onChange={(e) => setAnomalyForm({ ...anomalyForm, durationMinutes: parseInt(e.target.value, 10) })}
-                            >
-                              <option value="15">15 Minutes</option>
-                              <option value="30">30 Minutes</option>
-                              <option value="60">1 Hour (60m)</option>
-                              <option value="120">2 Hours (120m)</option>
-                              <option value="240">4 Hours (240m)</option>
-                            </select>
-                          </div>
-
-                          <div className="profile-form-group">
-                            <label className="profile-form-label">{lang === 'bn' ? 'দেরি মাল্টিপ্লায়ার' : 'Delay Multiplier'}</label>
-                            <select
-                              className="profile-form-input"
-                              value={anomalyForm.multiplier}
-                              onChange={(e) => setAnomalyForm({ ...anomalyForm, multiplier: parseFloat(e.target.value) })}
-                            >
-                              <option value="1.3">1.3x (+30% delay)</option>
-                              <option value="1.5">1.5x (+50% delay)</option>
-                              <option value="2.0">2.0x (Double time)</option>
-                              <option value="3.0">3.0x (Triple time / Severe)</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 10 }}>
-                          <button type="button" className="action-chip" onClick={() => setShowBroadcastModal(false)}>
-                            {lang === 'bn' ? 'বাতিল' : 'Cancel'}
-                          </button>
-                          <button type="submit" className="action-chip action-chip--logout" style={{ fontWeight: 700 }}>
-                            📢 {lang === 'bn' ? 'ব্রডকাস্ট করুন' : 'Broadcast Alert'}
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ----------------- TAB 6: INCIDENT REPORTS ----------------- */}
-            {activeTab === 'incidents' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <button
-                    type="button"
-                    className={`action-chip ${incidentStatusFilter === '' ? 'action-chip--highlight' : ''}`}
-                    onClick={() => setIncidentStatusFilter('')}
-                  >
-                    {lang === 'bn' ? 'সকল রিপোর্ট' : 'All Reports'}
-                  </button>
-                  <button
-                    type="button"
-                    className={`action-chip ${incidentStatusFilter === 'pending' ? 'action-chip--highlight' : ''}`}
-                    onClick={() => setIncidentStatusFilter('pending')}
-                  >
-                    ⏳ {lang === 'bn' ? 'অমীমাংসিত (Pending)' : 'Pending Queue'}
-                  </button>
-                  <button
-                    type="button"
-                    className={`action-chip ${incidentStatusFilter === 'verified' ? 'action-chip--highlight' : ''}`}
-                    onClick={() => setIncidentStatusFilter('verified')}
-                  >
-                    ✓ {lang === 'bn' ? 'অনুমোদিত (Verified)' : 'Verified'}
-                  </button>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 14 }}>
-                  {incidents.length === 0 ? (
-                    <div className="profile-card" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px 0', color: 'var(--c70)' }}>
-                      <p style={{ margin: 0 }}>✓ {lang === 'bn' ? 'কোনো অমীমাংসিত রিপোর্ট নেই' : 'No incident reports found.'}</p>
-                    </div>
-                  ) : (
-                    incidents.map((inc) => (
-                      <div key={inc.id} className="profile-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderLeft: `4px solid ${inc.status === 'pending' ? 'var(--sev-3)' : (inc.status === 'verified' ? 'var(--metro)' : 'var(--c45)')}` }}>
-                        <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                            <span style={{
-                              padding: '2px 6px',
-                              borderRadius: 3,
-                              fontSize: 11,
-                              fontWeight: 700,
-                              background: 'var(--ground2)',
-                              color: inc.severity === 'severe' || inc.severity === 'critical' ? 'var(--stamp)' : 'var(--sev-2)',
-                              textTransform: 'uppercase'
-                            }}>
-                              {inc.type} • {inc.severity}
-                            </span>
-                            <span style={{ fontSize: 11.5, color: 'var(--c70)' }}>
-                              👍 {num(inc.upvotes, lang)}
-                            </span>
-                          </div>
-
-                          <h4 style={{ margin: '6px 0 4px', fontSize: 16, color: 'var(--cream)' }}>
-                            {inc.title}
-                          </h4>
-                          <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--c70)', lineHeight: 1.4 }}>
-                            {inc.description}
-                          </p>
-
-                          <div style={{ fontSize: 12, color: 'var(--c45)', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            <span>📍 {inc.locationName}</span>
-                            <span>👤 {inc.reporterName} • {formatDate(inc.createdAt, lang)}</span>
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
-                          {inc.status === 'pending' && (
-                            <>
-                              <button
-                                type="button"
-                                className="action-chip action-chip--highlight"
-                                onClick={() => handleUpdateIncident(inc.id, 'verified')}
-                                style={{ fontSize: 12 }}
-                              >
-                                ✓ {lang === 'bn' ? 'অনুমোদন' : 'Verify & Map'}
-                              </button>
-                              <button
-                                type="button"
-                                className="action-chip action-chip--logout"
-                                onClick={() => handleUpdateIncident(inc.id, 'rejected')}
-                                style={{ fontSize: 12 }}
-                              >
-                                ✕ {lang === 'bn' ? 'বাতিল' : 'Reject'}
-                              </button>
-                            </>
-                          )}
-                          {inc.status === 'verified' && (
-                            <button
-                              type="button"
-                              className="action-chip"
-                              onClick={() => handleUpdateIncident(inc.id, 'resolved')}
-                              style={{ fontSize: 12 }}
-                            >
-                              ✓ {lang === 'bn' ? 'সমাধান চিহ্নিত করুন' : 'Mark Resolved'}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* ----------------- TAB 7: AUDIT & SETTINGS ----------------- */}
+            {/* ----------------- TAB 3: AUDIT & SETTINGS ----------------- */}
             {activeTab === 'settings' && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 20, marginTop: 16 }}>
                 {/* System Settings Editor */}
