@@ -75,12 +75,42 @@ export const adminService = {
     return adminRepository.listUsers(filters);
   },
 
+  async getUserDetails(userId) {
+    const details = await adminRepository.getUserDetails(userId);
+    if (!details) {
+      throw createHttpError(404, 'USER_NOT_FOUND', 'User not found.');
+    }
+    return details;
+  },
+
   async listGuestUsers(filters) {
     return adminRepository.listGuestUsers(filters);
   },
 
   async listSavedRoutes(filters) {
     return adminRepository.listSavedRoutes(filters);
+  },
+
+  async deleteSavedRoute(adminUser, routeId, clientIp) {
+    const deleted = await adminRepository.deleteSavedRoute(routeId);
+    if (!deleted) {
+      throw createHttpError(404, 'ROUTE_NOT_FOUND', 'Saved route not found.');
+    }
+
+    await adminRepository.createAuditLog({
+      adminId: adminUser.id,
+      action: 'SAVED_ROUTE_DELETED',
+      targetType: 'saved_route',
+      targetId: routeId,
+      details: {},
+      ipAddress: clientIp
+    });
+
+    return { success: true };
+  },
+
+  async listAllUserActivities(filters) {
+    return adminRepository.listAllUserActivities(filters);
   },
 
   async listTrips(filters) {

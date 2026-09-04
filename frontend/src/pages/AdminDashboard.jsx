@@ -3,8 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import {
   getAdminOverview,
   getAdminUsers,
+  getAdminUserDetails,
   getAdminGuests,
   getAdminSavedRoutes,
+  deleteAdminSavedRoute,
+  getAdminUserActivities,
   getAdminTrips,
   deleteAdminTrip,
   updateAdminUser,
@@ -86,13 +89,15 @@ export function AdminDashboard({ authUser }) {
   // 1. Overview Data
   const [overview, setOverview] = useState(null);
 
-  // 2. Users Data
+  // 2. Users Data & Rich Profile Modal
   const [users, setUsers] = useState([]);
   const [userTotal, setUserTotal] = useState(0);
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState('');
   const [userStatusFilter, setUserStatusFilter] = useState('');
-  const [viewingUser, setViewingUser] = useState(null);
+  const [viewingUserDetails, setViewingUserDetails] = useState(null);
+  const [loadingUserDetails, setLoadingUserDetails] = useState(false);
+  const [userModalTab, setUserModalTab] = useState('overview'); // 'overview', 'routes', 'trips', 'timeline'
   const [editingUser, setEditingUser] = useState(null);
   const [editUserForm, setEditUserForm] = useState({ name: '', role: 'user', status: 'active', phone: '' });
 
@@ -106,7 +111,13 @@ export function AdminDashboard({ authUser }) {
   const [guestTotal, setGuestTotal] = useState(0);
   const [guestSearch, setGuestSearch] = useState('');
 
-  // 3. Transit Network: Nodes, Edges & Saved Routes
+  // 3. User Activities Data (Platform-wide activity timeline)
+  const [userActivities, setUserActivities] = useState([]);
+  const [activityTotal, setActivityTotal] = useState(0);
+  const [activitySearch, setActivitySearch] = useState('');
+  const [activityTypeFilter, setActivityTypeFilter] = useState('');
+
+  // 4. Transit Network: Nodes, Edges & Saved Routes
   const [nodes, setNodes] = useState([]);
   const [nodeSearch, setNodeSearch] = useState('');
   const [nodeTypeFilter, setNodeTypeFilter] = useState('');
@@ -125,14 +136,14 @@ export function AdminDashboard({ authUser }) {
   const [savedRouteSearch, setSavedRouteSearch] = useState('');
   const [savedRouteModeFilter, setSavedRouteModeFilter] = useState('');
 
-  // 4. Commuter Trips & Search Logs
+  // 5. Commuter Trips & Search Logs
   const [trips, setTrips] = useState([]);
   const [tripTotal, setTripTotal] = useState(0);
   const [tripSearch, setTripSearch] = useState('');
   const [tripModeFilter, setTripModeFilter] = useState('');
   const [tripStatusFilter, setTripStatusFilter] = useState('');
 
-  // 5. Anomalies Data
+  // 6. Anomalies Data
   const [anomalies, setAnomalies] = useState([]);
   const [anomalyFilter, setAnomalyFilter] = useState('');
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
@@ -200,6 +211,13 @@ export function AdminDashboard({ authUser }) {
           setGuests(data?.guests || []);
           setGuestTotal(data?.total || 0);
         }
+      } else if (activeTab === 'activities') {
+        const data = await getAdminUserActivities({
+          query: activitySearch,
+          type: activityTypeFilter
+        });
+        setUserActivities(data?.activities || []);
+        setActivityTotal(data?.total || 0);
       } else if (activeTab === 'network') {
         if (networkSubTab === 'nodes') {
           const data = await getAdminNodes({ search: nodeSearch, type: nodeTypeFilter });
@@ -272,6 +290,7 @@ export function AdminDashboard({ authUser }) {
     networkSubTab,
     userRoleFilter,
     userStatusFilter,
+    activityTypeFilter,
     nodeTypeFilter,
     edgeModeFilter,
     savedRouteModeFilter,
@@ -288,6 +307,13 @@ export function AdminDashboard({ authUser }) {
       return () => clearTimeout(timer);
     }
   }, [userSearch, guestSearch]);
+
+  useEffect(() => {
+    if (activeTab === 'activities') {
+      const timer = setTimeout(() => loadDashboardData(true), 350);
+      return () => clearTimeout(timer);
+    }
+  }, [activitySearch]);
 
   useEffect(() => {
     if (activeTab === 'network' && networkSubTab === 'nodes') {
@@ -307,19 +333,40 @@ export function AdminDashboard({ authUser }) {
     }
   }, [tripSearch]);
 
-  useEffect(() => {
-    if (activeTab === 'saved_routes') {
-      const timer = setTimeout(() => loadDashboardData(true), 350);
-      return () => clearTimeout(timer);
+  // User details modal opener
+  const handleViewUserDetails = async (userId) => {
+    setLoadingUserDetails(true);
+    setUserModalTab('overview');
+    try {
+      const data = await getAdminUserDetails(userId);
+      setViewingUserDetails(data);
+    } catch (err) {
+      showError(err.message || 'Failed to load user profile & activities.');
+    } finally {
+      setLoadingUserDetails(false);
     }
-  }, [savedRouteSearch]);
+  };
 
-  useEffect(() => {
-    if (activeTab === 'network' && networkSubTab === 'nodes') {
-      const timer = setTimeout(() => loadDashboardData(true), 350);
-      return () => clearTimeout(timer);
+  // Delete saved route handler
+  const handleDeleteSavedRoute = async (routeId, routeName) => {
+    const confirmPrompt = lang === 'bn'
+      ? `আপনি কি "${routeName || 'এই রুট'}" মুছে ফেলতে চান?`
+      : `Delete saved route "${routeName || 'this route'}"?`;
+    if (!window.confirm(confirmPrompt)) return;
+
+    try {
+      await deleteAdminSavedRoute(routeId);
+      showToast(lang === 'bn' ? 'সংরক্ষিত রুট সফলভাবে মুছে ফেলা হয়েছে।' : 'Saved route deleted successfully.');
+      if (viewingUserDetails) {
+        // Refresh open modal's data
+        const updated = await getAdminUserDetails(viewingUserDetails.user.id);
+        setViewingUserDetails(updated);
+      }
+      loadDashboardData(true);
+    } catch (err) {
+      showError(err.message || 'Failed to delete route.');
     }
-  }, [nodeSearch]);
+  };
 
   // User Actions
   const handleSaveUser = async (e) => {
@@ -574,6 +621,7 @@ export function AdminDashboard({ authUser }) {
   const TAB_ITEMS = [
     { id: 'overview', bn: 'সারসংক্ষেপ', en: 'Overview', icon: '📊' },
     { id: 'users', bn: 'ইউজার ও গেস্ট সেশন', en: 'Users & Guests', icon: '👥' },
+    { id: 'activities', bn: 'ইউজার অ্যাক্টিভিটি লগ', en: 'User Activities', icon: '⚡' },
     { id: 'network', bn: 'ট্রানজিট নেটওয়ার্ক ও রুট', en: 'Transit Network', icon: '🚇' },
     { id: 'trips', bn: 'ট্রিপ ও সার্চ লগ', en: 'Trips & Searches', icon: '🧭' },
     { id: 'anomalies', bn: 'জ্যাম ও ডিজরাপশন', en: 'Live Anomalies', icon: '⚠️' },
@@ -1012,8 +1060,8 @@ export function AdminDashboard({ authUser }) {
                                     <button
                                       type="button"
                                       className="action-chip"
-                                      onClick={() => setViewingUser(u)}
-                                      title={lang === 'bn' ? 'বিস্তারিত দেখুন' : 'View Details'}
+                                      onClick={() => handleViewUserDetails(u.id)}
+                                      title={lang === 'bn' ? 'ইউজার প্রোফাইল ও অ্যাক্টিভিটি দেখুন' : 'View User Profile & Activity'}
                                       style={{ padding: '4px 8px', fontSize: 12 }}
                                     >
                                       👁️
@@ -1115,14 +1163,25 @@ export function AdminDashboard({ authUser }) {
                                   {formatDate(g.createdAt, lang)}
                                 </td>
                                 <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                                  <button
-                                    type="button"
-                                    className="action-chip action-chip--logout"
-                                    onClick={() => handleDeleteUser(g.id, g.email)}
-                                    style={{ padding: '3px 8px', fontSize: 12 }}
-                                  >
-                                    🗑️ {lang === 'bn' ? 'মুছুন' : 'Delete'}
-                                  </button>
+                                  <div style={{ display: 'inline-flex', gap: 6 }}>
+                                    <button
+                                      type="button"
+                                      className="action-chip"
+                                      onClick={() => handleViewUserDetails(g.id)}
+                                      title={lang === 'bn' ? 'গেস্ট প্রোফাইল ও অ্যাক্টিভিটি দেখুন' : 'View Guest Details & Activity'}
+                                      style={{ padding: '3px 8px', fontSize: 12 }}
+                                    >
+                                      👁️
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="action-chip action-chip--logout"
+                                      onClick={() => handleDeleteUser(g.id, g.email)}
+                                      style={{ padding: '3px 8px', fontSize: 12 }}
+                                    >
+                                      🗑️ {lang === 'bn' ? 'মুছুন' : 'Delete'}
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             ))
@@ -1133,92 +1192,476 @@ export function AdminDashboard({ authUser }) {
                   </>
                 )}
 
-                {/* View User Details Modal */}
-                {viewingUser && (
+                {/* Comprehensive User Profile, Saved Routes & Activity Modal */}
+                {(viewingUserDetails || loadingUserDetails) && (
                   <div style={{
                     position: 'fixed',
                     inset: 0,
-                    background: 'rgba(0,0,0,0.7)',
+                    background: 'rgba(0,0,0,0.82)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     zIndex: 10000,
                     padding: 16
                   }}>
-                    <div className="profile-card" style={{ maxWidth: 500, width: '100%', border: '1px solid var(--metro)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid var(--line)', paddingBottom: 10 }}>
-                        <h3 style={{ margin: 0, fontSize: 18, color: 'var(--cream)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span>👤</span>
-                          <span>{lang === 'bn' ? 'ব্যবহারকারী প্রোফাইল বিবরণ' : 'User Account Details'}</span>
-                        </h3>
-                        <button type="button" className="action-chip" onClick={() => setViewingUser(null)}>✕</button>
-                      </div>
+                    <div className="profile-card" style={{ maxWidth: 840, width: '100%', maxHeight: '92vh', overflowY: 'auto', border: '1px solid var(--metro)', padding: 22 }}>
+                      {loadingUserDetails && !viewingUserDetails ? (
+                        <div style={{ padding: '50px 0', textAlign: 'center' }}>
+                          <Loader />
+                          <p style={{ marginTop: 14, color: 'var(--c70)', fontFamily: 'var(--data)' }}>
+                            {lang === 'bn' ? 'ব্যবহারকারীর বিস্তারিত তথ্য ও অ্যাক্টিভিটি লোড হচ্ছে...' : 'Loading commuter profile & activity timeline...'}
+                          </p>
+                        </div>
+                      ) : viewingUserDetails && (
+                        <div>
+                          {/* Modal Header */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, borderBottom: '1px solid var(--line)', paddingBottom: 14 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                              <div style={{
+                                width: 44,
+                                height: 44,
+                                borderRadius: '50%',
+                                background: 'var(--ground2)',
+                                border: '2px solid var(--metro)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 20
+                              }}>
+                                {viewingUserDetails.user.role === 'admin' ? '🛡️' : (viewingUserDetails.user.role === 'guest' ? '🎟️' : '👤')}
+                              </div>
+                              <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <h3 style={{ margin: 0, fontSize: 19, color: 'var(--cream)' }}>
+                                    {viewingUserDetails.user.name}
+                                  </h3>
+                                  <span style={{
+                                    padding: '2px 8px',
+                                    borderRadius: 3,
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    background: viewingUserDetails.user.role === 'admin' ? 'rgba(39, 185, 122, 0.2)' : 'var(--ground2)',
+                                    color: viewingUserDetails.user.role === 'admin' ? 'var(--metro)' : 'var(--cream)'
+                                  }}>
+                                    {viewingUserDetails.user.role}
+                                  </span>
+                                  <span style={{
+                                    padding: '2px 8px',
+                                    borderRadius: 3,
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    background: viewingUserDetails.user.status === 'active' ? 'rgba(39, 185, 122, 0.15)' : 'rgba(224, 90, 58, 0.15)',
+                                    color: viewingUserDetails.user.status === 'active' ? 'var(--metro)' : 'var(--stamp)'
+                                  }}>
+                                    {viewingUserDetails.user.status}
+                                  </span>
+                                </div>
+                                <code style={{ fontSize: 12.5, color: 'var(--metro)' }}>{viewingUserDetails.user.email}</code>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              className="action-chip"
+                              onClick={() => setViewingUserDetails(null)}
+                              style={{ padding: '6px 12px', fontSize: 13 }}
+                            >
+                              ✕ {lang === 'bn' ? 'বন্ধ করুন' : 'Close'}
+                            </button>
+                          </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13.5, fontFamily: 'var(--data)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6 }}>
-                          <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'ইউজার আইডি:' : 'Database User ID:'}</span>
-                          <strong>#{viewingUser.id}</strong>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6 }}>
-                          <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'নাম:' : 'Full Name:'}</span>
-                          <strong>{viewingUser.name}</strong>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6 }}>
-                          <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'ইমেইল:' : 'Email Address:'}</span>
-                          <code>{viewingUser.email}</code>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6 }}>
-                          <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'রোল:' : 'System Role:'}</span>
-                          <span style={{ textTransform: 'uppercase', fontWeight: 700, color: 'var(--metro)' }}>{viewingUser.role}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6 }}>
-                          <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'স্ট্যাটাস:' : 'Account Status:'}</span>
-                          <span style={{ fontWeight: 600, color: viewingUser.status === 'active' ? 'var(--metro)' : 'var(--stamp)' }}>{viewingUser.status}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6 }}>
-                          <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'ফোন:' : 'Phone Number:'}</span>
-                          <span>{viewingUser.phone || 'N/A'}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6 }}>
-                          <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'মোট ট্রিপ:' : 'Completed Trips:'}</span>
-                          <strong>{num(viewingUser.tripCount, lang)}</strong>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6 }}>
-                          <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'সংরক্ষিত রুট:' : 'Saved Routes:'}</span>
-                          <strong>{num(viewingUser.savedRoutesCount, lang)}</strong>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6 }}>
-                          <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'যোগদান:' : 'Joined Date:'}</span>
-                          <span>{formatDate(viewingUser.createdAt, lang)}</span>
-                        </div>
-                      </div>
+                          {/* Modal Tabs */}
+                          <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '1px solid var(--line)', paddingBottom: 8, overflowX: 'auto' }}>
+                            <button
+                              type="button"
+                              className={`action-chip ${userModalTab === 'overview' ? 'action-chip--highlight' : ''}`}
+                              onClick={() => setUserModalTab('overview')}
+                              style={{ fontWeight: 600 }}
+                            >
+                              📊 {lang === 'bn' ? 'প্রোফাইল বিবরণী' : 'Overview & Stats'}
+                            </button>
+                            <button
+                              type="button"
+                              className={`action-chip ${userModalTab === 'routes' ? 'action-chip--highlight' : ''}`}
+                              onClick={() => setUserModalTab('routes')}
+                              style={{ fontWeight: 600 }}
+                            >
+                              🧭 {lang === 'bn' ? 'সংরক্ষিত রুটসমূহ' : 'Saved Routes'} ({num(viewingUserDetails.savedRoutes?.length || 0, lang)})
+                            </button>
+                            <button
+                              type="button"
+                              className={`action-chip ${userModalTab === 'trips' ? 'action-chip--highlight' : ''}`}
+                              onClick={() => setUserModalTab('trips')}
+                              style={{ fontWeight: 600 }}
+                            >
+                              🚗 {lang === 'bn' ? 'সম্পন্ন করা ট্রিপ' : 'Completed Trips'} ({num(viewingUserDetails.trips?.length || 0, lang)})
+                            </button>
+                            <button
+                              type="button"
+                              className={`action-chip ${userModalTab === 'timeline' ? 'action-chip--highlight' : ''}`}
+                              onClick={() => setUserModalTab('timeline')}
+                              style={{ fontWeight: 600 }}
+                            >
+                              ⚡ {lang === 'bn' ? 'অ্যাক্টিভিটি টাইমলাইন' : 'Activity Timeline'} ({num(viewingUserDetails.activities?.length || 0, lang)})
+                            </button>
+                          </div>
 
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
-                        <button
-                          type="button"
-                          className="action-chip"
-                          onClick={() => {
-                            const u = viewingUser;
-                            setViewingUser(null);
-                            setEditingUser(u);
-                            setEditUserForm({
-                              name: u.name,
-                              role: u.role,
-                              status: u.status,
-                              phone: u.phone || ''
-                            });
-                          }}
-                        >
-                          ✏️ {lang === 'bn' ? 'এডিট করুন' : 'Edit Profile'}
-                        </button>
-                        <button
-                          type="button"
-                          className="action-chip action-chip--highlight"
-                          onClick={() => setViewingUser(null)}
-                        >
-                          {lang === 'bn' ? 'বন্ধ করুন' : 'Close'}
-                        </button>
-                      </div>
+                          {/* TAB 1: USER OVERVIEW & METRICS */}
+                          {userModalTab === 'overview' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                              {/* Key Stats Counter Tiles */}
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+                                <div style={{ background: 'var(--ground)', padding: '12px 14px', borderRadius: 6, border: '1px solid var(--line)' }}>
+                                  <div style={{ fontSize: 11.5, color: 'var(--c70)' }}>{lang === 'bn' ? 'মোট ট্রিপ' : 'Total Trips'}</div>
+                                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--cream)', marginTop: 4 }}>
+                                    {num(viewingUserDetails.stats?.totalTrips || 0, lang)}
+                                  </div>
+                                </div>
+                                <div style={{ background: 'var(--ground)', padding: '12px 14px', borderRadius: 6, border: '1px solid var(--line)' }}>
+                                  <div style={{ fontSize: 11.5, color: 'var(--c70)' }}>{lang === 'bn' ? 'মোট দূরত্ব' : 'Total Distance'}</div>
+                                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--metro)', marginTop: 4 }}>
+                                    {num(viewingUserDetails.stats?.totalDistanceKm || 0, lang)} km
+                                  </div>
+                                </div>
+                                <div style={{ background: 'var(--ground)', padding: '12px 14px', borderRadius: 6, border: '1px solid var(--line)' }}>
+                                  <div style={{ fontSize: 11.5, color: 'var(--c70)' }}>{lang === 'bn' ? 'সংরক্ষিত রুট' : 'Saved Routes'}</div>
+                                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--cream)', marginTop: 4 }}>
+                                    {num(viewingUserDetails.stats?.totalSavedRoutes || 0, lang)}
+                                  </div>
+                                </div>
+                                <div style={{ background: 'var(--ground)', padding: '12px 14px', borderRadius: 6, border: '1px solid var(--line)' }}>
+                                  <div style={{ fontSize: 11.5, color: 'var(--c70)' }}>{lang === 'bn' ? 'প্রিয় স্টেশন' : 'Favorite Stops'}</div>
+                                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--cream)', marginTop: 4 }}>
+                                    {num(viewingUserDetails.stats?.totalFavoriteStops || 0, lang)}
+                                  </div>
+                                </div>
+                                <div style={{ background: 'var(--ground)', padding: '12px 14px', borderRadius: 6, border: '1px solid var(--line)' }}>
+                                  <div style={{ fontSize: 11.5, color: 'var(--c70)' }}>{lang === 'bn' ? 'যাত্রী রিপোর্ট' : 'Reports Filed'}</div>
+                                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--cream)', marginTop: 4 }}>
+                                    {num(viewingUserDetails.stats?.totalIncidentReports || 0, lang)}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Detailed User Attributes */}
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, fontSize: 13.5, fontFamily: 'var(--data)' }}>
+                                <div style={{ background: 'var(--ground)', padding: 14, borderRadius: 6, border: '1px solid var(--line)' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
+                                    <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'ডাটাবেজ ইউজার আইডি:' : 'Database User ID:'}</span>
+                                    <strong>#{viewingUserDetails.user.id}</strong>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
+                                    <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'পুরো নাম:' : 'Full Name:'}</span>
+                                    <strong>{viewingUserDetails.user.name}</strong>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
+                                    <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'ইমেইল অ্যাড্রেস:' : 'Email Address:'}</span>
+                                    <code>{viewingUserDetails.user.email}</code>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
+                                    <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'ফোন নম্বর:' : 'Phone Number:'}</span>
+                                    <span>{viewingUserDetails.user.phone || 'N/A'}</span>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'বায়ো / বিবরণ:' : 'Bio:'}</span>
+                                    <span>{viewingUserDetails.user.bio || '—'}</span>
+                                  </div>
+                                </div>
+
+                                <div style={{ background: 'var(--ground)', padding: 14, borderRadius: 6, border: '1px solid var(--line)' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
+                                    <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'সিস্টেম রোল:' : 'System Role:'}</span>
+                                    <span style={{ textTransform: 'uppercase', fontWeight: 700, color: 'var(--metro)' }}>{viewingUserDetails.user.role}</span>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
+                                    <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'অ্যাকাউন্ট স্ট্যাটাস:' : 'Account Status:'}</span>
+                                    <span style={{ fontWeight: 600, color: viewingUserDetails.user.status === 'active' ? 'var(--metro)' : 'var(--stamp)' }}>{viewingUserDetails.user.status}</span>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
+                                    <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'রেজিস্ট্রেশন তারিখ:' : 'Registered On:'}</span>
+                                    <span>{formatDate(viewingUserDetails.user.createdAt, lang)}</span>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, marginBottom: 6 }}>
+                                    <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'সর্বশেষ লগইন:' : 'Last Login:'}</span>
+                                    <span>{viewingUserDetails.user.lastLoginAt ? formatDate(viewingUserDetails.user.lastLoginAt, lang) : (lang === 'bn' ? 'তথ্য নেই' : 'N/A')}</span>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span style={{ color: 'var(--c70)' }}>{lang === 'bn' ? 'কমিউটার লেভেল:' : 'Commuter Tier:'}</span>
+                                    <span style={{ color: 'var(--sev-3)', fontWeight: 600 }}>{viewingUserDetails.user.role === 'admin' ? 'System Administrator' : 'Dhaka Explorer'}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
+                                <button
+                                  type="button"
+                                  className="action-chip"
+                                  onClick={() => {
+                                    const u = viewingUserDetails.user;
+                                    setEditingUser(u);
+                                    setEditUserForm({
+                                      name: u.name,
+                                      role: u.role,
+                                      status: u.status,
+                                      phone: u.phone || ''
+                                    });
+                                  }}
+                                >
+                                  ✏️ {lang === 'bn' ? 'এই ব্যবহারকারী এডিট করুন' : 'Edit User Profile'}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* TAB 2: USER'S SAVED ROUTES */}
+                          {userModalTab === 'routes' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                              <div style={{ fontSize: 13, color: 'var(--c70)' }}>
+                                {lang === 'bn'
+                                  ? `এই ব্যবহারকারীর দ্বারা সংরক্ষিত মোট ${num(viewingUserDetails.savedRoutes?.length || 0, lang)} টি রুট:`
+                                  : `Total ${viewingUserDetails.savedRoutes?.length || 0} routes saved by this commuter:`}
+                              </div>
+
+                              {(!viewingUserDetails.savedRoutes || viewingUserDetails.savedRoutes.length === 0) ? (
+                                <div style={{ padding: '30px 14px', textAlign: 'center', background: 'var(--ground)', borderRadius: 6, color: 'var(--c70)' }}>
+                                  {lang === 'bn' ? 'এই ব্যবহারকারী এখনও কোনো রুট সংরক্ষণ করেননি।' : 'This commuter has not saved any routes yet.'}
+                                </div>
+                              ) : (
+                                <div style={{ overflowX: 'auto', background: 'var(--ground)', borderRadius: 6, border: '1px solid var(--line)' }}>
+                                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontFamily: 'var(--data)' }}>
+                                    <thead>
+                                      <tr style={{ borderBottom: '1px solid var(--line)', color: 'var(--c70)', textAlign: 'left' }}>
+                                        <th style={{ padding: '8px 10px' }}>ID</th>
+                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'রুটের নাম' : 'Route Name'}</th>
+                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'শুরু (Origin)' : 'Origin'}</th>
+                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'গন্তব্য (Destination)' : 'Destination'}</th>
+                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'মোড' : 'Mode'}</th>
+                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'সময়' : 'Duration'}</th>
+                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'তারিখ' : 'Saved On'}</th>
+                                        <th style={{ padding: '8px 10px', textAlign: 'right' }}>{lang === 'bn' ? 'অ্যাকশন' : 'Action'}</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {viewingUserDetails.savedRoutes.map((r) => (
+                                        <tr key={r.id} style={{ borderBottom: '1px solid var(--line)' }}>
+                                          <td style={{ padding: '8px 10px', color: 'var(--c70)' }}>#{r.id}</td>
+                                          <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--cream)' }}>
+                                            🧭 {r.name}
+                                          </td>
+                                          <td style={{ padding: '8px 10px', color: 'var(--cream)' }}>📍 {r.fromLocation}</td>
+                                          <td style={{ padding: '8px 10px', color: 'var(--cream)' }}>🏁 {r.toLocation}</td>
+                                          <td style={{ padding: '8px 10px' }}>
+                                            <span style={{ padding: '2px 6px', borderRadius: 3, fontSize: 11, background: 'var(--ground2)', color: 'var(--cream)', textTransform: 'uppercase' }}>
+                                              {r.mode}
+                                            </span>
+                                          </td>
+                                          <td style={{ padding: '8px 10px', color: 'var(--metro)', fontWeight: 600 }}>
+                                            {r.durationMinutes ? `${num(r.durationMinutes, lang)} min` : '—'}
+                                          </td>
+                                          <td style={{ padding: '8px 10px', color: 'var(--c70)', fontSize: 12 }}>
+                                            {formatDate(r.createdAt, lang)}
+                                          </td>
+                                          <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                                            <button
+                                              type="button"
+                                              className="action-chip action-chip--logout"
+                                              onClick={() => handleDeleteSavedRoute(r.id, r.name)}
+                                              title={lang === 'bn' ? 'রুট মুছে ফেলুন' : 'Delete Route'}
+                                              style={{ padding: '3px 8px', fontSize: 11 }}
+                                            >
+                                              🗑️
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* TAB 3: USER'S COMPLETED TRIPS */}
+                          {userModalTab === 'trips' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                              <div style={{ fontSize: 13, color: 'var(--c70)' }}>
+                                {lang === 'bn'
+                                  ? `এই ব্যবহারকারীর দ্বারা সম্পন্ন মোট ${num(viewingUserDetails.trips?.length || 0, lang)} টি ট্রিপ:`
+                                  : `Total ${viewingUserDetails.trips?.length || 0} trips logged by this commuter:`}
+                              </div>
+
+                              {(!viewingUserDetails.trips || viewingUserDetails.trips.length === 0) ? (
+                                <div style={{ padding: '30px 14px', textAlign: 'center', background: 'var(--ground)', borderRadius: 6, color: 'var(--c70)' }}>
+                                  {lang === 'bn' ? 'এই ব্যবহারকারী এখনও কোনো ট্রিপ সম্পন্ন করেননি।' : 'No trips logged by this commuter yet.'}
+                                </div>
+                              ) : (
+                                <div style={{ overflowX: 'auto', background: 'var(--ground)', borderRadius: 6, border: '1px solid var(--line)' }}>
+                                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontFamily: 'var(--data)' }}>
+                                    <thead>
+                                      <tr style={{ borderBottom: '1px solid var(--line)', color: 'var(--c70)', textAlign: 'left' }}>
+                                        <th style={{ padding: '8px 10px' }}>ID</th>
+                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'যাত্রা শুরু (From)' : 'Origin'}</th>
+                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'গন্তব্য (To)' : 'Destination'}</th>
+                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'মোড' : 'Mode'}</th>
+                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'দূরত্ব' : 'Distance'}</th>
+                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'সময়' : 'Duration'}</th>
+                                        <th style={{ padding: '8px 10px' }}>{lang === 'bn' ? 'তারিখ' : 'Date'}</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {viewingUserDetails.trips.map((t) => (
+                                        <tr key={t.id} style={{ borderBottom: '1px solid var(--line)' }}>
+                                          <td style={{ padding: '8px 10px', color: 'var(--c70)' }}>#{t.id}</td>
+                                          <td style={{ padding: '8px 10px', color: 'var(--cream)', fontWeight: 600 }}>📍 {t.fromLocation}</td>
+                                          <td style={{ padding: '8px 10px', color: 'var(--cream)', fontWeight: 600 }}>🏁 {t.toLocation}</td>
+                                          <td style={{ padding: '8px 10px' }}>
+                                            <span style={{ padding: '2px 6px', borderRadius: 3, fontSize: 11, background: 'var(--ground2)', color: 'var(--cream)', textTransform: 'uppercase' }}>
+                                              {t.mode}
+                                            </span>
+                                          </td>
+                                          <td style={{ padding: '8px 10px', color: 'var(--metro)', fontWeight: 600 }}>
+                                            {t.distanceKm ? `${num(t.distanceKm, lang)} km` : '—'}
+                                          </td>
+                                          <td style={{ padding: '8px 10px', color: 'var(--cream)' }}>
+                                            {t.durationMinutes ? `${num(t.durationMinutes, lang)} min` : '—'}
+                                          </td>
+                                          <td style={{ padding: '8px 10px', color: 'var(--c70)', fontSize: 12 }}>
+                                            {formatDate(t.createdAt, lang)}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* TAB 4: USER ACTIVITY TIMELINE */}
+                          {userModalTab === 'timeline' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                              <div style={{ fontSize: 13, color: 'var(--c70)' }}>
+                                {lang === 'bn'
+                                  ? `ব্যবহারকারীর সাম্প্রতিক সকল কার্যক্রম ও কর্মকাণ্ডের বিবরণী:`
+                                  : `Chronological activity stream of everything this user did:`}
+                              </div>
+
+                              {(!viewingUserDetails.activities || viewingUserDetails.activities.length === 0) ? (
+                                <div style={{ padding: '30px 14px', textAlign: 'center', background: 'var(--ground)', borderRadius: 6, color: 'var(--c70)' }}>
+                                  {lang === 'bn' ? 'কোনো সাম্প্রতিক কার্যক্রম পাওয়া যায়নি।' : 'No recorded activity found for this user.'}
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                  {viewingUserDetails.activities.map((act) => {
+                                    let icon = '⚡';
+                                    let tagColor = 'var(--cream)';
+                                    if (act.type.includes('login') || act.type.includes('auth')) {
+                                      icon = '🔑';
+                                      tagColor = 'var(--metro)';
+                                    } else if (act.type.includes('route')) {
+                                      icon = '🧭';
+                                      tagColor = '#38bdf8';
+                                    } else if (act.type.includes('trip')) {
+                                      icon = '🚗';
+                                      tagColor = 'var(--sev-3)';
+                                    } else if (act.type.includes('stop')) {
+                                      icon = '📍';
+                                      tagColor = '#f59e0b';
+                                    } else if (act.type.includes('incident')) {
+                                      icon = '📢';
+                                      tagColor = 'var(--stamp)';
+                                    } else if (act.type.includes('profile')) {
+                                      icon = '✏️';
+                                      tagColor = '#a855f7';
+                                    }
+
+                                    return (
+                                      <div
+                                        key={act.id}
+                                        style={{
+                                          background: 'var(--ground)',
+                                          padding: '12px 14px',
+                                          borderRadius: 6,
+                                          border: '1px solid var(--line)',
+                                          display: 'flex',
+                                          alignItems: 'flex-start',
+                                          gap: 12
+                                        }}
+                                      >
+                                        <div style={{
+                                          width: 32,
+                                          height: 32,
+                                          borderRadius: 4,
+                                          background: 'var(--ground2)',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          fontSize: 16,
+                                          flexShrink: 0
+                                        }}>
+                                          {icon}
+                                        </div>
+
+                                        <div style={{ flex: 1 }}>
+                                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                                            <div style={{ fontWeight: 600, color: 'var(--cream)', fontSize: 13.5 }}>
+                                              {act.title}
+                                            </div>
+                                            <span style={{ fontSize: 11.5, color: 'var(--c70)' }}>
+                                              🕒 {formatDate(act.createdAt, lang)}
+                                            </span>
+                                          </div>
+
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+                                            <span style={{
+                                              padding: '1px 6px',
+                                              borderRadius: 3,
+                                              fontSize: 10.5,
+                                              fontWeight: 700,
+                                              textTransform: 'uppercase',
+                                              background: 'var(--ground2)',
+                                              color: tagColor
+                                            }}>
+                                              {act.type}
+                                            </span>
+
+                                            {act.details && Object.keys(act.details).length > 0 && (
+                                              <span style={{ fontSize: 12, color: 'var(--c70)' }}>
+                                                {act.details.from && act.details.to
+                                                  ? `(📍 ${act.details.from} ➔ 🏁 ${act.details.to} • ${act.details.mode || ''})`
+                                                  : (act.details.name ? `"${act.details.name}"` : '')
+                                                }
+                                              </span>
+                                            )}
+
+                                            {act.ipAddress && (
+                                              <span style={{ fontSize: 11, color: 'var(--c45)', marginLeft: 'auto' }}>
+                                                IP: {act.ipAddress}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Footer Close Button */}
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
+                            <button
+                              type="button"
+                              className="action-chip action-chip--highlight"
+                              onClick={() => setViewingUserDetails(null)}
+                              style={{ fontWeight: 700, padding: '8px 18px' }}
+                            >
+                              {lang === 'bn' ? 'সম্পন্ন (বন্ধ করুন)' : 'Done (Close)'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1306,6 +1749,176 @@ export function AdminDashboard({ authUser }) {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* ----------------- TAB: USER ACTIVITIES LOG (Platform-wide Activity Stream) ----------------- */}
+            {activeTab === 'activities' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
+                {/* Search and Category Filter Bar */}
+                <div className="profile-card" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <div style={{ flex: 1, minWidth: 240 }}>
+                    <input
+                      type="text"
+                      className="profile-form-input"
+                      placeholder={lang === 'bn' ? '🔍 যাত্রীর নাম, ইমেইল, শিরোনাম বা আইপি দিয়ে খুঁজুন...' : '🔍 Search user name, email, activity title, IP...'}
+                      value={activitySearch}
+                      onChange={(e) => setActivitySearch(e.target.value)}
+                    />
+                  </div>
+
+                  <select
+                    className="profile-form-input"
+                    style={{ width: 'auto', minWidth: 180 }}
+                    value={activityTypeFilter}
+                    onChange={(e) => setActivityTypeFilter(e.target.value)}
+                  >
+                    <option value="">{lang === 'bn' ? 'সকল অ্যাক্টিভিটি (All Activities)' : 'All Activity Types'}</option>
+                    <option value="auth_login">🔑 {lang === 'bn' ? 'ইউজার লগইন (Login)' : 'User Logins'}</option>
+                    <option value="auth_register">📝 {lang === 'bn' ? 'নতুন রেজিস্ট্রেশন (Register)' : 'New Registrations'}</option>
+                    <option value="auth_guest">🎟️ {lang === 'bn' ? 'গেস্ট সেশন (Guest Access)' : 'Guest Sessions'}</option>
+                    <option value="route_saved">🧭 {lang === 'bn' ? 'রুট সংরক্ষণ (Route Saved)' : 'Saved Routes'}</option>
+                    <option value="route_deleted">🗑️ {lang === 'bn' ? 'রুট মুছে ফেলা (Route Deleted)' : 'Deleted Routes'}</option>
+                    <option value="trip_created">🚗 {lang === 'bn' ? 'ট্রিপ লগ (Trip Logged)' : 'Logged Trips'}</option>
+                    <option value="trip_deleted">🗑️ {lang === 'bn' ? 'ট্রিপ মুছে ফেলা (Trip Deleted)' : 'Deleted Trips'}</option>
+                    <option value="stop_favorited">📍 {lang === 'bn' ? 'প্রিয় স্টেশন (Favorite Stop)' : 'Favorite Stops'}</option>
+                    <option value="incident_reported">📢 {lang === 'bn' ? 'যাত্রী রিপোর্ট (Incident Report)' : 'Incident Reports'}</option>
+                    <option value="profile_updated">✏️ {lang === 'bn' ? 'প্রোফাইল আপডেট (Profile Update)' : 'Profile Updates'}</option>
+                  </select>
+
+                  <span style={{ fontSize: 13, color: 'var(--c70)' }}>
+                    {lang === 'bn' ? `মোট ${num(activityTotal, lang)} টি অ্যাক্টিভিটি লগ` : `Total ${activityTotal} user activities`}
+                  </span>
+                </div>
+
+                {/* Activity Feed Table */}
+                <div className="profile-card" style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5, fontFamily: 'var(--data)' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--line)', color: 'var(--c70)', textAlign: 'left' }}>
+                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'সময়' : 'Timestamp'}</th>
+                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'ব্যবহারকারী / যাত্রী' : 'Commuter / User'}</th>
+                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'অ্যাক্টিভিটি টাইপ' : 'Category'}</th>
+                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'কার্যক্রম বিবরণ' : 'Activity Details'}</th>
+                        <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'আইপি / উৎস' : 'IP / Client'}</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'right' }}>{lang === 'bn' ? 'প্রোফাইল' : 'Profile'}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {userActivities.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--c70)' }}>
+                            {lang === 'bn' ? 'কোনো ইউজার অ্যাক্টিভিটি পাওয়া যায়নি।' : 'No commuter activities matching filter.'}
+                          </td>
+                        </tr>
+                      ) : (
+                        userActivities.map((act) => {
+                          let icon = '⚡';
+                          let tagColor = 'var(--cream)';
+                          if (act.type.includes('login') || act.type.includes('auth')) {
+                            icon = '🔑';
+                            tagColor = 'var(--metro)';
+                          } else if (act.type.includes('route')) {
+                            icon = '🧭';
+                            tagColor = '#38bdf8';
+                          } else if (act.type.includes('trip')) {
+                            icon = '🚗';
+                            tagColor = 'var(--sev-3)';
+                          } else if (act.type.includes('stop')) {
+                            icon = '📍';
+                            tagColor = '#f59e0b';
+                          } else if (act.type.includes('incident')) {
+                            icon = '📢';
+                            tagColor = 'var(--stamp)';
+                          } else if (act.type.includes('profile')) {
+                            icon = '✏️';
+                            tagColor = '#a855f7';
+                          }
+
+                          return (
+                            <tr key={act.id} style={{ borderBottom: '1px solid var(--line)' }}>
+                              <td style={{ padding: '10px 12px', color: 'var(--c70)', fontSize: 12.5, whiteSpace: 'nowrap' }}>
+                                🕒 {formatDate(act.createdAt, lang)}
+                              </td>
+
+                              <td style={{ padding: '10px 12px' }}>
+                                <div style={{ fontWeight: 600, color: 'var(--cream)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span>{act.userName || 'Anonymous Commuter'}</span>
+                                  {act.userRole && (
+                                    <span style={{
+                                      padding: '1px 5px',
+                                      borderRadius: 3,
+                                      fontSize: 10,
+                                      fontWeight: 700,
+                                      textTransform: 'uppercase',
+                                      background: act.userRole === 'admin' ? 'rgba(39, 185, 122, 0.2)' : 'var(--ground2)',
+                                      color: act.userRole === 'admin' ? 'var(--metro)' : 'var(--cream)'
+                                    }}>
+                                      {act.userRole}
+                                    </span>
+                                  )}
+                                </div>
+                                <code style={{ fontSize: 11.5, color: 'var(--c70)' }}>{act.userEmail || `User #${act.userId}`}</code>
+                              </td>
+
+                              <td style={{ padding: '10px 12px' }}>
+                                <span style={{
+                                  padding: '3px 8px',
+                                  borderRadius: 4,
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  textTransform: 'uppercase',
+                                  background: 'var(--ground2)',
+                                  color: tagColor,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4
+                                }}>
+                                  <span>{icon}</span>
+                                  <span>{act.type}</span>
+                                </span>
+                              </td>
+
+                              <td style={{ padding: '10px 12px' }}>
+                                <div style={{ fontWeight: 600, color: 'var(--cream)' }}>
+                                  {act.title}
+                                </div>
+                                {act.details && Object.keys(act.details).length > 0 && (
+                                  <div style={{ fontSize: 12, color: 'var(--c70)', marginTop: 2 }}>
+                                    {act.details.from && act.details.to
+                                      ? `📍 ${act.details.from} ➔ 🏁 ${act.details.to} (${act.details.mode || ''})`
+                                      : (act.details.name ? `"${act.details.name}"` : JSON.stringify(act.details))
+                                    }
+                                  </div>
+                                )}
+                              </td>
+
+                              <td style={{ padding: '10px 12px', color: 'var(--c70)', fontSize: 12, whiteSpace: 'nowrap' }}>
+                                <code>{act.ipAddress || '—'}</code>
+                              </td>
+
+                              <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                                {act.userId ? (
+                                  <button
+                                    type="button"
+                                    className="action-chip"
+                                    onClick={() => handleViewUserDetails(act.userId)}
+                                    title={lang === 'bn' ? 'ইউজার প্রোফাইল ও বিস্তারিত দেখুন' : 'View User Profile & Full History'}
+                                    style={{ padding: '3px 8px', fontSize: 12 }}
+                                  >
+                                    👁️ {lang === 'bn' ? 'প্রোফাইল' : 'View'}
+                                  </button>
+                                ) : (
+                                  <span style={{ color: 'var(--c45)', fontSize: 12 }}>—</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 
@@ -1588,18 +2201,19 @@ export function AdminDashboard({ authUser }) {
                           <tr style={{ borderBottom: '1px solid var(--line)', color: 'var(--c70)', textAlign: 'left' }}>
                             <th style={{ padding: '10px 12px' }}>ID</th>
                             <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'রুটের নাম' : 'Route Name'}</th>
-                            <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'সংরক্ষণকারী যাত্রী' : 'Saved By'}</th>
+                            <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'সংরক্ষণকারী যাত্রী' : 'Saved By (Commuter)'}</th>
                             <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'শুরু (Origin)' : 'Origin'}</th>
                             <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'গন্তব্য (Destination)' : 'Destination'}</th>
                             <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'মোড' : 'Mode'}</th>
                             <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'সময়' : 'Duration'}</th>
                             <th style={{ padding: '10px 12px' }}>{lang === 'bn' ? 'সংরক্ষণ তারিখ' : 'Saved On'}</th>
+                            <th style={{ padding: '10px 12px', textAlign: 'right' }}>{lang === 'bn' ? 'অ্যাকশন' : 'Action'}</th>
                           </tr>
                         </thead>
                         <tbody>
                           {savedRoutes.length === 0 ? (
                             <tr>
-                              <td colSpan={8} style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--c70)' }}>
+                              <td colSpan={9} style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--c70)' }}>
                                 {lang === 'bn' ? 'কোনো সংরক্ষিত রুট পাওয়া যায়নি।' : 'No saved commuter routes found.'}
                               </td>
                             </tr>
@@ -1611,8 +2225,25 @@ export function AdminDashboard({ authUser }) {
                                   🧭 {r.name}
                                 </td>
                                 <td style={{ padding: '10px 12px' }}>
-                                  <div style={{ fontWeight: 600, color: 'var(--cream)' }}>{r.userName}</div>
-                                  <div style={{ fontSize: 12, color: 'var(--c70)' }}>{r.userEmail}</div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <div>
+                                      <div style={{ fontWeight: 600, color: 'var(--cream)' }}>
+                                        {r.userName || `User #${r.userId}`}
+                                      </div>
+                                      <div style={{ fontSize: 12, color: 'var(--c70)' }}>{r.userEmail}</div>
+                                    </div>
+                                    {r.userId && (
+                                      <button
+                                        type="button"
+                                        className="action-chip"
+                                        onClick={() => handleViewUserDetails(r.userId)}
+                                        title={lang === 'bn' ? 'এই যাত্রীর সম্পূর্ণ প্রোফাইল ও অ্যাক্টিভিটি দেখুন' : 'View this commuter profile & activity'}
+                                        style={{ padding: '2px 6px', fontSize: 11, marginLeft: 4 }}
+                                      >
+                                        👁️
+                                      </button>
+                                    )}
+                                  </div>
                                 </td>
                                 <td style={{ padding: '10px 12px', color: 'var(--cream)' }}>
                                   📍 {r.fromLocation}
@@ -1630,6 +2261,19 @@ export function AdminDashboard({ authUser }) {
                                 </td>
                                 <td style={{ padding: '10px 12px', color: 'var(--c70)', fontSize: 12 }}>
                                   {formatDate(r.createdAt, lang)}
+                                </td>
+                                <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                                  <div style={{ display: 'inline-flex', gap: 6 }}>
+                                    <button
+                                      type="button"
+                                      className="action-chip action-chip--logout"
+                                      onClick={() => handleDeleteSavedRoute(r.id, r.name)}
+                                      title={lang === 'bn' ? 'সংরক্ষিত রুট মুছুন' : 'Delete Saved Route'}
+                                      style={{ padding: '3px 8px', fontSize: 12 }}
+                                    >
+                                      🗑️
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             ))

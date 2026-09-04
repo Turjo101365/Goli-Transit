@@ -1,4 +1,5 @@
 import { dbQuery, ensureDbAvailable } from '../config/db.js';
+import { recordUserActivity } from '../utils/userActivity.js';
 
 function mapTripRow(row) {
 	if (!row) return null;
@@ -82,6 +83,7 @@ export const profileRepository = {
 	},
 
 	async createTrip({ userId, fromLocation, toLocation, mode, distanceKm, durationMinutes, status = 'completed' }) {
+		let id = null;
 		if (await isDbLive()) {
 			try {
 				const result = await dbQuery(
@@ -90,26 +92,36 @@ export const profileRepository = {
 					{ userId, fromLocation, toLocation, mode, distanceKm, durationMinutes, status }
 				);
 				if (result?.insertId) {
-					return result.insertId;
+					id = result.insertId;
 				}
 			} catch {
 				// Fall through to memory
 			}
 		}
-		const id = sequenceId++;
-		const item = {
-			id,
+		if (!id) {
+			id = sequenceId++;
+			const item = {
+				id,
+				userId,
+				fromLocation,
+				toLocation,
+				mode: mode || 'bus',
+				distanceKm: distanceKm ? Number(distanceKm) : 0,
+				durationMinutes: durationMinutes ? Number(durationMinutes) : 0,
+				status,
+				completedAt: new Date().toISOString(),
+				createdAt: new Date().toISOString()
+			};
+			memoryTrips.unshift(item);
+		}
+
+		recordUserActivity({
 			userId,
-			fromLocation,
-			toLocation,
-			mode: mode || 'bus',
-			distanceKm: distanceKm ? Number(distanceKm) : 0,
-			durationMinutes: durationMinutes ? Number(durationMinutes) : 0,
-			status,
-			completedAt: new Date().toISOString(),
-			createdAt: new Date().toISOString()
-		};
-		memoryTrips.unshift(item);
+			type: 'TRIP_RECORDED',
+			title: `Recorded trip: ${fromLocation} → ${toLocation} (${mode || 'bus'})`,
+			details: { fromLocation, toLocation, mode, distanceKm, durationMinutes, status }
+		}).catch(() => {});
+
 		return id;
 	},
 
@@ -126,6 +138,13 @@ export const profileRepository = {
 		}
 		const idx = memoryTrips.findIndex((t) => String(t.id) === String(tripId) && String(t.userId) === String(userId));
 		if (idx !== -1) memoryTrips.splice(idx, 1);
+
+		recordUserActivity({
+			userId,
+			type: 'TRIP_DELETED',
+			title: `Deleted trip record #${tripId}`,
+			details: { tripId }
+		}).catch(() => {});
 	},
 
 	async clearTrips(userId) {
@@ -144,6 +163,13 @@ export const profileRepository = {
 				memoryTrips.splice(i, 1);
 			}
 		}
+
+		recordUserActivity({
+			userId,
+			type: 'TRIP_CLEARED',
+			title: 'Cleared all trip history',
+			details: {}
+		}).catch(() => {});
 	},
 
 	async getSavedRoutes(userId) {
@@ -165,6 +191,7 @@ export const profileRepository = {
 	},
 
 	async createSavedRoute({ userId, name, fromLocation, toLocation, mode, durationMinutes }) {
+		let id = null;
 		if (await isDbLive()) {
 			try {
 				const result = await dbQuery(
@@ -173,24 +200,34 @@ export const profileRepository = {
 					{ userId, name, fromLocation, toLocation, mode, durationMinutes }
 				);
 				if (result?.insertId) {
-					return result.insertId;
+					id = result.insertId;
 				}
 			} catch {
 				// Fall through to memory
 			}
 		}
-		const id = sequenceId++;
-		const item = {
-			id,
+		if (!id) {
+			id = sequenceId++;
+			const item = {
+				id,
+				userId,
+				name,
+				fromLocation,
+				toLocation,
+				mode: mode || 'metro',
+				durationMinutes: durationMinutes ? Number(durationMinutes) : null,
+				createdAt: new Date().toISOString()
+			};
+			memorySavedRoutes.unshift(item);
+		}
+
+		recordUserActivity({
 			userId,
-			name,
-			fromLocation,
-			toLocation,
-			mode: mode || 'metro',
-			durationMinutes: durationMinutes ? Number(durationMinutes) : null,
-			createdAt: new Date().toISOString()
-		};
-		memorySavedRoutes.unshift(item);
+			type: 'SAVED_ROUTE_CREATED',
+			title: `Saved route: ${name} (${fromLocation} → ${toLocation})`,
+			details: { name, fromLocation, toLocation, mode, durationMinutes }
+		}).catch(() => {});
+
 		return id;
 	},
 
@@ -207,6 +244,13 @@ export const profileRepository = {
 		}
 		const idx = memorySavedRoutes.findIndex((r) => String(r.id) === String(routeId) && String(r.userId) === String(userId));
 		if (idx !== -1) memorySavedRoutes.splice(idx, 1);
+
+		recordUserActivity({
+			userId,
+			type: 'SAVED_ROUTE_DELETED',
+			title: `Deleted saved route #${routeId}`,
+			details: { routeId }
+		}).catch(() => {});
 	},
 
 	async getFavoriteStops(userId) {
@@ -228,6 +272,7 @@ export const profileRepository = {
 	},
 
 	async createFavoriteStop({ userId, name, nodeId, latitude, longitude }) {
+		let id = null;
 		if (await isDbLive()) {
 			try {
 				const result = await dbQuery(
@@ -236,23 +281,33 @@ export const profileRepository = {
 					{ userId, name, nodeId, latitude, longitude }
 				);
 				if (result?.insertId) {
-					return result.insertId;
+					id = result.insertId;
 				}
 			} catch {
 				// Fall through to memory
 			}
 		}
-		const id = sequenceId++;
-		const item = {
-			id,
+		if (!id) {
+			id = sequenceId++;
+			const item = {
+				id,
+				userId,
+				name,
+				nodeId,
+				latitude,
+				longitude,
+				createdAt: new Date().toISOString()
+			};
+			memoryFavoriteStops.unshift(item);
+		}
+
+		recordUserActivity({
 			userId,
-			name,
-			nodeId,
-			latitude,
-			longitude,
-			createdAt: new Date().toISOString()
-		};
-		memoryFavoriteStops.unshift(item);
+			type: 'FAVORITE_STOP_ADDED',
+			title: `Added favorite stop: ${name}`,
+			details: { name, nodeId, latitude, longitude }
+		}).catch(() => {});
+
 		return id;
 	},
 
@@ -269,6 +324,13 @@ export const profileRepository = {
 		}
 		const idx = memoryFavoriteStops.findIndex((s) => String(s.id) === String(stopId) && String(s.userId) === String(userId));
 		if (idx !== -1) memoryFavoriteStops.splice(idx, 1);
+
+		recordUserActivity({
+			userId,
+			type: 'FAVORITE_STOP_DELETED',
+			title: `Removed favorite stop #${stopId}`,
+			details: { stopId }
+		}).catch(() => {});
 	},
 
 	async getStats(userId) {

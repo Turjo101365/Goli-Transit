@@ -23,6 +23,10 @@ export async function getAdminUsers({ query = '', role = '', status = '', limit 
   return apiRequest(`/api/admin/users?${params.toString()}`, { method: 'GET' });
 }
 
+export async function getAdminUserDetails(userId) {
+  return apiRequest(`/api/admin/users/${userId}/details`, { method: 'GET' });
+}
+
 export async function getAdminGuests({ query = '', limit = 50, offset = 0 } = {}) {
   const params = new URLSearchParams();
   if (query) params.append('query', query);
@@ -32,14 +36,31 @@ export async function getAdminGuests({ query = '', limit = 50, offset = 0 } = {}
   return apiRequest(`/api/admin/guests?${params.toString()}`, { method: 'GET' });
 }
 
-export async function getAdminSavedRoutes({ search = '', mode = '', limit = 50, offset = 0 } = {}) {
+export async function getAdminSavedRoutes({ userId = '', search = '', mode = '', limit = 50, offset = 0 } = {}) {
   const params = new URLSearchParams();
+  if (userId) params.append('userId', String(userId));
   if (search) params.append('search', search);
   if (mode) params.append('mode', mode);
   params.append('limit', String(limit));
   params.append('offset', String(offset));
 
   return apiRequest(`/api/admin/saved-routes?${params.toString()}`, { method: 'GET' });
+}
+
+export async function deleteAdminSavedRoute(routeId) {
+  return apiRequest(`/api/admin/saved-routes/${routeId}`, {
+    method: 'DELETE'
+  });
+}
+
+export async function getAdminUserActivities({ query = '', type = '', limit = 50, offset = 0 } = {}) {
+  const params = new URLSearchParams();
+  if (query) params.append('query', query);
+  if (type) params.append('type', type);
+  params.append('limit', String(limit));
+  params.append('offset', String(offset));
+
+  return apiRequest(`/api/admin/user-activities?${params.toString()}`, { method: 'GET' });
 }
 
 export async function getAdminTrips({ search = '', mode = '', status = '', limit = 50, offset = 0 } = {}) {

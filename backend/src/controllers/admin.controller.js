@@ -30,6 +30,16 @@ export async function listUsersController(req, res, next) {
   }
 }
 
+export async function getUserDetailsController(req, res, next) {
+  try {
+    const { id } = req.params;
+    const data = await adminService.getUserDetails(id);
+    return res.status(200).json({ ok: true, data, requestId: req.id });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function listGuestUsersController(req, res, next) {
   try {
     const { query, limit, offset } = req.query;
@@ -42,8 +52,29 @@ export async function listGuestUsersController(req, res, next) {
 
 export async function listSavedRoutesController(req, res, next) {
   try {
-    const { search, mode, limit, offset } = req.query;
-    const data = await adminService.listSavedRoutes({ search, mode, limit, offset });
+    const { userId, search, mode, limit, offset } = req.query;
+    const data = await adminService.listSavedRoutes({ userId, search, mode, limit, offset });
+    return res.status(200).json({ ok: true, data, requestId: req.id });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteSavedRouteController(req, res, next) {
+  try {
+    const { id } = req.params;
+    const clientIp = req.ip || req.headers['x-forwarded-for'] || null;
+    const data = await adminService.deleteSavedRoute(req.user, id, clientIp);
+    return res.status(200).json({ ok: true, data, requestId: req.id });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listAllUserActivitiesController(req, res, next) {
+  try {
+    const { query, type, limit, offset } = req.query;
+    const data = await adminService.listAllUserActivities({ query, type, limit, offset });
     return res.status(200).json({ ok: true, data, requestId: req.id });
   } catch (error) {
     next(error);

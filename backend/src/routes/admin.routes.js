@@ -3,8 +3,11 @@ import {
   getOverviewController,
   inviteAdminController,
   listUsersController,
+  getUserDetailsController,
   listGuestUsersController,
   listSavedRoutesController,
+  deleteSavedRouteController,
+  listAllUserActivitiesController,
   listTripsController,
   deleteTripController,
   updateUserController,
@@ -52,8 +55,11 @@ adminRoutes.get('/overview', getOverviewController);
 // --- Users & Guests ---
 adminRoutes.post('/invite', requireAdmin, validationMiddleware(inviteAdminValidation), inviteAdminController);
 adminRoutes.get('/users', listUsersController);
+adminRoutes.get('/users/:id/details', getUserDetailsController);
 adminRoutes.get('/guests', listGuestUsersController);
 adminRoutes.get('/saved-routes', listSavedRoutesController);
+adminRoutes.delete('/saved-routes/:id', requireAdmin, deleteSavedRouteController);
+adminRoutes.get('/user-activities', listAllUserActivitiesController);
 adminRoutes.get('/trips', listTripsController);
 adminRoutes.delete('/trips/:id', requireAdmin, deleteTripController);
 adminRoutes.patch('/users/:id', validationMiddleware(updateUserValidation), updateUserController);

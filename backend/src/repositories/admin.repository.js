@@ -335,16 +335,214 @@ export const adminRepository = {
     };
   },
 
-  async listSavedRoutes({ search = '', mode = '', limit = 50, offset = 0 } = {}) {
+  async getUserDetails(id) {
+    const userRows = await dbQuery(
+      `SELECT id, name, email, role, status, phone, avatar_url, bio, last_login_at, created_at, updated_at
+       FROM users WHERE id = :id LIMIT 1`,
+      { id }
+    );
+    if (!userRows[0]) return null;
+    const u = userRows[0];
+
+    const [
+      savedRoutesRows,
+      tripsRows,
+      favoriteStopsRows,
+      incidentRows,
+      activityRows,
+      statsRows
+    ] = await Promise.all([
+      dbQuery(
+        `SELECT id, user_id, name, from_location, to_location, mode, duration_minutes, created_at
+         FROM saved_routes WHERE user_id = :id ORDER BY created_at DESC`,
+        { id }
+      ).catch(() => []),
+      dbQuery(
+        `SELECT id, user_id, from_location, to_location, mode, distance_km, duration_minutes, status, completed_at, created_at
+         FROM trips WHERE user_id = :id ORDER BY completed_at DESC LIMIT 60`,
+        { id }
+      ).catch(() => []),
+      dbQuery(
+        `SELECT id, user_id, name, node_id, latitude, longitude, created_at
+         FROM favorite_stops WHERE user_id = :id ORDER BY created_at DESC`,
+        { id }
+      ).catch(() => []),
+      dbQuery(
+        `SELECT id, user_id, reporter_name, title, description, type, location_name, severity, status, created_at
+         FROM incident_reports WHERE user_id = :id ORDER BY created_at DESC`,
+        { id }
+      ).catch(() => []),
+      dbQuery(
+        `SELECT id, user_id, activity_type, title, details, ip_address, created_at
+         FROM user_activities WHERE user_id = :id ORDER BY created_at DESC LIMIT 100`,
+        { id }
+      ).catch(() => []),
+      dbQuery(
+        `SELECT 
+           COUNT(*) as totalTrips,
+           COALESCE(SUM(distance_km), 0) as totalDistanceKm,
+           COALESCE(SUM(duration_minutes), 0) as totalMinutes
+         FROM trips WHERE user_id = :id AND status = 'completed'`,
+        { id }
+      ).catch(() => [{}])
+    ]);
+
+    // Construct synthesized timeline from activities, routes, trips, stops, incidents
+    const timeline = [...(activityRows || []).map(a => ({
+      id: `act-${a.id}`,
+      type: a.activity_type,
+      title: a.title,
+      details: typeof a.details === 'string' ? JSON.parse(a.details || '{}') : a.details,
+      ipAddress: a.ip_address,
+      createdAt: a.created_at
+    }))];
+
+    // If activity table didn't record prior events, synthesize from existing tables:
+    for (const sr of (savedRoutesRows || [])) {
+      if (!timeline.some(t => t.details?.name === sr.name && t.type === 'SAVED_ROUTE_CREATED')) {
+        timeline.push({
+          id: `sr-${sr.id}`,
+          type: 'SAVED_ROUTE_CREATED',
+          title: `Saved route: ${sr.name} (${sr.from_location} → ${sr.to_location})`,
+          details: { name: sr.name, fromLocation: sr.from_location, toLocation: sr.to_location, mode: sr.mode, durationMinutes: sr.duration_minutes },
+          createdAt: sr.created_at
+        });
+      }
+    }
+
+    for (const tr of (tripsRows || [])) {
+      if (!timeline.some(t => t.details?.fromLocation === tr.from_location && t.type === 'TRIP_RECORDED')) {
+        timeline.push({
+          id: `trip-${tr.id}`,
+          type: 'TRIP_RECORDED',
+          title: `Completed trip: ${tr.from_location} → ${tr.to_location} (${tr.mode || 'bus'})`,
+          details: { fromLocation: tr.from_location, toLocation: tr.to_location, mode: tr.mode, distanceKm: tr.distance_km, durationMinutes: tr.duration_minutes },
+          createdAt: tr.completed_at || tr.created_at
+        });
+      }
+    }
+
+    for (const fs of (favoriteStopsRows || [])) {
+      if (!timeline.some(t => t.details?.name === fs.name && t.type === 'FAVORITE_STOP_ADDED')) {
+        timeline.push({
+          id: `fs-${fs.id}`,
+          type: 'FAVORITE_STOP_ADDED',
+          title: `Added favorite stop: ${fs.name}`,
+          details: { name: fs.name, nodeId: fs.node_id },
+          createdAt: fs.created_at
+        });
+      }
+    }
+
+    for (const inc of (incidentRows || [])) {
+      if (!timeline.some(t => t.details?.title === inc.title && t.type === 'INCIDENT_REPORTED')) {
+        timeline.push({
+          id: `inc-${inc.id}`,
+          type: 'INCIDENT_REPORTED',
+          title: `Reported issue: ${inc.title} (${inc.location_name})`,
+          details: { title: inc.title, type: inc.type, location: inc.location_name, severity: inc.severity, status: inc.status },
+          createdAt: inc.created_at
+        });
+      }
+    }
+
+    // Account creation event
+    if (u.created_at) {
+      timeline.push({
+        id: `reg-${u.id}`,
+        type: 'USER_REGISTER',
+        title: 'User joined EZZ GO platform',
+        details: { email: u.email, name: u.name },
+        createdAt: u.created_at
+      });
+    }
+
+    // Sort timeline newest first
+    timeline.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    const s = statsRows[0] || {};
+
+    return {
+      user: {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role || 'user',
+        status: u.status || 'active',
+        phone: u.phone || null,
+        avatarUrl: u.avatar_url || null,
+        bio: u.bio || null,
+        lastLoginAt: u.last_login_at,
+        createdAt: u.created_at,
+        updatedAt: u.updated_at,
+        isGuest: Boolean(u.email && u.email.includes('guest'))
+      },
+      stats: {
+        totalTrips: Number(s.totalTrips || tripsRows.length || 0),
+        totalDistanceKm: Number(s.totalDistanceKm || 0).toFixed(1),
+        totalMinutes: Number(s.totalMinutes || 0),
+        savedRoutesCount: savedRoutesRows.length,
+        favoriteStopsCount: favoriteStopsRows.length,
+        incidentReportsCount: incidentRows.length
+      },
+      savedRoutes: savedRoutesRows.map(r => ({
+        id: r.id,
+        userId: r.user_id,
+        name: r.name,
+        fromLocation: r.from_location,
+        toLocation: r.to_location,
+        mode: r.mode || 'metro',
+        durationMinutes: r.duration_minutes,
+        createdAt: r.created_at
+      })),
+      trips: tripsRows.map(r => ({
+        id: r.id,
+        userId: r.user_id,
+        fromLocation: r.from_location,
+        toLocation: r.to_location,
+        mode: r.mode || 'bus',
+        distanceKm: r.distance_km ? Number(r.distance_km) : 0,
+        durationMinutes: r.duration_minutes,
+        status: r.status || 'completed',
+        completedAt: r.completed_at,
+        createdAt: r.created_at
+      })),
+      favoriteStops: favoriteStopsRows.map(r => ({
+        id: r.id,
+        name: r.name,
+        nodeId: r.node_id,
+        latitude: r.latitude ? Number(r.latitude) : null,
+        longitude: r.longitude ? Number(r.longitude) : null,
+        createdAt: r.created_at
+      })),
+      incidentReports: incidentRows.map(r => ({
+        id: r.id,
+        title: r.title,
+        description: r.description,
+        type: r.type,
+        locationName: r.location_name,
+        severity: r.severity,
+        status: r.status,
+        createdAt: r.created_at
+      })),
+      activities: timeline
+    };
+  },
+
+  async listSavedRoutes({ userId = '', search = '', mode = '', limit = 50, offset = 0 } = {}) {
     let sql = `
       SELECT sr.id, sr.user_id, sr.name, sr.from_location, sr.to_location, sr.mode, sr.duration_minutes, sr.created_at,
-             u.name as user_name, u.email as user_email, u.role as user_role
+             u.name as user_name, u.email as user_email, u.role as user_role, u.avatar_url as user_avatar
       FROM saved_routes sr
       LEFT JOIN users u ON u.id = sr.user_id
       WHERE 1=1
     `;
     const params = {};
 
+    if (userId) {
+      sql += ` AND sr.user_id = :userId`;
+      params.userId = userId;
+    }
     if (search) {
       sql += ` AND (sr.name LIKE :search OR sr.from_location LIKE :search OR sr.to_location LIKE :search OR u.name LIKE :search OR u.email LIKE :search)`;
       params.search = `%${search}%`;
@@ -361,6 +559,7 @@ export const adminRepository = {
       FROM saved_routes sr
       LEFT JOIN users u ON u.id = sr.user_id
       WHERE 1=1
+      ${userId ? 'AND sr.user_id = :userId' : ''}
       ${search ? 'AND (sr.name LIKE :search OR sr.from_location LIKE :search OR sr.to_location LIKE :search OR u.name LIKE :search OR u.email LIKE :search)' : ''}
       ${mode ? 'AND sr.mode = :mode' : ''}
     `;
@@ -377,6 +576,7 @@ export const adminRepository = {
         userName: r.user_name || 'Anonymous User',
         userEmail: r.user_email || 'N/A',
         userRole: r.user_role || 'user',
+        userAvatar: r.user_avatar || null,
         name: r.name,
         fromLocation: r.from_location,
         toLocation: r.to_location,
@@ -385,6 +585,156 @@ export const adminRepository = {
         createdAt: r.created_at
       })),
       total: Number(countRows[0]?.total || 0),
+      limit: Number(limit),
+      offset: Number(offset)
+    };
+  },
+
+  async deleteSavedRoute(id) {
+    const result = await dbQuery(`DELETE FROM saved_routes WHERE id = :id`, { id });
+    return result.affectedRows > 0;
+  },
+
+  async listAllUserActivities({ query = '', type = '', limit = 50, offset = 0 } = {}) {
+    let sql = `
+      SELECT ua.id, ua.user_id, ua.activity_type, ua.title, ua.details, ua.ip_address, ua.created_at,
+             u.name as user_name, u.email as user_email, u.role as user_role, u.avatar_url as user_avatar
+      FROM user_activities ua
+      LEFT JOIN users u ON u.id = ua.user_id
+      WHERE 1=1
+    `;
+    const params = {};
+    if (type) {
+      sql += ` AND ua.activity_type = :type`;
+      params.type = type;
+    }
+    if (query) {
+      sql += ` AND (ua.title LIKE :query OR u.name LIKE :query OR u.email LIKE :query)`;
+      params.query = `%${query}%`;
+    }
+    sql += ` ORDER BY ua.created_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+
+    const countSql = `
+      SELECT COUNT(*) as total
+      FROM user_activities ua
+      LEFT JOIN users u ON u.id = ua.user_id
+      WHERE 1=1
+      ${type ? 'AND ua.activity_type = :type' : ''}
+      ${query ? 'AND (ua.title LIKE :query OR u.name LIKE :query OR u.email LIKE :query)' : ''}
+    `;
+
+    try {
+      const [rows, countRows] = await Promise.all([
+        dbQuery(sql, params),
+        dbQuery(countSql, params)
+      ]);
+
+      if (rows && rows.length > 0) {
+        return {
+          activities: rows.map(r => ({
+            id: r.id,
+            userId: r.user_id,
+            userName: r.user_name || 'Commuter',
+            userEmail: r.user_email || 'N/A',
+            userRole: r.user_role || 'user',
+            userAvatar: r.user_avatar || null,
+            activityType: r.activity_type,
+            title: r.title,
+            details: typeof r.details === 'string' ? JSON.parse(r.details || '{}') : r.details,
+            ipAddress: r.ip_address,
+            createdAt: r.created_at
+          })),
+          total: Number(countRows[0]?.total || 0),
+          limit: Number(limit),
+          offset: Number(offset)
+        };
+      }
+    } catch (err) {
+      console.warn('Error querying user_activities table, falling back to composite activity stream:', err.message);
+    }
+
+    // Fallback: aggregate from saved_routes, trips, users
+    const [savedRoutes, trips, users] = await Promise.all([
+      dbQuery(`SELECT sr.*, u.name as user_name, u.email as user_email, u.role as user_role, u.avatar_url as user_avatar FROM saved_routes sr LEFT JOIN users u ON u.id = sr.user_id ORDER BY sr.created_at DESC LIMIT 30`).catch(() => []),
+      dbQuery(`SELECT t.*, u.name as user_name, u.email as user_email, u.role as user_role, u.avatar_url as user_avatar FROM trips t LEFT JOIN users u ON u.id = t.user_id ORDER BY t.created_at DESC LIMIT 30`).catch(() => []),
+      dbQuery(`SELECT id, name, email, role, avatar_url, last_login_at, created_at FROM users ORDER BY created_at DESC LIMIT 20`).catch(() => [])
+    ]);
+
+    const fallbackList = [];
+
+    for (const sr of savedRoutes) {
+      fallbackList.push({
+        id: `sr-${sr.id}`,
+        userId: sr.user_id,
+        userName: sr.user_name || 'Commuter',
+        userEmail: sr.user_email || '',
+        userRole: sr.user_role || 'user',
+        userAvatar: sr.user_avatar || null,
+        activityType: 'SAVED_ROUTE_CREATED',
+        title: `Saved route: ${sr.name} (${sr.from_location} → ${sr.to_location})`,
+        details: { name: sr.name, fromLocation: sr.from_location, toLocation: sr.to_location, mode: sr.mode },
+        createdAt: sr.created_at
+      });
+    }
+
+    for (const tr of trips) {
+      fallbackList.push({
+        id: `tr-${tr.id}`,
+        userId: tr.user_id,
+        userName: tr.user_name || 'Commuter',
+        userEmail: tr.user_email || '',
+        userRole: tr.user_role || 'user',
+        userAvatar: tr.user_avatar || null,
+        activityType: 'TRIP_RECORDED',
+        title: `Completed trip: ${tr.from_location} → ${tr.to_location} (${tr.mode || 'bus'})`,
+        details: { fromLocation: tr.from_location, toLocation: tr.to_location, mode: tr.mode, distanceKm: tr.distance_km },
+        createdAt: tr.completed_at || tr.created_at
+      });
+    }
+
+    for (const u of users) {
+      fallbackList.push({
+        id: `user-${u.id}`,
+        userId: u.id,
+        userName: u.name,
+        userEmail: u.email,
+        userRole: u.role,
+        userAvatar: u.avatar_url || null,
+        activityType: 'USER_REGISTER',
+        title: `Commuter joined EZZ GO`,
+        details: { email: u.email },
+        createdAt: u.created_at
+      });
+      if (u.last_login_at) {
+        fallbackList.push({
+          id: `login-${u.id}`,
+          userId: u.id,
+          userName: u.name,
+          userEmail: u.email,
+          userRole: u.role,
+          userAvatar: u.avatar_url || null,
+          activityType: 'USER_LOGIN',
+          title: `Commuter signed in`,
+          details: { email: u.email },
+          createdAt: u.last_login_at
+        });
+      }
+    }
+
+    fallbackList.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    let filtered = fallbackList;
+    if (type) {
+      filtered = filtered.filter(a => a.activityType === type);
+    }
+    if (query) {
+      const q = query.toLowerCase();
+      filtered = filtered.filter(a => (a.title && a.title.toLowerCase().includes(q)) || (a.userName && a.userName.toLowerCase().includes(q)) || (a.userEmail && a.userEmail.toLowerCase().includes(q)));
+    }
+
+    return {
+      activities: filtered.slice(offset, offset + limit),
+      total: filtered.length,
       limit: Number(limit),
       offset: Number(offset)
     };
