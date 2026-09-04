@@ -1,318 +1,338 @@
-# EZZ GO - Multi-Modal Hyper-Local Routing Engine
+# 🚇 EZZ GO (Goli-Transit)
+### Multi-Modal Hyper-Local Transit Routing Engine & Live Command Center for High-Density Cities
 
-## 🚀 Project Overview
+[![Node.js Version](https://img.shields.io/badge/Node.js-18%2B-green.svg)](https://nodejs.org/)
+[![React Version](https://img.shields.io/badge/React-18.3-blue.svg)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-5.4-purple.svg)](https://vitejs.dev/)
+[![MySQL](https://img.shields.io/badge/MySQL-8.0-orange.svg)](https://www.mysql.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Dhaka's urban mobility challenge is not just congestion. It is unpredictability. Daily commuting is affected by dense intersections, sudden road blockages, event-based traffic surges, and frequent travel-time variation across neighborhoods.
+---
 
-EZZ GO is designed to solve this by combining graph-based route optimization with real-time anomaly handling. The platform computes efficient multi-modal routes (walk, bike, bus, metro), updates edge costs when disruptions happen, and enables instant rerouting.
+## 🌟 Overview
 
-In short, this project provides a practical routing engine for hyper-local decision-making in highly dynamic traffic environments.
+Dhaka’s urban mobility challenge is characterized by high density, sudden road blockages, dynamic congestion, and unpredictable commuter delays across alleyways (*Golis*) and major arterial corridors.
 
-## 🧠 Architecture
+**EZZ GO (Goli-Transit)** is a comprehensive hyper-local urban transit platform engineered to solve unpredictability through **graph-based shortest path routing (A* / Dijkstra)**, **real-time disruption handling**, **dynamic multi-modal fare computation**, and a **centralized Admin Command Center**.
 
-The system follows a clean layered architecture:
+Whether navigating through Dhaka's authentic MRT-6 Metro line, city bus networks, CNG auto-rickshaws, or local goli rickshaws, EZZ GO empowers commuters and transit managers with instant, reliable, and cost-effective travel decisions.
 
-- API Layer: Receives HTTP requests, validates payloads, and returns structured responses.
-- Service Layer: Coordinates route computation, anomaly updates, and graph snapshots.
-- Core Graph Engine: Maintains graph structures and runs shortest-path algorithms.
-- Data and Cache Layer: MySQL for persistent storage, Redis for fast caching, and in-memory fallback for resilience.
+---
 
-### Request and Processing Flow (Text Diagram)
+## 🚀 Key Features
+
+### 1. 🗺️ Multi-Modal Hyper-Local Route Planner
+- **Multi-Modal Options:** Walk, Cycle, Dhaka Rickshaw, Green CNG, City Bus, and Metro MRT-6.
+- **Dynamic Cost Optimization:** Routes computed with time, distance, congestion multipliers, and live transit network weights.
+- **Live Disruption Rerouting:** Real-time anomaly detection dynamically penalizes affected road edges and recommends instant detours.
+- **3D Traffic Simulation:** Interactive Three.js-powered visual corridor simulation with glowing transit paths and live jam indicators.
+- **Bilingual Interface:** Full native support for both **বাংলা (Bengali)** and **English**.
+
+### 2. 💰 Dynamic Fare Rules & Real-Time Calculation
+- **Database-Driven Fare Rules:** Fares are dynamically fetched from `system_settings` (`fare_rules`) and cached with automated invalidation.
+- **Supported Modes:**
+  - 🚌 **BRTA / Local Bus:** Configurable Base Fare + Per Km Rate.
+  - 🛺 **Green CNG:** Base Fare + Per Km Rate.
+  - 🚲 **Dhaka Rickshaw:** Base Fare + Per Km Rate.
+  - 🚇 **Metro Rail (MRT-6):** Station-to-station distance-based fare calculation.
+- **Route Planner & Live Journey Integration:** All computed route cards and simulation legs accurately display live fares calculated according to the admin-configured rules.
+
+### 3. 🛡️ Admin Command Center & Transit Operations
+- **Overview & Analytics:** Real-time statistics on registered commuters, active guest sessions, transit nodes, network edges, active anomalies, and crowdsourced incidents.
+- **User & Guest Session Management:** Inspect registered users, filter by role/status, monitor active guest sessions, and track user activities.
+- **Staff & Admin Invitation System:**
+  - Secure modal to invite new Administrators and Moderators.
+  - Automated temporary credential generation with 1-click clipboard copying.
+  - SMTP Email dispatch via Gmail/custom mailers with graceful offline fallback.
+- **Transit Network Control:** Add, update, and manage transit stations (Metro stations, Bus stops, Landmarks) with coordinates.
+- **Live Anomaly & Traffic Jam Broadcasting:** Broadcast real-time traffic disruptions with expiration timers and custom edge weight multipliers.
+- **Crowdsourced Incident Verification:** Review, verify, reject, or resolve commuter-submitted incident reports in real time.
+- **System Settings & Audit Logs:** Configure fare rules and inspect tamper-evident audit logs with administrator IDs, timestamps, and client IP addresses.
+
+### 4. 👤 Commuter Profile & Journey History
+- **Personalized Travel Dashboard:** Track total completed trips, distance traveled, and time saved in transit.
+- **Saved Routes & Favorite Stops:** Bookmark frequent daily commutes for 1-click map navigation and pin favorite MRT stations.
+- **Guest Commuter Mode:** Emergency access without requiring registration; allows guest commuters to explore transit routes and upgrade to a permanent free account anytime with 1 click.
+- **Customization:** Avatars (transit presets & custom image upload), dark/light theme toggle, weather & air quality badge.
+
+### 5. 🔐 Enterprise-Grade Security & Authentication
+- **Multi-Role Separation:** Strict middleware-enforced role boundary (`admin`, `moderator`, `user`, `guest`).
+- **Portal Separation:** Commuter authentication separated from the dedicated Admin Command Center.
+- **Password Security:** Salted `bcrypt` password hashing.
+- **Password Recovery:** 6-digit verification code system sent via email with rate-limited resend cooldowns.
+- **Google OAuth 2.0:** Secure Single Sign-On (SSO).
+
+---
+
+## 🧠 System Architecture
 
 ```text
-Frontend (React + Map UI)
-				|
-				v
-Backend API (Express Routes)
-				|
-				v
-Controllers -> Services -> Core Graph Engine
-				|               |
-				|               +--> Routing Algorithms (Dijkstra / Multi-modal)
-				|
-				+--> Repository Layer (MySQL)
-				|
-				+--> Cache Layer (Redis -> In-Memory Fallback)
-				|
-				v
-JSON Response to Frontend
+                                  ┌────────────────────────┐
+                                  │      Frontend UI       │
+                                  │ (React + Vite + Three) │
+                                  └───────────┬────────────┘
+                                              │ HTTP / JSON
+                                              ▼
+                                  ┌────────────────────────┐
+                                  │   Express API Router   │
+                                  │  (Middlewares & Zod)   │
+                                  └───────────┬────────────┘
+                                              │
+                      ┌───────────────────────┼──────────────────────┐
+                      ▼                       ▼                      ▼
+           ┌─────────────────────┐ ┌────────────────────┐ ┌────────────────────┐
+           │ Auth & User Service │ │ Dynamic Fare Engine│ │ Graph Routing Core │
+           └──────────┬──────────┘ └──────────┬─────────┘ └──────────┬─────────┘
+                      │                       │                      │
+                      ▼                       ▼                      ▼
+           ┌───────────────────────────────────────────────────────────────────┐
+           │                     Repository & Cache Layer                      │
+           │        (MySQL Database + Redis Cache + In-Memory Fallback)        │
+           └───────────────────────────────────────────────────────────────────┘
 ```
 
-### Operational Flow
-
-- Route flow:
-1. Check route cache.
-2. On miss, load graph snapshot (memory -> Redis -> DB seed fallback).
-3. Compute best route with constraints.
-4. Return result and cache it.
-
-- Anomaly flow:
-1. Receive anomaly event and validate affected edges.
-2. Update edge weights.
-3. Persist anomaly and edge update records.
-4. Invalidate stale route cache.
-5. Next route request is recomputed with updated graph costs.
+---
 
 ## ⚙️ Tech Stack
 
-### Backend
-- Node.js
-- Express.js
-- Zod (request validation)
-- Winston (structured logs)
-- UUID (request correlation)
-
 ### Frontend
-- React
-- Vite
-- Leaflet + React Leaflet (map visualization)
+- **Framework:** React 18 (SPA)
+- **Bundler:** Vite 5
+- **Mapping & GIS:** Leaflet, React Leaflet
+- **3D Graphics & Visuals:** Three.js, Vanilla Tilt
+- **Routing & State:** React Router v7, React Context API (Theme, Language, Trip)
+- **Styling:** Modern CSS Design Tokens, responsive grid layouts
 
-### Database and Cache
-- MySQL (source of truth for graph and anomaly persistence)
-- Redis (fast cache for graph snapshots and routes)
-- In-memory fallback cache (non-blocking local development)
+### Backend
+- **Runtime:** Node.js (ES Modules)
+- **Server:** Express.js
+- **Validation:** Zod schemas for strict request payload validation
+- **Authentication:** JSON Web Tokens (JWT), bcryptjs, Google Auth Library
+- **Mailing:** Nodemailer (Gmail SMTP & TLS/STARTTLS support)
+- **Logging & Monitoring:** Winston structured logger, UUID request correlation
 
-### Tools
-- Node test runner
-- NPM scripts
-- Docker scaffolding (currently optional / placeholder)
+### Database & Storage
+- **Primary Database:** MySQL 8.0 (Relational schema with foreign keys and migrations)
+- **Cache Engine:** Redis (Graph snapshots, route caching, TTL-based eviction)
+- **Resilience:** Automatic graceful fallback to in-memory caching during local offline development
+
+---
 
 ## 📁 Project Structure
 
 ```text
 Goli-Transit/
 ├── backend/
+│   ├── migrations/               # SQL database migration scripts (001 - 005)
+│   ├── scripts/                  # DB inspection, view, and traffic poller scripts
 │   ├── src/
-│   │   ├── cache/           # Redis + in-memory cache helpers
-│   │   ├── config/          # env, db, redis runtime config
-│   │   ├── controllers/     # request handlers
-│   │   ├── core/            # graph engine + algorithms
-│   │   ├── middlewares/     # validation, logging, error handling
-│   │   ├── modules/         # domain modules
-│   │   ├── repositories/    # MySQL data access
-│   │   ├── routes/          # API route definitions
-│   │   ├── services/        # business orchestration
-│   │   └── validations/     # Zod schemas
-│   ├── tests/               # unit + integration tests
-│   └── schema.sql           # database schema + seed data
+│   │   ├── cache/                # Redis and in-memory cache managers
+│   │   ├── config/               # Environment variables, DB pool, and Redis config
+│   │   ├── controllers/          # Route request controllers (admin, auth, route, profile, etc.)
+│   │   ├── core/                 # Graph algorithms (Dijkstra, A*, Multi-modal graph engine)
+│   │   ├── middlewares/          # Auth, Admin role verification, Zod validation, Error handlers
+│   │   ├── repositories/         # MySQL queries (user, admin, profile, routes, etc.)
+│   │   ├── routes/               # Express endpoint definitions
+│   │   ├── services/             # Core business logic (fare, dynamicRoute, journey, mail, admin)
+│   │   └── validations/          # Zod validation schemas
+│   ├── tests/                    # Unit and integration test suites
+│   ├── .env.example              # Environment variables template
+│   └── package.json
 ├── frontend/
+│   ├── public/                   # Static assets, icons, and fonts
 │   ├── src/
-│   │   ├── components/      # map, routing, UI components
-│   │   ├── pages/           # Home + Route Planner
-│   │   ├── services/        # API clients
-│   │   └── assets/styles/   # styling
-├── docs/                    # architecture notes, demo script, API spec
-├── docker/                  # Dockerfiles + nginx scaffold
-└── scripts/                 # helper scripts
+│   │   ├── components/           # UI components (Header, Map, Hero, 3D Belt, Live Journey)
+│   │   ├── pages/                # AdminDashboard, RoutePlanner, Profile, Login, Register, etc.
+│   │   ├── services/             # API client services (admin, auth, profile, routes)
+│   │   ├── state/                # Context providers (Language, Theme, Trip)
+│   │   ├── styles/               # Design tokens and CSS stylesheets
+│   │   └── App.jsx               # Application routes and auth shell
+│   ├── .env.example              # Frontend environment variables template
+│   └── package.json
+└── README.md
 ```
 
-## 🔌 API Endpoints
+---
 
-### GET /health
+## 🔌 API Endpoints Summary
 
-Returns service health plus graph/cache/database status.
+### Authentication & Commuters
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/auth/register` | Register new commuter account |
+| `POST` | `/auth/login` | Commuter / Admin portal sign in |
+| `POST` | `/auth/guest` | Instant emergency guest session creation |
+| `POST` | `/auth/google` | Google OAuth Single Sign-On |
+| `POST` | `/auth/forgot-password` | Request password reset code |
+| `POST` | `/auth/verify-code` | Verify 6-digit email reset code |
+| `POST` | `/auth/reset-password` | Set new password with verified token |
 
-### POST /route
+### Route Planning & Simulation
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/health` | System health, database connection, and graph status |
+| `POST` | `/route` | Compute multi-modal route with live fare and time estimates |
+| `POST` | `/route/simulate` | Run A* simulation on current network graph |
+| `POST` | `/journey/evaluate` | Live journey step evaluation and disruption detection |
+| `GET` | `/graph/snapshot` | Returns current transit graph nodes, edges, and active anomalies |
 
-Computes route between origin and destination with mode constraints.
+### Commuter Profile
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/profile` | Get commuter profile, trips, saved routes, and favorite stops |
+| `PUT` | `/profile` | Update profile information (name, phone, bio, avatar) |
+| `POST` | `/profile/routes` | Save a personalized commuter route |
+| `DELETE`| `/profile/routes/:id` | Remove a saved route |
+| `POST` | `/profile/trips` | Log a completed journey |
+| `DELETE`| `/profile/trips` | Clear journey history |
 
-Sample request:
+### Admin Command Center
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/admin/overview` | High-level operations analytics & metrics |
+| `POST` | `/api/admin/invite` | Invite staff/admin with temporary credentials & email |
+| `GET` | `/api/admin/users` | List registered commuters with search and filters |
+| `GET` | `/api/admin/guests` | List database-backed guest commuter sessions |
+| `GET` | `/api/admin/nodes` | List all transit nodes (Metro stations, Bus stops) |
+| `POST` | `/api/admin/nodes` | Create a new transit station or landmark |
+| `POST` | `/api/admin/anomalies` | Broadcast live traffic anomaly / road closure |
+| `PATCH`| `/api/admin/anomalies/:id/resolve` | Resolve active traffic anomaly |
+| `GET` | `/api/admin/settings` | Retrieve live system settings and fare rules |
+| `PUT` | `/api/admin/settings/:key` | Update fare rules or system settings dynamically |
+| `GET` | `/api/admin/audit-logs` | Retrieve administrator audit trail logs |
 
-```json
-{
-	"origin": "A",
-	"destination": "C",
-	"preferredModes": ["walk", "bike", "bus", "metro"],
-	"avoidModes": [],
-	"vehicleType": null
-}
-```
+---
 
-### POST /anomaly
-
-Applies dynamic edge weight multiplier to simulate congestion/disruption.
-
-Sample request:
-
-```json
-{
-	"type": "EDGE_WEIGHT_MULTIPLIER",
-	"reason": "Road congestion near B-C",
-	"affectedEdges": [
-		{
-			"from": "B",
-			"to": "C",
-			"multiplier": 2.5
-		}
-	]
-}
-```
-
-### GET /graph/snapshot
-
-Returns current graph snapshot including node count, edge count, and edge weights.
-
-## 🧪 How to Run Locally
+## 🛠️ Getting Started Locally
 
 ### Prerequisites
+- [Node.js](https://nodejs.org/) (v18.0.0 or later)
+- [MySQL](https://www.mysql.com/) (v8.0 or later)
+- (Optional) [Redis](https://redis.io/) (v6.0 or later; falling back to in-memory automatically if offline)
 
-- Node.js 18+
-- NPM
-- Optional for full mode: MySQL and Redis running locally
+---
 
-### Backend Setup
-
+### 1. Clone the Repository
 ```bash
+git clone https://github.com/Turjo101365/Goli-Transit.git
+cd Goli-Transit
+```
+
+---
+
+### 2. Backend Setup & Configuration
+
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   npm install
+   ```
+
+2. Configure environment variables in `backend/.env`:
+   ```env
+   HOST=0.0.0.0
+   PORT=8080
+   NODE_ENV=development
+
+   # Database (MySQL)
+   DB_ENABLED=true
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_USER=root
+   DB_PASSWORD=your_mysql_password
+   DB_NAME=GoliTransitDB
+   DB_POOL_SIZE=10
+
+   # Redis Cache (Optional)
+   REDIS_ENABLED=true
+   REDIS_URL=redis://127.0.0.1:6379
+
+   # Authentication & Security
+   JWT_SECRET=your-secret-key-change-in-production
+   AUTH_TOKEN_TTL_HOURS=168
+   AUTH_JWT_ISSUER=ezz-go
+
+   # Client URLs
+   FRONTEND_URL=http://localhost:5173
+   APP_URL=http://localhost:8080
+   APP_NAME=EZZ GO
+
+   # Email Service (Gmail SMTP / Custom)
+   MAIL_ENABLED=true
+   MAIL_MAILER=smtp
+   MAIL_HOST=smtp.gmail.com
+   MAIL_PORT=587
+   MAIL_USERNAME=your_email@gmail.com
+   MAIL_PASSWORD=your_16_digit_app_password
+   MAIL_ENCRYPTION=tls
+   MAIL_FROM_ADDRESS=your_email@gmail.com
+   MAIL_FROM_NAME="EZZ GO"
+   ```
+
+3. Run Database Migrations:
+   ```bash
+   npm run migrate
+   ```
+
+4. Start Backend Server:
+   ```bash
+   npm run dev
+   ```
+   *Backend will start on [http://localhost:8080](http://localhost:8080)*.
+
+---
+
+### 3. Frontend Setup & Launch
+
+1. Open a new terminal and navigate to the frontend directory:
+   ```bash
+   cd frontend
+   npm install
+   ```
+
+2. (Optional) Configure `frontend/.env`:
+   ```env
+   VITE_BACKEND_ENDPOINT=http://127.0.0.1:8080
+   VITE_API_TIMEOUT_MS=20000
+   ```
+
+3. Start Vite Dev Server:
+   ```bash
+   npm run dev
+   ```
+   *Frontend application will be available at [http://localhost:5173](http://localhost:5173)*.
+
+---
+
+### 4. Running Automated Tests
+```bash
+# Run backend test suite
 cd backend
-npm install
-npm run dev
+npm test
 ```
 
-Alternative production-like run:
+---
 
-```bash
-cd backend
-npm start
-```
+## 🚦 Traffic Corridor Polling (Optional)
 
-Backend URL: http://localhost:8080
+`backend/scripts/poll-traffic.js` allows automated corridor congestion polling from the TomTom Traffic Flow API.
 
-### Frontend Setup
-
-```bash
-cd frontend
-npm install
-npm start
-```
-
-Frontend URL: Vite default (typically http://localhost:5173)
-
-### Environment Variables
-
-Create a .env file inside backend and set values as needed:
-
-```env
-PORT=8080
-NODE_ENV=development
-
-DB_ENABLED=false
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=
-DB_NAME=goli_transit
-DB_POOL_SIZE=10
-
-REDIS_ENABLED=true
-REDIS_URL=redis://127.0.0.1:6379
-REDIS_GRAPH_TTL_SECONDS=3600
-REDIS_ROUTE_TTL_SECONDS=600
-```
-
-Notes:
-- DB is optional by default (DB_ENABLED=false).
-- Redis fallback is graceful; when unavailable, in-memory cache is used.
-
-## 🐳 Docker Setup (Optional)
-
-You can run MySQL + Redis + phpMyAdmin locally using Docker Compose:
-
-```bash
-docker compose up -d
-```
-
-Services:
-- MySQL: `127.0.0.1:3308` (root / root123)
-- phpMyAdmin: `http://127.0.0.1:8081`
-- Redis: `127.0.0.1:6379`
-
-Suggested backend `.env` values for this Docker setup:
-
-```env
-DB_ENABLED=true
-DB_HOST=127.0.0.1
-DB_PORT=3308
-DB_USER=root
-DB_PASSWORD=root123
-DB_NAME=GoliTransitDB
-
-REDIS_ENABLED=true
-REDIS_URL=redis://127.0.0.1:6379
-```
-
-## 🚦 Traffic Corridor Polling
-
-`backend/scripts/poll-traffic.js` calls the TomTom Traffic Flow API
-(`flowSegmentData`) once for every row in the `corridors` table and inserts
-the result into `corridor_observations`. Requires `TOMTOM_API_KEY` in
-`backend/.env` (free tier: 2,500 non-tile requests/day).
-
-Run once manually:
-
+To run once:
 ```bash
 cd backend
 npm run poll
 ```
 
-For continuous baseline collection, run it every 15 minutes via cron:
-
+To schedule continuous automated 15-minute polling via cron:
 ```cron
 */15 * * * * cd /path/to/Goli-Transit/backend && npm run poll >> /var/log/ezz-go-poll.log 2>&1
 ```
 
-At 15-minute intervals, stay at or under 20 corridors to keep daily calls
-under the 2,000/day safety budget (20 × 96 = 1,920 calls/day). The script
-logs the projected daily call count on every run and warns if it's over
-budget.
+---
 
-## 🎥 Demo Instructions
-
-Recommended live demo flow for judges:
-
-1. Open Home and explain Dhaka traffic pain point.
-2. Switch to Route Planner and compute route A -> C.
-3. Show route legs, total cost, and map rendering.
-4. Trigger anomaly on a route edge (for example B -> C).
-5. Recompute route and show rerouting behavior.
-6. Show /graph/snapshot response to verify updated edge weights.
-7. Show /health response to highlight architecture readiness.
-
-## 🏆 Key Features
-
-- Multi-modal routing across walk, bike, bus, and metro.
-- Real-time anomaly handling with affected-edge updates.
-- Graph-based optimization using shortest-path strategies (A*, Dijkstra).
-- Cache-aware performance path for repeated route queries (Redis + in-memory fallback).
-- Clean layered backend architecture suitable for scale.
-- **3D Traffic Visualization** with Three.js-powered live graph simulation and neon glowing paths.
-- **Dhaka Hyper-Local Optimization** including goli alley networks and rickshaw economics.
-- **Resilient Caching System** with graceful degradation for offline/development modes.
-- **Live Anomaly Simulation** - inject traffic jams and watch instant re-routing in 3D.
-- **Production-Ready APIs** with validation, logging, tests, and Docker scaffolding.
-
-## ⚠️ Challenges and Solutions
-
-### Challenge: Highly dynamic traffic conditions
-Solution: Event-driven anomaly updates with immediate cache invalidation and recomputation.
-
-### Challenge: Fast response under repeated route queries
-Solution: Read-through cache strategy (Redis + in-memory fallback).
-
-### Challenge: Reliability when infra dependencies are missing
-Solution: Non-blocking startup with DB optional mode and Redis graceful degradation.
-
-### Challenge: Hackathon speed with production-like clarity
-Solution: Controller -> Service -> Core architecture with validation, logging, and tests.
-
-## 🚀 Future Improvements
-
-- Complete Dockerized production setup.
-- Add live traffic feed integration.
-- Support time-aware routing and schedule constraints.
-- Add user preference profiles (cost vs time vs comfort).
-- Extend city-scale graph ingestion for broader Dhaka coverage.
-- Add performance benchmarking and load testing.
+## 📄 License
+This project is open-source and available under the [MIT License](LICENSE).
 
 ---
 
-Built for real-time urban routing decisions in high-density cities.
+*Built with ❤️ for resilient urban transit navigation in Dhaka city.*
