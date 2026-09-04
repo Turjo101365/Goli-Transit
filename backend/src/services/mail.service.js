@@ -23,17 +23,37 @@ async function getTransporter() {
 	}
 
 	if (!transporterPromise) {
-		const transporter = nodemailer.createTransport({
-			host: env.MAIL_HOST,
-			port: env.MAIL_PORT,
-			secure: isSecureTransport(),
-			auth: env.MAIL_USERNAME && env.MAIL_PASSWORD
-				? {
+		const isGmail = (env.MAIL_HOST && env.MAIL_HOST.includes('gmail')) || env.MAIL_USERNAME?.includes('@gmail.com');
+		const transportOptions = isGmail
+			? {
+					service: 'gmail',
+					auth: {
 						user: env.MAIL_USERNAME,
-						pass: env.MAIL_PASSWORD
+						pass: env.MAIL_PASSWORD?.replace(/\s+/g, '')
+					},
+					tls: {
+						rejectUnauthorized: false
 					}
-				: undefined
-		});
+			  }
+			: {
+					host: env.MAIL_HOST,
+					port: env.MAIL_PORT,
+					secure: isSecureTransport(),
+					auth: env.MAIL_USERNAME && env.MAIL_PASSWORD
+						? {
+								user: env.MAIL_USERNAME,
+								pass: env.MAIL_PASSWORD
+						  }
+						: undefined,
+					tls: {
+						rejectUnauthorized: false
+					},
+					connectionTimeout: 10000,
+					greetingTimeout: 10000,
+					socketTimeout: 15000
+			  };
+
+		const transporter = nodemailer.createTransport(transportOptions);
 
 		transporterPromise = transporter
 			.verify()

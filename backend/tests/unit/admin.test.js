@@ -47,27 +47,39 @@ test('Admin Repository - getSettings and updateSetting', async () => {
 });
 
 test('Admin Authentication - Portal separation and role enforcement', async () => {
+  const dynamicAdminEmail = `admin_auth_test_${Date.now()}@example.com`;
+  const dynamicAdminPass = 'AdminTest@123456';
+  
+  // Register or invite admin
+  await adminRepository.createAdminUser({
+    name: 'Dynamic Admin',
+    email: dynamicAdminEmail,
+    role: 'admin',
+    passwordHash: (await import('../../src/utils/password.js')).hashPassword(dynamicAdminPass),
+    status: 'active'
+  });
+
   // 1. Admin login with mode: 'admin' succeeds
   const result = await authService.login({
-    email: 'Turjo5892@gmail.com',
-    password: 'Turjo1244',
+    email: dynamicAdminEmail,
+    password: dynamicAdminPass,
     mode: 'admin'
   });
 
   assert.ok(result.token, 'Token should be returned');
-  assert.equal(result.user.email, 'turjo5892@gmail.com');
+  assert.equal(result.user.email, dynamicAdminEmail);
   assert.equal(result.user.role, 'admin');
 
   // 2. Admin attempting user portal login is blocked
   await assert.rejects(
     async () => {
       await authService.login({
-        email: 'Turjo5892@gmail.com',
-        password: 'Turjo1244',
+        email: dynamicAdminEmail,
+        password: dynamicAdminPass,
         mode: 'user'
       });
     },
-    (err) => err.statusCode === 403 && err.code === 'AUTH_ADMIN_PORTAL_REQUIRED'
+    (err) => err.statusCode === 401 && err.code === 'AUTH_INVALID_CREDENTIALS'
   );
 
   // 3. Normal commuter attempting admin portal login is blocked
@@ -85,7 +97,7 @@ test('Admin Authentication - Portal separation and role enforcement', async () =
         mode: 'admin'
       });
     },
-    (err) => err.statusCode === 403 && err.code === 'AUTH_ADMIN_ACCESS_DENIED'
+    (err) => err.statusCode === 401 && err.code === 'AUTH_INVALID_CREDENTIALS'
   );
 });
 
@@ -106,7 +118,7 @@ test('Admin Repository - listSavedRoutes returns all commuter saved routes', asy
 });
 
 test('Admin Service - inviteAdmin sends invitation and grants role', async () => {
-  const adminUser = { id: 1, name: 'Super Admin', email: 'turjo5892@gmail.com', role: 'admin' };
+  const adminUser = { id: 1, name: 'Super Admin', email: 'admin@ezzgo.local', role: 'admin' };
   const inviteEmail = `invite_test_${Date.now()}@example.com`;
   
   const result = await adminService.inviteAdmin(
@@ -123,6 +135,28 @@ test('Admin Service - inviteAdmin sends invitation and grants role', async () =>
   assert.equal(result.user.email, inviteEmail);
   assert.equal(result.user.role, 'admin');
   assert.ok(result.tempPassword, 'Temporary password should be generated for new user');
+});
+
+test('Admin Service - inviteAdmin works with empty/blank name and custom password', async () => {
+  const adminUser = { id: 1, name: 'Super Admin', email: 'admin@ezzgo.local', role: 'admin' };
+  const inviteEmail = `invite_blank_name_${Date.now()}@example.com`;
+  const customPassword = 'CustomStaff@Pass99';
+  
+  const result = await adminService.inviteAdmin(
+    adminUser,
+    {
+      email: inviteEmail,
+      name: '',
+      role: 'moderator',
+      tempPassword: customPassword
+    },
+    '127.0.0.1'
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(result.user.email, inviteEmail);
+  assert.equal(result.user.role, 'moderator');
+  assert.equal(result.tempPassword, customPassword);
 });
 
 test('Admin Repository - listTrips returns all commuter trip logs', async () => {

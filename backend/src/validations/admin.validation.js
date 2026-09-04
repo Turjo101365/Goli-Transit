@@ -1,18 +1,18 @@
 import { z } from 'zod';
 
 export const updateUserValidation = z.object({
-  name: z.string().trim().min(2).max(120).optional(),
+  name: z.preprocess(v => (typeof v === 'string' && !v.trim() ? undefined : v), z.string().trim().min(2).max(120).optional()),
   email: z.string().trim().email().toLowerCase().optional(),
   role: z.enum(['user', 'moderator', 'admin']).optional(),
   status: z.enum(['active', 'suspended', 'banned']).optional(),
-  phone: z.string().trim().max(32).nullable().optional()
+  phone: z.preprocess(v => (typeof v === 'string' && !v.trim() ? null : v), z.string().trim().max(32).nullable().optional())
 });
 
 export const inviteAdminValidation = z.object({
   email: z.string().trim().email().toLowerCase(),
-  name: z.string().trim().min(2).max(120).optional(),
+  name: z.preprocess(v => (typeof v === 'string' && !v.trim() ? undefined : v), z.string().trim().min(2).max(120).optional()),
   role: z.enum(['admin', 'moderator']).default('admin'),
-  tempPassword: z.string().min(6).optional()
+  tempPassword: z.preprocess(v => (typeof v === 'string' && !v.trim() ? undefined : v), z.string().min(6).optional())
 });
 
 export const createNodeValidation = z.object({

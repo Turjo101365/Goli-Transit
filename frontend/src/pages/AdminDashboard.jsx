@@ -80,8 +80,10 @@ export function AdminDashboard({ authUser }) {
 
   // Admin Invitation State
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ email: '', name: '', role: 'admin' });
+  const [inviteForm, setInviteForm] = useState({ email: '', name: '', role: 'admin', tempPassword: '' });
   const [inviting, setInviting] = useState(false);
+  const [inviteResult, setInviteResult] = useState(null);
+  const [copiedCreds, setCopiedCreds] = useState(false);
 
   // Guests Data
   const [guests, setGuests] = useState([]);
@@ -288,14 +290,26 @@ export function AdminDashboard({ authUser }) {
     if (!inviteForm.email) return;
     setInviting(true);
     try {
-      await inviteAdminUser(inviteForm);
+      const payload = {
+        email: inviteForm.email.trim(),
+        role: inviteForm.role
+      };
+      if (inviteForm.name && inviteForm.name.trim()) {
+        payload.name = inviteForm.name.trim();
+      }
+      if (inviteForm.tempPassword && inviteForm.tempPassword.trim()) {
+        payload.tempPassword = inviteForm.tempPassword.trim();
+      }
+
+      const res = await inviteAdminUser(payload);
+      const resData = res?.data || res;
+      setInviteResult(resData);
+      setCopiedCreds(false);
       showToast(
         lang === 'bn'
-          ? `সফলভাবে "${inviteForm.email}" ঠিকানায় অ্যাডমিন ইনভাইটেশন পাঠানো হয়েছে!`
-          : `Admin invitation sent successfully to "${inviteForm.email}"!`
+          ? `সফলভাবে "${payload.email}" ইনভাইটেশন প্রসেস সম্পন্ন হয়েছে!`
+          : `Admin invitation processed successfully for "${payload.email}"!`
       );
-      setShowInviteModal(false);
-      setInviteForm({ email: '', name: '', role: 'admin' });
       loadDashboardData(true);
     } catch (err) {
       showError(err.message || 'Failed to send admin invitation.');
@@ -2027,97 +2041,239 @@ export function AdminDashboard({ authUser }) {
           justifyContent: 'center',
           padding: 20
         }}>
-          <div className="profile-card" style={{ maxWidth: 520, width: '100%', padding: 24, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', background: 'var(--ground-card, var(--ground))', border: '1px solid var(--line)' }}>
+          <div className="profile-card" style={{ maxWidth: 540, width: '100%', padding: 24, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', background: 'var(--ground-card, var(--ground))', border: '1px solid var(--line)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid var(--line)', paddingBottom: 12 }}>
               <h3 style={{ margin: 0, fontSize: 18, color: 'var(--cream)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>✉️</span>
-                <span>{lang === 'bn' ? 'নতুন অ্যাডমিন ইনভাইটেশন' : 'Invite Administrator / Staff'}</span>
+                <span>{inviteResult ? '🎉' : '✉️'}</span>
+                <span>
+                  {inviteResult
+                    ? (lang === 'bn' ? 'ইনভাইটেশন সম্পন্ন হয়েছে!' : 'Invitation Processed Successfully!')
+                    : (lang === 'bn' ? 'নতুন অ্যাডমিন ইনভাইটেশন' : 'Invite Administrator / Staff')}
+                </span>
               </h3>
               <button
                 type="button"
                 className="header-icon-btn"
-                onClick={() => setShowInviteModal(false)}
+                onClick={() => {
+                  setShowInviteModal(false);
+                  setInviteResult(null);
+                  setInviteForm({ email: '', name: '', role: 'admin', tempPassword: '' });
+                }}
                 style={{ width: 28, height: 28, fontSize: 16 }}
               >
                 ✕
               </button>
             </div>
 
-            <p className="t-body" style={{ color: 'var(--c70)', fontSize: 13, marginBottom: 16, lineHeight: 1.5 }}>
-              {lang === 'bn'
-                ? 'টিম মেম্বারকে ইমেইলের মাধ্যমে অ্যাডমিন বা মডারেটর হিসেবে যুক্ত করুন। স্বয়ংক্রিয়ভাবে ইনভাইটেশন ও লগইন নির্দেশাবলী পাঠানো হবে।'
-                : 'Invite a team member via email to manage transit networks, live disruptions, and commuters. Invitation & login credentials will be delivered directly.'}
-            </p>
+            {inviteResult ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{
+                  padding: 14,
+                  borderRadius: 8,
+                  background: inviteResult.emailDelivered ? 'rgba(0, 200, 83, 0.12)' : 'rgba(255, 193, 7, 0.12)',
+                  border: `1px solid ${inviteResult.emailDelivered ? '#00c853' : '#ffc107'}`,
+                  color: 'var(--cream)',
+                  fontSize: 13,
+                  lineHeight: 1.5
+                }}>
+                  {inviteResult.emailDelivered ? (
+                    <div>
+                      <strong>✅ {lang === 'bn' ? 'ইমেইল সফলভাবে পাঠানো হয়েছে!' : 'Email Sent Successfully!'}</strong>
+                      <p style={{ margin: '4px 0 0', color: 'var(--c70)' }}>
+                        {lang === 'bn'
+                          ? `লগইন নির্দেশাবলী সহ আমন্ত্রণপত্র সরাসরি "${inviteResult.user?.email || inviteForm.email}" ঠিকানায় পৌঁছে দেওয়া হয়েছে।`
+                          : `Login credentials and instructions have been delivered to "${inviteResult.user?.email || inviteForm.email}".`}
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <strong>⚠️ {lang === 'bn' ? 'অ্যাকাউন্ট তৈরি হয়েছে (অফলাইন / মক মোড)' : 'Account Created (Mock / Offline Mode)'}</strong>
+                      <p style={{ margin: '4px 0 0', color: 'var(--c70)' }}>
+                        {lang === 'bn'
+                          ? 'সার্ভারে লাইভ ইমেইল ডিসপ্যাচ বন্ধ থাকায় নিচের ক্রেডেনশিয়াল কপি করে নতুন অ্যাডমিনকে সরাসরি প্রদান করুন।'
+                          : 'Live SMTP is disabled or in mock mode. Please copy the temporary credentials below and share them with the user.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
 
-            <form onSubmit={handleInviteAdmin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label className="profile-form-label" style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
-                  {lang === 'bn' ? 'ইমেইল অ্যাড্রেস *' : 'Email Address *'}
-                </label>
-                <input
-                  type="email"
-                  required
-                  className="profile-form-input"
-                  placeholder="colleague@example.com"
-                  value={inviteForm.email}
-                  onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
-                  style={{ width: '100%' }}
-                />
-              </div>
+                <div style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid var(--line)',
+                  borderRadius: 8,
+                  padding: 16,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                    <span style={{ color: 'var(--c60)' }}>{lang === 'bn' ? 'নাম:' : 'Name:'}</span>
+                    <strong style={{ color: 'var(--cream)' }}>{inviteResult.user?.name || inviteForm.name || '—'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                    <span style={{ color: 'var(--c60)' }}>{lang === 'bn' ? 'ইমেইল:' : 'Email:'}</span>
+                    <strong style={{ color: 'var(--cream)' }}>{inviteResult.user?.email || inviteForm.email}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                    <span style={{ color: 'var(--c60)' }}>{lang === 'bn' ? 'রোল:' : 'Role:'}</span>
+                    <span className={`status-pill ${inviteResult.user?.role === 'admin' ? 'sp-resolved' : 'sp-active'}`}>
+                      {inviteResult.user?.role === 'admin' ? 'Administrator' : 'Moderator'}
+                    </span>
+                  </div>
 
-              <div>
-                <label className="profile-form-label" style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
-                  {lang === 'bn' ? 'নাম (ঐচ্ছিক)' : 'Full Name (Optional)'}
-                </label>
-                <input
-                  type="text"
-                  className="profile-form-input"
-                  placeholder={lang === 'bn' ? 'যেমন: আরিফুর রহমান' : 'e.g. Arifur Rahman'}
-                  value={inviteForm.name}
-                  onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })}
-                  style={{ width: '100%' }}
-                />
-              </div>
+                  {inviteResult.tempPassword && (
+                    <div style={{ marginTop: 8, paddingTop: 10, borderTop: '1px dashed var(--line)' }}>
+                      <span style={{ fontSize: 12, color: 'var(--c60)', display: 'block', marginBottom: 4 }}>
+                        {lang === 'bn' ? 'টেম্পোরারি পাসওয়ার্ড:' : 'Temporary Password:'}
+                      </span>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        background: 'rgba(0,0,0,0.3)',
+                        padding: '8px 12px',
+                        borderRadius: 6,
+                        border: '1px solid var(--line)'
+                      }}>
+                        <code style={{ fontSize: 14, color: '#38ef7d', fontWeight: 600, letterSpacing: '0.05em' }}>
+                          {inviteResult.tempPassword}
+                        </code>
+                        <button
+                          type="button"
+                          className="action-chip"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`Email: ${inviteResult.user?.email || inviteForm.email}\nPassword: ${inviteResult.tempPassword}\nPortal: ${window.location.origin}/login`);
+                            setCopiedCreds(true);
+                            setTimeout(() => setCopiedCreds(false), 2500);
+                          }}
+                          style={{ fontSize: 12, padding: '4px 10px', height: 'auto' }}
+                        >
+                          {copiedCreds ? '✓ ' + (lang === 'bn' ? 'কপি হয়েছে' : 'Copied') : '📋 ' + (lang === 'bn' ? 'ক্রেডেনশিয়াল কপি' : 'Copy All')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-              <div>
-                <label className="profile-form-label" style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
-                  {lang === 'bn' ? 'অ্যাডমিন রোল ও অধিকার' : 'Role & Privileges'}
-                </label>
-                <select
-                  className="profile-form-input"
-                  value={inviteForm.role}
-                  onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
-                  style={{ width: '100%' }}
-                >
-                  <option value="admin">
-                    {lang === 'bn' ? 'Administrator (সম্পূর্ণ সিস্টেম, নোড, রুট ও ব্যবহারকারী নিয়ন্ত্রণ)' : 'Administrator (Full System, Nodes, Routes & Users Control)'}
-                  </option>
-                  <option value="moderator">
-                    {lang === 'bn' ? 'Moderator (লাইভ যানজট ব্রডকাস্ট ও যাত্রী রিপোর্ট তদারকি)' : 'Moderator (Live Congestion Broadcasts & Passenger Reports)'}
-                  </option>
-                </select>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+                  <button
+                    type="button"
+                    className="action-chip"
+                    onClick={() => {
+                      setInviteResult(null);
+                      setInviteForm({ email: '', name: '', role: 'admin', tempPassword: '' });
+                    }}
+                  >
+                    {lang === 'bn' ? '+ আরও ইনভাইট করুন' : '+ Invite Another'}
+                  </button>
+                  <button
+                    type="button"
+                    className="hero-btn-primary"
+                    onClick={() => {
+                      setShowInviteModal(false);
+                      setInviteResult(null);
+                      setInviteForm({ email: '', name: '', role: 'admin', tempPassword: '' });
+                    }}
+                    style={{ fontSize: 14, padding: '8px 20px' }}
+                  >
+                    {lang === 'bn' ? 'সম্পন্ন' : 'Done'}
+                  </button>
+                </div>
               </div>
+            ) : (
+              <form onSubmit={handleInviteAdmin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <p className="t-body" style={{ color: 'var(--c70)', fontSize: 13, margin: 0, lineHeight: 1.5 }}>
+                  {lang === 'bn'
+                    ? 'টিম মেম্বারকে ইমেইলের মাধ্যমে অ্যাডমিন বা মডারেটর হিসেবে যুক্ত করুন। ইনভাইটেশন ও লগইন ক্রেডেনশিয়াল সরাসরি সংরক্ষিত ও প্রেরিত হবে।'
+                    : 'Invite a team member via email to manage transit networks, live disruptions, and commuters.'}
+                </p>
 
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
-                <button
-                  type="button"
-                  className="action-chip"
-                  onClick={() => setShowInviteModal(false)}
-                >
-                  {lang === 'bn' ? 'বাতিল' : 'Cancel'}
-                </button>
-                <button
-                  type="submit"
-                  className="hero-btn-primary"
-                  disabled={inviting || !inviteForm.email}
-                  style={{ fontSize: 14, padding: '8px 18px' }}
-                >
-                  {inviting
-                    ? (lang === 'bn' ? 'ইনভাইট পাঠানো হচ্ছে...' : 'Sending Invite...')
-                    : (lang === 'bn' ? '✉️ ইনভাইট পাঠান' : '✉️ Send Invitation')}
-                </button>
-              </div>
-            </form>
+                <div>
+                  <label className="profile-form-label" style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                    {lang === 'bn' ? 'ইমেইল অ্যাড্রেস *' : 'Email Address *'}
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    className="profile-form-input"
+                    placeholder="colleague@example.com"
+                    value={inviteForm.email}
+                    onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+
+                <div>
+                  <label className="profile-form-label" style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                    {lang === 'bn' ? 'নাম (ঐচ্ছিক)' : 'Full Name (Optional)'}
+                  </label>
+                  <input
+                    type="text"
+                    className="profile-form-input"
+                    placeholder={lang === 'bn' ? 'যেমন: আরিফুর রহমান' : 'e.g. Arifur Rahman'}
+                    value={inviteForm.name}
+                    onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+
+                <div>
+                  <label className="profile-form-label" style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                    {lang === 'bn' ? 'অ্যাডমিন রোল ও অধিকার' : 'Role & Privileges'}
+                  </label>
+                  <select
+                    className="profile-form-input"
+                    value={inviteForm.role}
+                    onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
+                    style={{ width: '100%' }}
+                  >
+                    <option value="admin">
+                      {lang === 'bn' ? 'Administrator (সম্পূর্ণ সিস্টেম, নোড, রুট ও ব্যবহারকারী নিয়ন্ত্রণ)' : 'Administrator (Full System, Nodes, Routes & Users Control)'}
+                    </option>
+                    <option value="moderator">
+                      {lang === 'bn' ? 'Moderator (লাইভ যানজট ব্রডকাস্ট ও যাত্রী রিপোর্ট তদারকি)' : 'Moderator (Live Congestion Broadcasts & Passenger Reports)'}
+                    </option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="profile-form-label" style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                    {lang === 'bn' ? 'কাস্টম পাসওয়ার্ড (ঐচ্ছিক)' : 'Custom Initial Password (Optional)'}
+                  </label>
+                  <input
+                    type="text"
+                    className="profile-form-input"
+                    placeholder={lang === 'bn' ? 'ফাঁকা রাখলে স্বয়ংক্রিয়ভাবে তৈরি হবে' : 'Leave blank to auto-generate'}
+                    value={inviteForm.tempPassword}
+                    onChange={(e) => setInviteForm({ ...inviteForm, tempPassword: e.target.value })}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
+                  <button
+                    type="button"
+                    className="action-chip"
+                    onClick={() => {
+                      setShowInviteModal(false);
+                      setInviteForm({ email: '', name: '', role: 'admin', tempPassword: '' });
+                    }}
+                  >
+                    {lang === 'bn' ? 'বাতিল' : 'Cancel'}
+                  </button>
+                  <button
+                    type="submit"
+                    className="hero-btn-primary"
+                    disabled={inviting || !inviteForm.email}
+                    style={{ fontSize: 14, padding: '8px 18px' }}
+                  >
+                    {inviting
+                      ? (lang === 'bn' ? 'ইনভাইট পাঠানো হচ্ছে...' : 'Sending Invite...')
+                      : (lang === 'bn' ? '✉️ ইনভাইট পাঠান' : '✉️ Send Invitation')}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
