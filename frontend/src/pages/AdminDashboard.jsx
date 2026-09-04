@@ -458,7 +458,7 @@ export function AdminDashboard({ authUser }) {
   const TAB_ITEMS = [
     { id: 'users', bn: 'ইউজার ও গেস্ট সেশন', en: 'Users & Guests', icon: '👥' },
     { id: 'network', bn: 'ট্রানজিট নেটওয়ার্ক ও রুট', en: 'Transit Network', icon: '🚇' },
-    { id: 'settings', bn: 'অডিট ও সেটিংস', en: 'Audit & Settings', icon: '⚙️' }
+    { id: 'settings', bn: 'সিস্টেম সেটিংস', en: 'System Settings', icon: '⚙️' }
   ];
 
   return (
@@ -2282,9 +2282,9 @@ export function AdminDashboard({ authUser }) {
               </div>
             )}
 
-            {/* ----------------- TAB 3: AUDIT & SETTINGS ----------------- */}
+            {/* ----------------- TAB 3: SYSTEM SETTINGS ----------------- */}
             {activeTab === 'settings' && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 20, marginTop: 16 }}>
+              <div style={{ maxWidth: 860, margin: '16px auto 0' }}>
                 {/* System Settings Editor */}
                 <div className="profile-card">
                   <h3 style={{ margin: '0 0 16px', fontSize: 17, color: 'var(--cream)', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -2294,7 +2294,7 @@ export function AdminDashboard({ authUser }) {
 
                   <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                     <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--metro)', borderBottom: '1px solid var(--line)', paddingBottom: 4 }}>
-                      🚌 {lang === 'bn' ? 'বিআরটিএ বাস ও লোকাল ভাড়া' : 'BRTA Bus & Local Fare Rules'}
+                       🚌 {lang === 'bn' ? 'বিআরটিএ বাস ও লোকাল ভাড়া' : 'BRTA Bus & Local Fare Rules'}
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -2398,59 +2398,6 @@ export function AdminDashboard({ authUser }) {
                       </button>
                     </div>
                   </form>
-                </div>
-
-                {/* Audit Logs Stream */}
-                <div className="profile-card">
-                  <h3 style={{ margin: '0 0 14px', fontSize: 17, color: 'var(--cream)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span>📜</span>
-                    <span>{lang === 'bn' ? 'অ্যাডমিন অডিট লগ হিস্ট্রি' : 'Admin Audit Trail'}</span>
-                  </h3>
-
-                  <div style={{ maxHeight: 520, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {auditLogs.length === 0 ? (
-                      <p style={{ color: 'var(--c70)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>
-                        {lang === 'bn' ? 'কোনো অডিট লগ নেই' : 'No audit logs recorded yet.'}
-                      </p>
-                    ) : (
-                      auditLogs.map((log) => (
-                        <div key={log.id} style={{
-                          padding: '10px 12px',
-                          background: 'var(--ground2)',
-                          borderRadius: 4,
-                          fontSize: 12.5,
-                          fontFamily: 'var(--data)'
-                        }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                            <span style={{ fontWeight: 700, color: 'var(--metro)' }}>
-                              {log.action}
-                            </span>
-                            <span style={{ color: 'var(--c45)', fontSize: 11 }}>
-                              {formatDate(log.createdAt, lang)}
-                            </span>
-                          </div>
-
-                          <div style={{ color: 'var(--cream)' }}>
-                            <strong>{log.adminName}</strong> ({log.adminRole}) • {log.targetType} {log.targetId ? `[${log.targetId}]` : ''}
-                          </div>
-
-                          {log.details && (
-                            <pre style={{
-                              margin: '6px 0 0',
-                              padding: '6px 8px',
-                              background: 'var(--ground)',
-                              borderRadius: 3,
-                              fontSize: 11,
-                              color: 'var(--c70)',
-                              overflowX: 'auto'
-                            }}>
-                              {JSON.stringify(log.details, null, 2)}
-                            </pre>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </div>
                 </div>
               </div>
             )}
