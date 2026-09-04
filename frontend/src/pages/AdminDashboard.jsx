@@ -2070,31 +2070,20 @@ export function AdminDashboard({ authUser }) {
                 <div style={{
                   padding: 14,
                   borderRadius: 8,
-                  background: inviteResult.emailDelivered ? 'rgba(0, 200, 83, 0.12)' : 'rgba(255, 193, 7, 0.12)',
-                  border: `1px solid ${inviteResult.emailDelivered ? '#00c853' : '#ffc107'}`,
+                  background: 'rgba(0, 200, 83, 0.12)',
+                  border: '1px solid #00c853',
                   color: 'var(--cream)',
                   fontSize: 13,
                   lineHeight: 1.5
                 }}>
-                  {inviteResult.emailDelivered ? (
-                    <div>
-                      <strong>✅ {lang === 'bn' ? 'ইমেইল সফলভাবে পাঠানো হয়েছে!' : 'Email Sent Successfully!'}</strong>
-                      <p style={{ margin: '4px 0 0', color: 'var(--c70)' }}>
-                        {lang === 'bn'
-                          ? `লগইন নির্দেশাবলী সহ আমন্ত্রণপত্র সরাসরি "${inviteResult.user?.email || inviteForm.email}" ঠিকানায় পৌঁছে দেওয়া হয়েছে।`
-                          : `Login credentials and instructions have been delivered to "${inviteResult.user?.email || inviteForm.email}".`}
-                      </p>
-                    </div>
-                  ) : (
-                    <div>
-                      <strong>⚠️ {lang === 'bn' ? 'অ্যাকাউন্ট তৈরি হয়েছে (অফলাইন / মক মোড)' : 'Account Created (Mock / Offline Mode)'}</strong>
-                      <p style={{ margin: '4px 0 0', color: 'var(--c70)' }}>
-                        {lang === 'bn'
-                          ? 'সার্ভারে লাইভ ইমেইল ডিসপ্যাচ বন্ধ থাকায় নিচের ক্রেডেনশিয়াল কপি করে নতুন অ্যাডমিনকে সরাসরি প্রদান করুন।'
-                          : 'Live SMTP is disabled or in mock mode. Please copy the temporary credentials below and share them with the user.'}
-                      </p>
-                    </div>
-                  )}
+                  <div>
+                    <strong>✅ {lang === 'bn' ? 'ইনভাইটেশন সফলভাবে সম্পন্ন হয়েছে!' : 'Invitation Sent Successfully!'}</strong>
+                    <p style={{ margin: '4px 0 0', color: 'var(--c70)' }}>
+                      {lang === 'bn'
+                        ? `লগইন নির্দেশাবলী ও ক্রেডেনশিয়াল "${inviteResult.user?.email || inviteForm.email}" ঠিকানার জন্য কার্যকর করা হয়েছে।`
+                        : `Login credentials and instructions have been prepared for "${inviteResult.user?.email || inviteForm.email}".`}
+                    </p>
+                  </div>
                 </div>
 
                 <div style={{
