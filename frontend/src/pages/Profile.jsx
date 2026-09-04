@@ -681,7 +681,7 @@ export function Profile({ user, onUpdateUser, onLogout }) {
     );
   }
 
-  const currentUser = profileData?.user || user;
+  const currentUser = profileData?.user || user || {};
   const stats = profileData?.stats || {
     totalTrips: 0,
     totalDistance: 0,
@@ -693,10 +693,11 @@ export function Profile({ user, onUpdateUser, onLogout }) {
   const favoriteStops = profileData?.favoriteStops || [];
   const trips = profileData?.trips || [];
 
-  const isGuest = Boolean(currentUser?.isGuest || (!currentUser?.email && !currentUser?.googleId));
+  const isGuest = Boolean(currentUser?.isGuest || (!currentUser?.email && !currentUser?.googleId) || (currentUser?.email && currentUser.email.includes('guest.ezzgo.local')));
   const isGoogle = Boolean(currentUser?.googleId);
+  const isAdmin = Boolean(currentUser?.role === 'admin' || currentUser?.role === 'moderator');
 
-  const initialLetter = (currentUser?.name || currentUser?.email || 'U')
+  const initialLetter = (currentUser?.name || currentUser?.email || 'G')
     .trim()
     .charAt(0)
     .toUpperCase();
