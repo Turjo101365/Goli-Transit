@@ -14,6 +14,13 @@
     "start:frontend": "npm --prefix frontend start",
     "db:setup": "node scripts/setup-db.js",
     "db:supabase": "node scripts/setup-db.js",
+    "pma:up": "docker compose up -d phpmyadmin",
+    "pma:down": "docker compose stop phpmyadmin",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "cap:sync": "npm --prefix frontend run cap:sync",
+    "cap:open": "npm --prefix frontend run cap:open",
+    "cap:build": "npm --prefix frontend run cap:build",
     "test": "npm --prefix backend test"
   },
   "dependencies": {
