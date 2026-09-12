@@ -34,6 +34,8 @@ const TEXT = {
     guestNote: 'অ্যাকাউন্ট ছাড়াই ৬ ঘণ্টার জন্য — পরে চাইলে সেভ করা যাবে।',
     googleFailed: 'গুগল দিয়ে সাইন ইন করা যায়নি।',
     adminNotice: '⚠️ এই পোর্টালটি শুধুমাত্র ঢাকা ট্রানজিট অনুমোদিত অ্যাডমিন ও মডারেটরদের জন্য সংরক্ষিত।',
+    adminPortalRequired: 'এটি একটি অ্যাডমিন অ্যাকাউন্ট। অনুগ্রহ করে অ্যাডমিন পোর্টালে সাইন ইন করুন।',
+    adminAccessDenied: 'শুধুমাত্র অনুমোদিত অ্যাডমিনরা প্রবেশ করতে পারবেন। সাধারণ যাত্রী হিসেবে সাইন ইন করুন।',
     invalidCredentials: 'ভুল ইমেইল বা পাসওয়ার্ড। অনুগ্রহ করে পুনরায় চেষ্টা করুন বা পাসওয়ার্ড রিসেট করুন।'
   },
   en: {
@@ -59,6 +61,8 @@ const TEXT = {
     guestNote: 'No account, 6-hour session — you can save it as a real account later.',
     googleFailed: 'Unable to sign in with Google.',
     adminNotice: '⚠️ This portal is strictly restricted to authorized transit system administrators.',
+    adminPortalRequired: 'This is an administrator account. Please sign in via the Admin Portal tab.',
+    adminAccessDenied: 'This portal is restricted to administrators only. Please sign in as a commuter.',
     invalidCredentials: 'Invalid email or password. Please try again or reset your password.'
   }
 };
@@ -133,8 +137,13 @@ export function Login({
       });
     } catch (authError) {
       const code = authError.code || '';
+      setErrorCode(code);
       if (code === 'AUTH_ACCOUNT_SUSPENDED') {
         setError(authError.message);
+      } else if (code === 'AUTH_ADMIN_PORTAL_REQUIRED') {
+        setError(t.adminPortalRequired || authError.message);
+      } else if (code === 'AUTH_ADMIN_ACCESS_DENIED') {
+        setError(t.adminAccessDenied || authError.message);
       } else {
         setError(t.invalidCredentials);
       }

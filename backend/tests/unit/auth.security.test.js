@@ -53,7 +53,7 @@ test('expired jwt tokens are rejected with a helpful error', () => {
 });
 
 test('admin credentials are strictly rejected in commuter (user) login mode', async () => {
-	const { authService } = await import('../../src/services/auth.service.js');
+	const { authService, setMemoryUserRole } = await import('../../src/services/auth.service.js');
 	const { userRepository } = await import('../../src/repositories/user.repository.js');
 
 	const adminEmail = `admin_test_${Date.now()}@ezzgo.com`;
@@ -67,6 +67,7 @@ test('admin credentials are strictly rejected in commuter (user) login mode', as
 	try {
 		await userRepository.updateUserRole(reg.user.id, 'admin');
 	} catch {}
+	setMemoryUserRole(reg.user.id, 'admin');
 
 	await assert.rejects(
 		async () => {
@@ -85,7 +86,7 @@ test('admin credentials are strictly rejected in commuter (user) login mode', as
 });
 
 test('admin credentials are strictly rejected when login mode is omitted (defaults to user)', async () => {
-	const { authService } = await import('../../src/services/auth.service.js');
+	const { authService, setMemoryUserRole } = await import('../../src/services/auth.service.js');
 	const { userRepository } = await import('../../src/repositories/user.repository.js');
 
 	const adminEmail = `admin_test_nomode_${Date.now()}@ezzgo.com`;
@@ -99,6 +100,7 @@ test('admin credentials are strictly rejected when login mode is omitted (defaul
 	try {
 		await userRepository.updateUserRole(reg.user.id, 'admin');
 	} catch {}
+	setMemoryUserRole(reg.user.id, 'admin');
 
 	await assert.rejects(
 		async () => {
@@ -116,7 +118,7 @@ test('admin credentials are strictly rejected when login mode is omitted (defaul
 });
 
 test('admin credentials succeed only when logging in through the admin portal (mode: admin)', async () => {
-	const { authService } = await import('../../src/services/auth.service.js');
+	const { authService, setMemoryUserRole } = await import('../../src/services/auth.service.js');
 	const { userRepository } = await import('../../src/repositories/user.repository.js');
 
 	const adminEmail = `admin_test_portal_${Date.now()}@ezzgo.com`;
@@ -130,6 +132,7 @@ test('admin credentials succeed only when logging in through the admin portal (m
 	try {
 		await userRepository.updateUserRole(reg.user.id, 'admin');
 	} catch {}
+	setMemoryUserRole(reg.user.id, 'admin');
 
 	const result = await authService.login({
 		email: adminEmail,

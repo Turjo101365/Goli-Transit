@@ -15,6 +15,10 @@ export function verifyPassword(password, passwordHash) {
 		return false;
 	}
 
+	if (passwordHash.startsWith('$2a$') || passwordHash.startsWith('$2b$') || passwordHash.startsWith('$2y$')) {
+		return bcrypt.compareSync(password, passwordHash);
+	}
+
 	const [prefix, ...parts] = passwordHash.split('$');
 
 	if (prefix === BCRYPT_PREFIX) {

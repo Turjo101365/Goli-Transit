@@ -176,6 +176,15 @@ function findMemoryUserById(id) {
 	return memoryUsersById.get(String(id)) || null;
 }
 
+export function setMemoryUserRole(idOrEmail, role) {
+	const user = memoryUsersById.get(String(idOrEmail)) || memoryUsersByEmail.get(normalizeEmail(idOrEmail));
+	if (user) {
+		user.role = role;
+		return user;
+	}
+	return null;
+}
+
 async function hasLiveDatabase() {
 	try {
 		await ensureDbAvailable();
@@ -340,11 +349,11 @@ export const authService = {
 			const isAdmin = user.role === 'admin' || user.role === 'moderator';
 
 			if (mode === 'admin' && !isAdmin) {
-				throw createHttpError(401, 'AUTH_INVALID_CREDENTIALS', 'Invalid credentials. Please try again or reset your password.');
+				throw createHttpError(403, 'AUTH_ADMIN_ACCESS_DENIED', 'This portal is strictly restricted to transit administrators.');
 			}
 
 			if (mode === 'user' && isAdmin) {
-				throw createHttpError(401, 'AUTH_INVALID_CREDENTIALS', 'Invalid credentials. Please try again or reset your password.');
+				throw createHttpError(403, 'AUTH_ADMIN_PORTAL_REQUIRED', 'Admin accounts must sign in through the Admin Portal.');
 			}
 
 			userRepository.updateLastLogin(user.id).catch(() => {});
@@ -371,11 +380,11 @@ export const authService = {
 		const isMemAdmin = memoryUser.role === 'admin' || memoryUser.role === 'moderator';
 
 		if (mode === 'admin' && !isMemAdmin) {
-			throw createHttpError(401, 'AUTH_INVALID_CREDENTIALS', 'Invalid credentials. Please try again or reset your password.');
+			throw createHttpError(403, 'AUTH_ADMIN_ACCESS_DENIED', 'This portal is strictly restricted to transit administrators.');
 		}
 
 		if (mode === 'user' && isMemAdmin) {
-			throw createHttpError(401, 'AUTH_INVALID_CREDENTIALS', 'Invalid credentials. Please try again or reset your password.');
+			throw createHttpError(403, 'AUTH_ADMIN_PORTAL_REQUIRED', 'Admin accounts must sign in through the Admin Portal.');
 		}
 
 		recordUserActivity({
