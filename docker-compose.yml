@@ -32,16 +32,21 @@ services:
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     container_name: goli-phpmyadmin
+    restart: unless-stopped
     depends_on:
       mysql:
         condition: service_healthy
     environment:
-      PMA_HOST: mysql
-      PMA_PORT: 3306
-      PMA_USER: root
-      PMA_PASSWORD: root123
+      PMA_HOSTS: "mysql,host.docker.internal"
+      PMA_VERBOSES: "Docker MySQL Container,Local Host Mac MySQL"
+      PMA_PORTS: "3306,3306"
+      PMA_ARBITRARY: 1
+      PMA_ALLOW_EMPTY_PASSWORD: "yes"
+      UPLOAD_LIMIT: 128M
     ports:
       - "8081:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   redis_data:
