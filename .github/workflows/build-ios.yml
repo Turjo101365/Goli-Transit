@@ -1,0 +1,102 @@
+name: Build iOS App
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build iOS App with Xcode
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build Web Assets
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Sync Capacitor iOS
+        working-directory: ./frontend
+        run: npx cap sync ios
+
+      - name: Build iOS App with xcodebuild
+        working-directory: ./frontend/ios/App
+        run: |
+          xcodebuild \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package App into IPA
+        working-directory: ./frontend/ios/App
+        run: |
+          mkdir -p output/Payload
+          cp -r build/Build/Products/Debug-iphoneos/App.app output/Payload/
+          cd output
+          zip -r EZZ-GO.ipa Payload
+          zip -r EZZ-GO-App.zip Payload/App.app
+          rm -rf Payload
+
+      - name: Upload IPA as Workflow Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EZZ-GO-iOS-IPA
+          path: frontend/ios/App/output/EZZ-GO.ipa
+          retention-days: 14
+
+      - name: Upload App Bundle as Workflow Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EZZ-GO-App-Bundle
+          path: frontend/ios/App/output/EZZ-GO-App.zip
+          retention-days: 14
+
+      - name: Publish GitHub Release with Direct iOS Build Links
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        continue-on-error: true
+        with:
+          tag_name: ios-latest
+          name: "EZZ GO iOS Mobile Build"
+          body: |
+            ## 🍎 EZZ GO iOS Build
+
+            Automated Xcode build from GitHub Actions (macOS runner):
+            - 👉 **[Download EZZ-GO.ipa](https://github.com/${{ github.repository }}/releases/download/ios-latest/EZZ-GO.ipa)**
+            - 👉 **[Download EZZ-GO-App.zip](https://github.com/${{ github.repository }}/releases/download/ios-latest/EZZ-GO-App.zip)**
+
+            ### Notes:
+            - Built in CI using Xcode on macOS Apple Silicon runner (`macos-14`).
+            - This is an unsigned development build ready for sideloading (AltStore, Sideloadly, TrollStore) or Simulator.
+          draft: false
+          prerelease: false
+          files: |
+            frontend/ios/App/output/EZZ-GO.ipa
+            frontend/ios/App/output/EZZ-GO-App.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
