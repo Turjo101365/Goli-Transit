@@ -47,33 +47,42 @@ jobs:
             -configuration Debug \
             -destination 'generic/platform=iOS' \
             -derivedDataPath build \
+            CODE_SIGN_STYLE=Manual \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             build
 
-      - name: Package App into IPA
+      - name: Package iOS IPA and Mac Bundles
         working-directory: ./frontend/ios/App
         run: |
           mkdir -p output/Payload
           cp -r build/Build/Products/Debug-iphoneos/App.app output/Payload/
+          
+          # Ad-hoc sign the app so it has a valid bundle signature for sideloading & simulator
+          codesign --force --deep --sign - output/Payload/App.app
+          
           cd output
           zip -r EZZ-GO.ipa Payload
-          zip -r EZZ-GO-App.zip Payload/App.app
-          rm -rf Payload
+          
+          # Package Mac / Simulator compatible bundle
+          cp -r Payload/App.app EZZ-GO.app
+          zip -r EZZ-GO-Mac.zip EZZ-GO.app
+          
+          rm -rf Payload EZZ-GO.app
 
-      - name: Upload IPA as Workflow Artifact
+      - name: Upload iOS IPA Artifact
         uses: actions/upload-artifact@v4
         with:
           name: EZZ-GO-iOS-IPA
           path: frontend/ios/App/output/EZZ-GO.ipa
           retention-days: 14
 
-      - name: Upload App Bundle as Workflow Artifact
+      - name: Upload Mac & Simulator Bundle Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: EZZ-GO-App-Bundle
-          path: frontend/ios/App/output/EZZ-GO-App.zip
+          name: EZZ-GO-Mac-Bundle
+          path: frontend/ios/App/output/EZZ-GO-Mac.zip
           retention-days: 14
 
       - name: Publish GitHub Release with Direct iOS Build Links
@@ -82,21 +91,53 @@ jobs:
         continue-on-error: true
         with:
           tag_name: ios-latest
-          name: "EZZ GO iOS Mobile Build"
+          name: "EZZ GO iOS & Mac Build"
           body: |
-            ## 🍎 EZZ GO iOS Build
+            ## 🍎 EZZ GO iOS & Mac Build
 
-            Automated Xcode build from GitHub Actions (macOS runner):
-            - 👉 **[Download EZZ-GO.ipa](https://github.com/${{ github.repository }}/releases/download/ios-latest/EZZ-GO.ipa)**
-            - 👉 **[Download EZZ-GO-App.zip](https://github.com/${{ github.repository }}/releases/download/ios-latest/EZZ-GO-App.zip)**
+            Automated Xcode build generated via GitHub Actions macOS runner (`macos-14`):
 
-            ### Notes:
-            - Built in CI using Xcode on macOS Apple Silicon runner (`macos-14`).
-            - This is an unsigned development build ready for sideloading (AltStore, Sideloadly, TrollStore) or Simulator.
+            ### 📥 Download Links
+            - 📱 **[Download EZZ-GO.ipa](https://github.com/${{ github.repository }}/releases/download/ios-latest/EZZ-GO.ipa)** *(For iPhone & iPad)*
+            - 💻 **[Download EZZ-GO-Mac.zip](https://github.com/${{ github.repository }}/releases/download/ios-latest/EZZ-GO-Mac.zip)** *(For Mac Apple Silicon & Simulator)*
+
+            ---
+
+            ### 📲 How to Install & Use on iOS (iPhone / iPad)
+
+            Because Apple does not allow direct one-tap installation of raw `.ipa` files without an App Store certificate, use any of the standard methods below:
+
+            #### 1. Direct on iPhone without PC (Easiest)
+            - **Scarlet** (visit [usescarlet.com](https://usescarlet.com) on Safari):
+              1. Install Scarlet on your iPhone.
+              2. Download `EZZ-GO.ipa` from this release.
+              3. Open Scarlet, tap the Install/Import icon at the top right, select `EZZ-GO.ipa`, and tap Install.
+            - **TrollStore** (iOS 14.0 - 16.6.1 & 17.0):
+              1. Download `EZZ-GO.ipa`.
+              2. Share to TrollStore and tap Install (permanent, no revokes).
+            - **Esign / GBox**:
+              1. Import `EZZ-GO.ipa` and sign with your certificate.
+
+            #### 2. Using Mac or Windows PC
+            - **Sideloadly** ([sideloadly.io](https://sideloadly.io)):
+              1. Connect your iPhone to Mac or PC via USB.
+              2. Drag `EZZ-GO.ipa` into Sideloadly.
+              3. Enter your free Apple ID and click **Start**.
+            - **AltStore** ([altstore.io](https://altstore.io)):
+              1. Install AltServer on your computer.
+              2. In the AltStore app on iPhone, tap `+` in "My Apps" and choose `EZZ-GO.ipa`.
+
+            #### 3. On Mac (Apple Silicon M1/M2/M3/M4)
+            - Download `EZZ-GO-Mac.zip`, extract it, and open `EZZ-GO.app` (or install via PlayCover).
+
+            #### 4. Instant Web App (No IPA download required)
+            - Open the EZZ GO web address in **Safari**.
+            - Tap the **Share** button (⎋) -> scroll down and tap **Add to Home Screen** (⊞).
+            - The app is installed directly to your iPhone home screen with native full-screen mode!
           draft: false
           prerelease: false
           files: |
             frontend/ios/App/output/EZZ-GO.ipa
-            frontend/ios/App/output/EZZ-GO-App.zip
+            frontend/ios/App/output/EZZ-GO-Mac.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
