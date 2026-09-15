@@ -21,6 +21,9 @@
     "cap:sync": "npm --prefix frontend run cap:sync",
     "cap:open": "npm --prefix frontend run cap:open",
     "cap:build": "npm --prefix frontend run cap:build",
+    "cap:sync:ios": "npm --prefix frontend run cap:sync:ios",
+    "cap:open:ios": "npm --prefix frontend run cap:open:ios",
+    "cap:build:ios": "npm --prefix frontend run cap:build:ios",
     "test": "npm --prefix backend test"
   },
   "dependencies": {

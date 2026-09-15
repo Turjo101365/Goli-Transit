@@ -5,17 +5,20 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '127.0.0.1',
-    port: 5173,
-    strictPort: true,
+    port: 5176,
+    strictPort: false,
+    watch: {
+      ignored: ['**/android/**', '**/ios/**', '**/dist/**']
+    },
     proxy: {
-      '/api': 'http://127.0.0.1:8080',
-      '/admin': 'http://127.0.0.1:8080',
-      '/health': 'http://127.0.0.1:8080',
-      '/auth': 'http://127.0.0.1:8080',
-      '/profile': 'http://127.0.0.1:8080',
-      '/route': 'http://127.0.0.1:8080',
-      '/anomaly': 'http://127.0.0.1:8080',
-      '/graph': 'http://127.0.0.1:8080'
+      '/api': 'http://127.0.0.1:8085',
+      '/admin': 'http://127.0.0.1:8085',
+      '/health': 'http://127.0.0.1:8085',
+      '/auth': 'http://127.0.0.1:8085',
+      '/profile': 'http://127.0.0.1:8085',
+      '/route': 'http://127.0.0.1:8085',
+      '/anomaly': 'http://127.0.0.1:8085',
+      '/graph': 'http://127.0.0.1:8085'
     }
   },
   preview: {
